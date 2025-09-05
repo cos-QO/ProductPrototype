@@ -1,0 +1,472 @@
+Product Requirements Document (PRD)
+Product Name: SKU Store
+Owner: TBD
+ Prepared By: [Jack Kiefer]
+ Date: [9/4/2025]
+
+1. Executive Summary
+SKU Store is a centralized platform that serves as the single source of truth for all product and brand-related data, content, and assets. It supports product registration, brand ownership governance, content enrichment, and omni-channel syndication. As the foundational layer of the Queen One ecosystem, SKU Store is critical for scalable, accurate, and flexible product data management.
+
+2. Goals & Objectives
+Goals
+Build a global registry for all brands, products, and digital assets.
+Centralize product information management for DTC, marketplaces, and retail partners.
+Enable scalable syndication and personalization of product content per channel.
+Provide brand ownership governance and retailer-specific content flexibility.
+
+
+Objectives
+Register and catalog all brands, SKUs, and brand owners.
+Establish parent-child SKU relationships and product families (kits, bundles).
+Store structured and unstructured product attributes.
+Centralize media and content assets (text, images, video, etc.).
+Support multiple retailers selling the same brand/product.
+Enable retailer-specific product content layering without overwriting brand-owned content.
+
+
+
+3. Features & Requirements
+3.1 Brand and Product Registration
+Requirement ID
+Feature
+Description
+Priority
+BR-1
+Brand Registry
+Ability to register brands with metadata and assign ownership.
+High
+BR-2
+Product Registry
+Ability to register products and SKUs under brands.
+High
+BR-3
+Brand Ownership
+Assign and manage brand owner permissions.
+High
+BR-4
+Licensed Sellers
+Assign retailers as licensed sellers with scoped permissions.
+High
+
+
+3.2 Product Hierarchies
+Requirement ID
+Feature
+Description
+Priority
+PH-1
+Parent-Child SKU
+Support for base products and variant SKUs.
+High
+PH-2
+Product Families
+Group related products into bundles or collections.
+High
+PH-3
+Retailer Versions
+Create retailer-specific versions with derivative content.
+High
+
+
+3.3 Data & Asset Management
+A. Words (Text-Based Content)
+Requirement ID
+Feature
+Description
+Priority
+WC-1
+Descriptions
+Short and long-form product descriptions.
+High
+WC-2
+Feature Highlights
+Key benefits and features.
+High
+WC-3
+SEO Keywords
+Strategic keywords for discoverability.
+Medium
+WC-4
+Technical Specs
+Structured data for dimensions, materials, etc.
+High
+WC-5
+Brand Storytelling
+Brand mission, usage, care, and taxonomy.
+Medium
+WC-6
+Customer Reviews
+Support integration of social proof (optional).
+Low
+
+B. Images & Videos
+Requirement ID
+Feature
+Description
+Priority
+IV-1
+Hero Images
+Primary display image.
+High
+IV-2
+Product Imagery
+Multiple angles, 360° views.
+High
+IV-3
+Lifestyle Photos
+In-use and environment imagery.
+Medium
+IV-4
+Instructional Media
+Videos (how-to, unboxing, assembly).
+Medium
+IV-5
+Infographics
+Comparison charts, usage visuals.
+Low
+
+C. Product Associations
+Requirement ID
+Feature
+Description
+Priority
+PA-1
+Upsells
+Premium alternatives.
+Medium
+PA-2
+Cross-sells
+Complementary or related items.
+Medium
+PA-3
+Accessories
+Add-ons or compatible parts.
+Medium
+PA-4
+Supersessions
+Replacement or upgraded SKUs.
+Low
+PA-5
+Bundles & Kits
+Combined product offerings, trackable at variant level.
+High
+
+
+3.4 Permissions & Governance
+Requirement ID
+Feature
+Description
+Priority
+PG-1
+Brand Ownership Control
+Only brand owners can modify core brand content.
+High
+PG-2
+Retailer Permissions
+Retailers can add supplemental content (not overwrite brand content).
+High
+PG-3
+Content Versioning
+Support separate content layers: brand vs. retailer.
+High
+
+
+3.5 APIs & Syndication
+Requirement ID
+Feature
+Description
+Priority
+API-1
+CRUD API
+Create, read, update, delete for all entities.
+High
+API-2
+Syndication API
+Export product data to external channels (marketplaces, DTC, etc.).
+High
+API-3
+Real-Time Validation
+Validate data on ingest/update.
+Medium
+API-4
+Localization Support
+Customize content by region/language.
+Medium
+
+
+4. Data Architecture Requirements
+Database Models
+Brand Table: Includes brand name, metadata, ownership, and seller list.
+SKU Table: Includes all SKUs with parent-child relationships.
+Product Family Table: Supports bundles, kits, and merchandising.
+Attribute Tables: Structured (e.g., dimensions) and unstructured (e.g., copy).
+Media Asset Table: Stores images, videos, documents with metadata and usage tags.
+
+
+Entity Relationships
+Brands ↔ Products: One-to-many
+Products ↔ SKUs: One-to-many
+Products ↔ Retailers: One-to-many and many to many in some cases
+Product Families ↔ SKUs: Many-to-many
+
+
+
+5. Use Cases
+ID
+Title
+Description
+UC-1
+Brand Owner Uploads New Product
+A brand owner logs in, registers a product, uploads assets, and publishes.
+UC-2
+Retailer Sells Existing Brand
+A retailer links to an existing SKU and adds custom imagery for their audience.
+UC-3
+Product Bundle Creation
+A merchandiser creates a bundle of 3 SKUs into a single product family (e.g., a “Living Room Set”).
+UC-4
+API Syndication
+A partner marketplace pulls enriched product data via API for display.
+
+
+6. Success Metrics
+✅ 100% of products registered with structured metadata
+
+
+✅ <24-hour average time-to-market for new SKUs
+
+
+✅ 90% reduction in duplicate SKUs across retailers
+
+
+✅ 99.9% uptime for syndication APIs
+
+
+✅ 50%+ retailer adoption for custom content enrichment
+
+
+
+7. Assumptions & Dependencies
+Identity and permission services must be in place to manage brand/retailer roles.
+Integration teams will consume SKU Store APIs for external channels.
+Category-specific schemas may need flexibility for different industries.
+
+
+
+8. Out of Scope (MVP)
+Real-time inventory tracking (very important for future releases)
+Full-blown DAM (Digital Asset Management) suite (very important for future releases)
+AI-driven content generation (can be phased post-MVP)
+
+Technical Specification Document: SKU Store
+1. Overview
+SKU Store is a centralized platform designed to serve as the system of record for all products and brands. It consolidates and manages all associated product attributes and digital assets—facilitating content enrichment, brand storytelling, and consistent omni-channel retail experiences.
+The SKU Store underpins the Queen One product ecosystem, functioning as the foundational structure for managing and distributing accurate, enriched product information across all retail channels.
+
+2. Objective
+To develop a centralized, scalable, and extensible platform that enables:
+Global cataloging and registration of all brands and products
+A single source of truth for product-related data and media
+Comprehensive brand and product ownership governance
+Rich content management and syndication to various retail channels
+Support for multi-retailer models, allowing:
+Shared access to brand-owned content
+Customization and enhancement by individual retailers
+
+
+
+3. Core Capabilities
+3.1 System of Record for Products and Brands
+SKU Store will serve as the master registry for:
+Brands and associated metadata (name, category, logo, etc.)
+
+
+Products and SKUs:
+
+
+Metadata (title, category, description, etc.)
+Digital assets (images, videos, documents)
+Attribute variations (size, color, pack count, etc.)
+Parent-child SKU relationships
+
+
+Product Families and merchandising logic (bundles, kits, rooms)
+
+
+Ownership Models:
+
+
+Brand Owners: Primary owners with full control over core content
+
+
+Licensed Retailers: Retailers with restricted permissions to extend or localize content (e.g., add lifestyle photography, promotional tags, or retailer-specific messaging)
+
+
+Example: A furniture brand could own a master product page, while each retailer may create localized versions with retailer-specific assets, content, or bundle offers.
+
+3.2 Primary Data & Asset Buckets
+All data and digital assets will be categorized into three major content domains:
+A. Words (Text-Based Content)
+Product Titles & Descriptions (short and long-form)
+Feature & Benefit Highlights
+Strategic Keywords (SEO/onsite search optimization)
+Technical Specifications (dimensions, materials, certifications)
+Usage & Care Instructions
+Category/Subcategory Taxonomy
+Brand Storytelling (heritage, mission, values)
+Customer Reviews & Social Proof (optional integrations)
+
+
+B. Images & Videos
+Hero Images (main product image)
+Product Imagery (multiple angles, 360° views)
+Lifestyle Imagery (in-context photos)
+Brand Assets (logos, visual guidelines)
+User-Generated Content (optional)
+Instructional & Promotional Videos:
+How-To / In-Use Demonstrations
+Unboxing / Assembly / Troubleshooting
+Infographics and Comparison Charts
+
+
+C. Product Associations
+Upsells (higher-tier products)
+Cross-sells (complementary or similar items)
+Accessories (add-ons or compatible parts)
+Supersessions (replacements or upgraded models)
+Kits and Bundles:
+Support variant-level kit creation
+Inventory tracked at the SKU level
+
+
+
+4. Data Architecture Overview
+4.1 Entity Relationships
+One-to-many relationships between:
+Brands ↔ Products
+Products ↔ Retailers
+SKUs ↔ Variants
+Products ↔ Product Families / Kits / Bundles
+
+
+4.2 Database Models
+Brand Table:
+
+
+Brand metadata
+Primary brand owner (organization or user)
+List of approved retailers (licensed sellers)
+Governance: permission controls for content ownership and updates
+
+
+SKU Table:
+
+
+SKU-level data (ID, variant attributes, pricing, inventory, etc.)
+Relationships: Parent ↔ Child SKU structure
+
+
+Product Family Table:
+
+
+Assembles multiple SKUs into purchasable bundles or kits
+Support for complex merchandising (e.g., room bundles)
+Bundles defined at variant level, but inventory is SKU-specific
+
+
+Attribute Tables:
+
+
+Structured and unstructured data support
+Supports extensible schemas for different categories
+
+
+Media Asset Management:
+
+
+Central repository for all visual and multimedia assets
+Metadata tagging for efficient search, reuse, and syndication
+
+
+
+4.3 API Services
+Core CRUD Operations:
+
+
+Create, Read, Update, Delete for Brands, SKUs, Attributes, Media
+
+
+Syndication Services:
+
+
+Export data in retailer-specific formats
+Integration with retail partners, marketplaces, and DTC platforms
+
+
+Validation & Enrichment:
+
+
+Real-time data quality checks
+Metadata enrichment (e.g., AI-generated keywords, auto-tagging)
+
+
+
+5. Integration & Distribution
+The SKU Store will support broad syndication and customization via robust APIs and integration frameworks:
+Channels Supported:
+
+
+Direct-to-Consumer (DTC)
+Retail Partners (brick & mortar or digital)
+Online Marketplaces (Amazon, Walmart, etc.)
+Social Commerce Platforms (Instagram Shopping, TikTok Shop, etc.)
+
+
+Localization Support:
+
+
+Market-specific content and pricing
+Language, currency, and legal compliance adjustments
+
+
+Retailer-Specific Versions:
+
+
+Cloning or templating mechanism to create “Retailer Editions”
+Inherits core brand content with retailer-specific overlays
+
+
+
+6. Benefits & Business Value
+Streamlined Product Onboarding:
+
+
+Faster time-to-market for new SKUs
+Fewer manual data entry points
+
+
+Accuracy & Consistency:
+
+
+Reduced errors through a single source of truth
+Improved compliance with retailer requirements
+
+
+Rich Content Delivery:
+
+
+Increases discoverability, SEO performance, and conversion rates
+
+
+Governance & Flexibility:
+
+
+Enables brand control while allowing retail customization
+
+
+Scalable Architecture:
+
+
+Future-proofed for global expansion, AI enrichment, and partner integrations
+
+
