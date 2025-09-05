@@ -1,0 +1,312 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { insertBrandSchema, insertProductSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import { promises as fs } from "fs";
+import express from "express";
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed'));
+    }
+  },
+});
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Dashboard routes
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const stats = await storage.getDashboardStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Brand routes
+  app.get('/api/brands', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      let brands;
+      if (user?.role === 'brand_owner') {
+        brands = await storage.getBrands(userId);
+      } else {
+        brands = await storage.getBrands(); // Retailers can see all brands
+      }
+      
+      res.json(brands);
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+      res.status(500).json({ message: "Failed to fetch brands" });
+    }
+  });
+
+  app.post('/api/brands', isAuthenticated, upload.single('logo'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'brand_owner') {
+        return res.status(403).json({ message: "Only brand owners can create brands" });
+      }
+
+      const validatedData = insertBrandSchema.parse({
+        ...req.body,
+        ownerId: userId,
+        slug: req.body.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      });
+
+      // Handle logo upload if present
+      if (req.file) {
+        const fileName = `brand-logo-${Date.now()}${path.extname(req.file.originalname)}`;
+        const logoPath = path.join('uploads', fileName);
+        await fs.rename(req.file.path, logoPath);
+        validatedData.logoUrl = `/uploads/${fileName}`;
+      }
+
+      const brand = await storage.createBrand(validatedData);
+      res.status(201).json(brand);
+    } catch (error) {
+      console.error("Error creating brand:", error);
+      res.status(400).json({ message: "Failed to create brand", error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/brands/:id', isAuthenticated, async (req, res) => {
+    try {
+      const brandId = parseInt(req.params.id);
+      const brand = await storage.getBrand(brandId);
+      
+      if (!brand) {
+        return res.status(404).json({ message: "Brand not found" });
+      }
+      
+      res.json(brand);
+    } catch (error) {
+      console.error("Error fetching brand:", error);
+      res.status(500).json({ message: "Failed to fetch brand" });
+    }
+  });
+
+  app.patch('/api/brands/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const brandId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ message: "Brand not found" });
+      }
+      
+      if (brand.ownerId !== userId) {
+        return res.status(403).json({ message: "Only brand owners can update their brands" });
+      }
+
+      const updates = insertBrandSchema.partial().parse(req.body);
+      const updatedBrand = await storage.updateBrand(brandId, updates);
+      res.json(updatedBrand);
+    } catch (error) {
+      console.error("Error updating brand:", error);
+      res.status(400).json({ message: "Failed to update brand", error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Product routes
+  app.get('/api/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const brandId = req.query.brandId ? parseInt(req.query.brandId as string) : undefined;
+      
+      let products;
+      if (user?.role === 'brand_owner') {
+        products = await storage.getProducts(brandId, userId);
+      } else {
+        products = await storage.getProducts(brandId);
+      }
+      
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post('/api/products', isAuthenticated, upload.array('images', 5), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validatedData = insertProductSchema.parse({
+        ...req.body,
+        brandId: parseInt(req.body.brandId),
+        parentId: req.body.parentId ? parseInt(req.body.parentId) : null,
+        slug: req.body.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      });
+
+      const product = await storage.createProduct(validatedData);
+
+      // Handle image uploads if present
+      if (req.files && req.files.length > 0) {
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const fileName = `product-${product.id}-${Date.now()}-${i}${path.extname(file.originalname)}`;
+          const imagePath = path.join('uploads', fileName);
+          await fs.rename(file.path, imagePath);
+          
+          await storage.createMediaAsset({
+            fileName,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+            url: `/uploads/${fileName}`,
+            assetType: i === 0 ? 'hero' : 'product',
+            productId: product.id,
+            uploadedBy: userId,
+          });
+        }
+      }
+
+      res.status(201).json(product);
+    } catch (error) {
+      console.error("Error creating product:", error);
+      res.status(400).json({ message: "Failed to create product", error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/products/:id', isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const product = await storage.getProduct(productId);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      // Get associated media assets
+      const mediaAssets = await storage.getMediaAssets(productId);
+      const attributes = await storage.getProductAttributes(productId);
+      
+      res.json({
+        ...product,
+        mediaAssets,
+        attributes,
+      });
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ message: "Failed to fetch product" });
+    }
+  });
+
+  app.patch('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      // Check permissions - brand owners can update their products
+      const brand = await storage.getBrand(product.brandId!);
+      if (brand?.ownerId !== userId) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const updates = insertProductSchema.partial().parse(req.body);
+      const updatedProduct = await storage.updateProduct(productId, updates);
+      res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(400).json({ message: "Failed to update product", error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Media asset routes
+  app.get('/api/media-assets', isAuthenticated, async (req, res) => {
+    try {
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      const brandId = req.query.brandId ? parseInt(req.query.brandId as string) : undefined;
+      
+      const assets = await storage.getMediaAssets(productId, brandId);
+      res.json(assets);
+    } catch (error) {
+      console.error("Error fetching media assets:", error);
+      res.status(500).json({ message: "Failed to fetch media assets" });
+    }
+  });
+
+  // Search routes
+  app.get('/api/search', isAuthenticated, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      const type = req.query.type as string;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      let results;
+      if (type === 'brands') {
+        results = await storage.searchBrands(query);
+      } else if (type === 'products') {
+        results = await storage.searchProducts(query);
+      } else {
+        // Search both
+        const brands = await storage.searchBrands(query);
+        const products = await storage.searchProducts(query);
+        results = { brands, products };
+      }
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error searching:", error);
+      res.status(500).json({ message: "Failed to perform search" });
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', (req, res, next) => {
+    // Basic security check
+    if (req.path.includes('..')) {
+      return res.status(400).json({ message: "Invalid file path" });
+    }
+    next();
+  });
+
+  app.use('/uploads', express.static('uploads'));
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
