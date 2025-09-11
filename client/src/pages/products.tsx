@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Box, Plus, Search, Filter, Download, Upload } from "lucide-react";
+import { Box, Plus, Search, Filter, Download, Upload, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function Products() {
   const { toast } = useToast();
@@ -19,6 +20,8 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedImportBrand, setSelectedImportBrand] = useState<string>("");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -76,6 +79,42 @@ export default function Products() {
     },
   });
 
+  const importRolexMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest("POST", "/api/products/import/rolex", {
+        brandId: parseInt(brandId),
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setImportDialogOpen(false);
+      setSelectedImportBrand("");
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${data.total} Rolex products`,
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Import Failed",
+        description: error?.message || "Failed to import Rolex products",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteProduct = (productId: number) => {
     if (confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
       deleteProductMutation.mutate(productId);
@@ -113,6 +152,75 @@ export default function Products() {
               <p className="text-muted-foreground">Manage your product catalog and storytelling content</p>
             </div>
             <div className="flex space-x-3">
+              <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-import-rolex">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Import from Rolex
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Import Rolex Products</DialogTitle>
+                    <DialogDescription>
+                      Import luxury Rolex watches with detailed specifications from TheWatchAPI.
+                      This will add 3 sample Rolex products to your selected brand.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="import-brand" className="text-sm font-medium">
+                        Select Brand to Import To:
+                      </label>
+                      <Select value={selectedImportBrand} onValueChange={setSelectedImportBrand}>
+                        <SelectTrigger className="w-full" data-testid="select-import-brand">
+                          <SelectValue placeholder="Choose a brand..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(brands as any[])?.map((brand: any) => (
+                            <SelectItem key={brand.id} value={brand.id.toString()}>
+                              {brand.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p><strong>Sample products include:</strong></p>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Rolex Daytona 116500LN (Steel, 40mm)</li>
+                        <li>Rolex Submariner 126610LV (Steel, 41mm)</li>
+                        <li>Rolex Datejust 126234 (Steel/White Gold, 36mm)</li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setImportDialogOpen(false)}
+                      data-testid="button-cancel-import"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (selectedImportBrand) {
+                          importRolexMutation.mutate(selectedImportBrand);
+                        }
+                      }}
+                      disabled={!selectedImportBrand || importRolexMutation.isPending}
+                      className="gradient-primary text-white hover:opacity-90"
+                      data-testid="button-confirm-import"
+                    >
+                      {importRolexMutation.isPending ? "Importing..." : "Import Products"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
               <Button variant="outline" data-testid="button-bulk-upload">
                 <Upload className="mr-2 h-4 w-4" />
                 Bulk Upload

@@ -11,11 +11,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 export default function Brands() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+
+  const brandRegistrationSchema = z.object({
+    name: z.string().min(1, "Brand name is required"),
+    description: z.string().min(1, "Description is required"),
+    website: z.string().url().optional().or(z.literal("")),
+    foundedYear: z.string().optional(),
+  });
+
+  const form = useForm<z.infer<typeof brandRegistrationSchema>>({
+    resolver: zodResolver(brandRegistrationSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      website: "",
+      foundedYear: "",
+    },
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -35,6 +58,39 @@ export default function Brands() {
   const { data: brands, isLoading: brandsLoading } = useQuery({
     queryKey: ["/api/brands"],
     retry: false,
+  });
+
+  const createBrandMutation = useMutation({
+    mutationFn: async (brandData: z.infer<typeof brandRegistrationSchema>) => {
+      return await apiRequest("POST", "/api/brands", brandData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      setIsRegistrationOpen(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Brand registered successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to register brand",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteBrandMutation = useMutation({
@@ -98,13 +154,103 @@ export default function Brands() {
               <h1 className="text-3xl font-bold mb-2">Brand Management</h1>
               <p className="text-muted-foreground">Manage your brands and their storytelling content</p>
             </div>
-            <Button 
-              className="gradient-primary text-white hover:opacity-90"
-              data-testid="button-create-brand"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Register New Brand
-            </Button>
+            <Dialog open={isRegistrationOpen} onOpenChange={setIsRegistrationOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="gradient-primary text-white hover:opacity-90"
+                  data-testid="button-create-brand"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Register New Brand
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Register New Brand</DialogTitle>
+                  <DialogDescription>
+                    Add a new brand to your portfolio and start building your product catalog.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((data) => createBrandMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Brand Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter brand name" {...field} data-testid="input-brand-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Brief description of your brand" {...field} data-testid="input-brand-description" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Website (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://yourbrand.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="foundedYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Founded Year (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="2024" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsRegistrationOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createBrandMutation.isPending}
+                        className="gradient-primary text-white hover:opacity-90"
+                        data-testid="button-submit-brand"
+                      >
+                        {createBrandMutation.isPending ? "Registering..." : "Register Brand"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Search and Filters */}
@@ -253,6 +399,7 @@ export default function Brands() {
                 {!searchQuery && (
                   <Button 
                     className="gradient-primary text-white"
+                    onClick={() => setIsRegistrationOpen(true)}
                     data-testid="button-register-first-brand"
                   >
                     <Plus className="mr-2 h-4 w-4" />

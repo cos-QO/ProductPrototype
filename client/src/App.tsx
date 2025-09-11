@@ -15,13 +15,21 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        // Show loading state - could add a loading component here
         <Route path="/" component={Landing} />
-      ) : (
+      ) : isAuthenticated ? (
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
+        </>
+      ) : (
+        // Not authenticated - show landing for all routes
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/brands" component={Landing} />
+          <Route path="/products" component={Landing} />
         </>
       )}
       <Route component={NotFound} />

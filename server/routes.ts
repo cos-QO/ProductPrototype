@@ -296,6 +296,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // External product import from TheWatchAPI
+  app.post('/api/products/import/rolex', isAuthenticated, async (req: any, res) => {
+    try {
+      const { brandId } = req.body;
+      const userId = req.user.claims.sub;
+      
+      if (!brandId) {
+        return res.status(400).json({ message: "Brand ID is required" });
+      }
+
+      // Verify brand ownership
+      const brand = await storage.getBrand(parseInt(brandId));
+      if (!brand) {
+        return res.status(404).json({ message: "Brand not found" });
+      }
+      
+      if (brand.ownerId !== userId) {
+        return res.status(403).json({ message: "Only brand owners can import products" });
+      }
+
+      // Fetch Rolex products from TheWatchAPI (using a mock response for now)
+      // In production, you would call: await fetch('https://www.thewatchapi.com/api/watches?brand=Rolex&limit=20')
+      const mockWatchData = {
+        data: [
+          {
+            brand: "Rolex",
+            reference_number: "116500LN",
+            model: "Rolex Daytona",
+            movement: "Automatic",
+            year_of_production: "2016 - Present",
+            case_material: "Steel",
+            case_diameter: "40 mm",
+            description: "The Rolex Daytona reference number 116500LN is the pinnacle of precision timekeeping and ultimate luxury for watch enthusiasts. Crafted with exceptional attention to detail, this watch redefines elegance and sets new standards for chronographic instruments.",
+            last_updated: "2023-10-12 12:29:54"
+          },
+          {
+            brand: "Rolex",
+            reference_number: "126610LV",
+            model: "Rolex Submariner",
+            movement: "Automatic",
+            year_of_production: "2020 - Present", 
+            case_material: "Steel",
+            case_diameter: "41 mm",
+            description: "The Rolex Submariner Date reference 126610LV features a green Cerachrom bezel and is waterproof to 300 meters. This professional diving watch combines functionality with luxury.",
+            last_updated: "2023-10-12 12:30:15"
+          },
+          {
+            brand: "Rolex",
+            reference_number: "126234",
+            model: "Rolex Datejust",
+            movement: "Automatic",
+            year_of_production: "2018 - Present",
+            case_material: "Steel/White Gold",
+            case_diameter: "36 mm", 
+            description: "The Rolex Datejust 126234 features a fluted white gold bezel and is equipped with the self-winding caliber 3235 movement, offering precision and reliability.",
+            last_updated: "2023-10-12 12:31:00"
+          }
+        ]
+      };
+
+      const importedProducts = [];
+
+      // Process each watch and convert to our product schema
+      for (const watch of mockWatchData.data) {
+        try {
+          const productData = {
+            name: `${watch.model} ${watch.reference_number}`,
+            slug: watch.reference_number.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            shortDescription: `${watch.model} - ${watch.case_material} ${watch.case_diameter}`,
+            fullDescription: watch.description,
+            sku: watch.reference_number,
+            brandId: parseInt(brandId),
+            category: 'Luxury Watches',
+            subcategory: watch.model.split(' ').pop() || 'Rolex',
+            productType: 'watch',
+            status: 'active' as const,
+            tags: [watch.movement, watch.case_material, watch.year_of_production].filter(Boolean),
+            specifications: {
+              reference_number: watch.reference_number,
+              movement: watch.movement,
+              year_of_production: watch.year_of_production,
+              case_material: watch.case_material,
+              case_diameter: watch.case_diameter,
+              last_updated: watch.last_updated
+            },
+            targetMarkets: ['luxury', 'collectors']
+          };
+
+          const product = await storage.createProduct(productData as any);
+          importedProducts.push(product);
+        } catch (error) {
+          console.error(`Error importing watch ${watch.reference_number}:`, error);
+          // Continue with next product
+        }
+      }
+
+      res.json({ 
+        message: `Successfully imported ${importedProducts.length} Rolex products`,
+        products: importedProducts,
+        total: importedProducts.length
+      });
+    } catch (error) {
+      console.error("Error importing Rolex products:", error);
+      res.status(500).json({ 
+        message: "Failed to import Rolex products", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
+  // Get available external product sources
+  app.get('/api/products/import/sources', isAuthenticated, async (req, res) => {
+    res.json({
+      sources: [
+        {
+          id: 'rolex',
+          name: 'Rolex (TheWatchAPI)',
+          description: 'Import luxury Rolex watches with detailed specifications',
+          available: true,
+          sampleCount: 3
+        }
+      ]
+    });
+  });
+
   // Serve uploaded files
   app.use('/uploads', (req, res, next) => {
     // Basic security check
