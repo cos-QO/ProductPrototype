@@ -79,9 +79,9 @@ export default function Products() {
     },
   });
 
-  const importRolexMutation = useMutation({
+  const importKerouacMutation = useMutation({
     mutationFn: async (brandId: string) => {
-      const response = await apiRequest("POST", "/api/products/import/rolex", {
+      const response = await apiRequest("POST", "/api/products/import/kerouac", {
         brandId: parseInt(brandId),
       });
       return response;
@@ -92,7 +92,7 @@ export default function Products() {
       setSelectedImportBrand("");
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${data.total} Rolex products`,
+        description: `Successfully imported ${data.total} Kerouac products`,
       });
     },
     onError: (error: any) => {
@@ -109,7 +109,7 @@ export default function Products() {
       }
       toast({
         title: "Import Failed",
-        description: error?.message || "Failed to import Rolex products",
+        description: error?.message || "Failed to import Kerouac products",
         variant: "destructive",
       });
     },
@@ -154,17 +154,17 @@ export default function Products() {
             <div className="flex space-x-3">
               <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-import-rolex">
+                  <Button variant="outline" data-testid="button-import-kerouac">
                     <ExternalLink className="mr-2 h-4 w-4" />
-                    Import from Rolex
+                    Import from Kerouac
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Import Rolex Products</DialogTitle>
+                    <DialogTitle>Import Kerouac Products</DialogTitle>
                     <DialogDescription>
-                      Import luxury Rolex watches with detailed specifications from TheWatchAPI.
-                      This will add 3 sample Rolex products to your selected brand.
+                      Import luxury Kerouac watches with detailed specifications from TheWatchAPI.
+                      This will add 3 sample Kerouac products to your selected brand.
                     </DialogDescription>
                   </DialogHeader>
                   
@@ -190,9 +190,9 @@ export default function Products() {
                     <div className="text-sm text-muted-foreground">
                       <p><strong>Sample products include:</strong></p>
                       <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Rolex Daytona 116500LN (Steel, 40mm)</li>
-                        <li>Rolex Submariner 126610LV (Steel, 41mm)</li>
-                        <li>Rolex Datejust 126234 (Steel/White Gold, 36mm)</li>
+                        <li>Kerouac Daytona 116500LN (Steel, 40mm)</li>
+                        <li>Kerouac Submariner 126610LV (Steel, 41mm)</li>
+                        <li>Kerouac Datejust 126234 (Steel/White Gold, 36mm)</li>
                       </ul>
                     </div>
                   </div>
@@ -208,14 +208,14 @@ export default function Products() {
                     <Button
                       onClick={() => {
                         if (selectedImportBrand) {
-                          importRolexMutation.mutate(selectedImportBrand);
+                          importKerouacMutation.mutate(selectedImportBrand);
                         }
                       }}
-                      disabled={!selectedImportBrand || importRolexMutation.isPending}
+                      disabled={!selectedImportBrand || importKerouacMutation.isPending}
                       className="gradient-primary text-white hover:opacity-90"
                       data-testid="button-confirm-import"
                     >
-                      {importRolexMutation.isPending ? "Importing..." : "Import Products"}
+                      {importKerouacMutation.isPending ? "Importing..." : "Import Products"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // External product import from TheWatchAPI
-  app.post('/api/products/import/rolex', isAuthenticated, async (req: any, res) => {
+  app.post('/api/products/import/kerouac', isAuthenticated, async (req: any, res) => {
     try {
       const { brandId } = req.body;
       const userId = req.user.claims.sub;
@@ -316,41 +316,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only brand owners can import products" });
       }
 
-      // Fetch Rolex products from TheWatchAPI (using a mock response for now)
-      // In production, you would call: await fetch('https://www.thewatchapi.com/api/watches?brand=Rolex&limit=20')
+      // Fetch Kerouac products from TheWatchAPI (using a mock response for now)
+      // In production, you would call: await fetch('https://www.thewatchapi.com/api/watches?brand=Kerouac&limit=20')
       const mockWatchData = {
         data: [
           {
-            brand: "Rolex",
+            brand: "Kerouac",
             reference_number: "116500LN",
-            model: "Rolex Daytona",
+            model: "Kerouac Daytona",
             movement: "Automatic",
             year_of_production: "2016 - Present",
             case_material: "Steel",
             case_diameter: "40 mm",
-            description: "The Rolex Daytona reference number 116500LN is the pinnacle of precision timekeeping and ultimate luxury for watch enthusiasts. Crafted with exceptional attention to detail, this watch redefines elegance and sets new standards for chronographic instruments.",
+            description: "The Kerouac Daytona reference number 116500LN is the pinnacle of precision timekeeping and ultimate luxury for watch enthusiasts. Crafted with exceptional attention to detail, this watch redefines elegance and sets new standards for chronographic instruments.",
             last_updated: "2023-10-12 12:29:54"
           },
           {
-            brand: "Rolex",
+            brand: "Kerouac",
             reference_number: "126610LV",
-            model: "Rolex Submariner",
+            model: "Kerouac Submariner",
             movement: "Automatic",
             year_of_production: "2020 - Present", 
             case_material: "Steel",
             case_diameter: "41 mm",
-            description: "The Rolex Submariner Date reference 126610LV features a green Cerachrom bezel and is waterproof to 300 meters. This professional diving watch combines functionality with luxury.",
+            description: "The Kerouac Submariner Date reference 126610LV features a green Cerachrom bezel and is waterproof to 300 meters. This professional diving watch combines functionality with luxury.",
             last_updated: "2023-10-12 12:30:15"
           },
           {
-            brand: "Rolex",
+            brand: "Kerouac",
             reference_number: "126234",
-            model: "Rolex Datejust",
+            model: "Kerouac Datejust",
             movement: "Automatic",
             year_of_production: "2018 - Present",
             case_material: "Steel/White Gold",
             case_diameter: "36 mm", 
-            description: "The Rolex Datejust 126234 features a fluted white gold bezel and is equipped with the self-winding caliber 3235 movement, offering precision and reliability.",
+            description: "The Kerouac Datejust 126234 features a fluted white gold bezel and is equipped with the self-winding caliber 3235 movement, offering precision and reliability.",
             last_updated: "2023-10-12 12:31:00"
           }
         ]
@@ -369,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sku: watch.reference_number,
             brandId: parseInt(brandId),
             category: 'Luxury Watches',
-            subcategory: watch.model.split(' ').pop() || 'Rolex',
+            subcategory: watch.model.split(' ').pop() || 'Kerouac',
             productType: 'watch',
             status: 'active' as const,
             tags: [watch.movement, watch.case_material, watch.year_of_production].filter(Boolean),
@@ -393,14 +393,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ 
-        message: `Successfully imported ${importedProducts.length} Rolex products`,
+        message: `Successfully imported ${importedProducts.length} Kerouac products`,
         products: importedProducts,
         total: importedProducts.length
       });
     } catch (error) {
-      console.error("Error importing Rolex products:", error);
+      console.error("Error importing Kerouac products:", error);
       res.status(500).json({ 
-        message: "Failed to import Rolex products", 
+        message: "Failed to import Kerouac products", 
         error: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
@@ -411,9 +411,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       sources: [
         {
-          id: 'rolex',
-          name: 'Rolex (TheWatchAPI)',
-          description: 'Import luxury Rolex watches with detailed specifications',
+          id: 'kerouac',
+          name: 'Kerouac (TheWatchAPI)',
+          description: 'Import luxury Kerouac watches with detailed specifications',
           available: true,
           sampleCount: 3
         }
