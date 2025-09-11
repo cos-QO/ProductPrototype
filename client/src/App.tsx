@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Brands from "@/pages/brands";
 import Products from "@/pages/products";
+import ProductEdit from "@/pages/product-edit";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -23,6 +24,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
+          <Route path="/products/:id/edit" component={ProductEdit} />
         </>
       ) : (
         // Not authenticated - show landing for all routes
@@ -30,6 +32,7 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/brands" component={Landing} />
           <Route path="/products" component={Landing} />
+          <Route path="/products/:id/edit" component={Landing} />
         </>
       )}
       <Route component={NotFound} />

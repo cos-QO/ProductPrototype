@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Box, Eye, Share, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface ProductCardProps {
   product: {
@@ -20,6 +21,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onDelete, isDeleting }: ProductCardProps) {
+  const [, navigate] = useLocation();
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'live':
@@ -134,10 +136,11 @@ export default function ProductCard({ product, onDelete, isDeleting }: ProductCa
           <Button 
             size="sm" 
             className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 font-medium"
+            onClick={() => navigate(`/products/${product.id}/edit`)}
             data-testid={`button-edit-product-${product.id}`}
           >
             <Edit className="mr-2 h-3 w-3" />
-            Edit Story
+            Edit Content
           </Button>
           <Button 
             variant="outline" 
