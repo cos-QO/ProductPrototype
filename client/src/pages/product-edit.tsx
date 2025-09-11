@@ -14,7 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Eye } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Save, Eye, Settings, Image, Search, Layers, Globe, History, ChevronRight, Package } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,8 +31,20 @@ const productEditSchema = z.object({
   story: z.string().optional(),
   brandId: z.number().min(1, "Brand is required"),
   sku: z.string().optional(),
-  status: z.enum(["draft", "review", "live", "archived"]),
+  status: z.enum(["draft", "review", "live", "active", "archived"]),
   isVariant: z.boolean().default(false),
+  // SEO fields
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  keywords: z.string().optional(),
+  // Additional attributes
+  weight: z.string().optional(),
+  dimensions: z.string().optional(),
+  material: z.string().optional(),
+  color: z.string().optional(),
+  // Pricing
+  price: z.string().optional(),
+  compareAtPrice: z.string().optional(),
 });
 
 type ProductEditForm = z.infer<typeof productEditSchema>;
@@ -40,6 +55,8 @@ export default function ProductEdit() {
   const [, navigate] = useLocation();
   const [, params] = useRoute("/products/:id/edit");
   const productId = params?.id ? parseInt(params.id) : null;
+  const [activeTab, setActiveTab] = useState("general");
+  const [completionProgress, setCompletionProgress] = useState(0);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -94,6 +111,15 @@ export default function ProductEdit() {
       sku: "",
       status: "draft",
       isVariant: false,
+      metaTitle: "",
+      metaDescription: "",
+      keywords: "",
+      weight: "",
+      dimensions: "",
+      material: "",
+      color: "",
+      price: "",
+      compareAtPrice: "",
     },
   });
 
@@ -110,9 +136,45 @@ export default function ProductEdit() {
         sku: product.sku || "",
         status: product.status || "draft",
         isVariant: product.isVariant || false,
+        metaTitle: product.metaTitle || "",
+        metaDescription: product.metaDescription || "",
+        keywords: product.keywords || "",
+        weight: product.weight || "",
+        dimensions: product.dimensions || "",
+        material: product.material || "",
+        color: product.color || "",
+        price: product.price || "",
+        compareAtPrice: product.compareAtPrice || "",
       });
     }
   }, [product, form]);
+
+  // Calculate completion progress
+  useEffect(() => {
+    const watchedValues = form.watch();
+    const requiredFields = ['name', 'slug', 'brandId'];
+    const optionalFields = ['shortDescription', 'longDescription', 'story', 'sku', 'metaTitle', 'metaDescription', 'keywords', 'weight', 'dimensions', 'material', 'color', 'price'];
+    
+    const requiredComplete = requiredFields.every(field => {
+      const value = watchedValues[field as keyof typeof watchedValues];
+      if (typeof value === 'string') {
+        return value.trim() !== '';
+      } else if (typeof value === 'number') {
+        return value > 0;
+      } else if (typeof value === 'boolean') {
+        return true; // boolean fields don't affect required completion
+      }
+      return false;
+    });
+    
+    const optionalComplete = optionalFields.filter(field => {
+      const value = watchedValues[field as keyof typeof watchedValues];
+      return value && typeof value === 'string' && value.trim() !== '';
+    }).length;
+    
+    const totalProgress = requiredComplete ? 40 + (optionalComplete / optionalFields.length) * 60 : (optionalComplete / optionalFields.length) * 40;
+    setCompletionProgress(Math.round(totalProgress));
+  }, [form.watch()]);
 
   // Generate slug from name
   const generateSlug = (name: string) => {
@@ -162,6 +224,9 @@ export default function ProductEdit() {
   const onSubmit = (data: ProductEditForm) => {
     console.log("Form submitted with data:", data);
     console.log("Form errors:", form.formState.errors);
+    console.log("Form isValid:", form.formState.isValid);
+    console.log("All form values:", form.getValues());
+    console.log("BrandId specifically:", form.getValues("brandId"));
     updateProductMutation.mutate(data);
   };
 
@@ -218,46 +283,133 @@ export default function ProductEdit() {
         
         {/* Main Content */}
         <main className="flex-1 p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/products")}
-                data-testid="button-back-to-products"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Products
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold">Edit Product</h1>
-                <p className="text-muted-foreground">Update product information and content</p>
+          <div className="max-w-7xl mx-auto">
+            {/* Enhanced Header */}
+            <div className="bg-card border rounded-lg p-6 mb-6">
+              {/* Breadcrumbs */}
+              <div className="flex items-center text-sm text-muted-foreground mb-4">
+                <span>Products</span>
+                <ChevronRight className="mx-2 h-4 w-4" />
+                <span>{product?.name || 'Loading...'}</span>
+                <ChevronRight className="mx-2 h-4 w-4" />
+                <span className="text-foreground">Edit</span>
+              </div>
+              
+              {/* Product Identity */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                    <Package className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold">{product?.name || 'Product'}</h1>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <span className="text-sm text-muted-foreground">SKU: {product?.sku || 'Not set'}</span>
+                      <Badge variant={product?.status === 'live' ? 'default' : product?.status === 'review' ? 'secondary' : 'outline'}>
+                        {product?.status || 'draft'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate("/products")}
+                    className="flex items-center"
+                    data-testid="button-back-to-products"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Products
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center"
+                    data-testid="button-preview-product"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="product-edit-form"
+                    className="flex items-center gradient-primary text-white hover:opacity-90"
+                    disabled={updateProductMutation.isPending}
+                    data-testid="button-save-product"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {updateProductMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Completion Progress */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Product Information Completeness</span>
+                  <span className="font-medium">{completionProgress}%</span>
+                </div>
+                <Progress value={completionProgress} className="h-2" />
               </div>
             </div>
-            <div className="flex space-x-3">
-              <Button
-                variant="outline"
-                data-testid="button-preview-product"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Button>
-            </div>
-          </div>
 
           {/* Edit Form */}
-          <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            console.log("Form validation errors:", errors);
-            toast({
-              title: "Validation Error",
-              description: "Please check the form for errors",
-              variant: "destructive",
-            });
-          })} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-6">
+          <form 
+            id="product-edit-form"
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              console.log("Form validation errors:", errors);
+              toast({
+                title: "Validation Error",
+                description: "Please check the form for errors",
+                variant: "destructive",
+              });
+            })} 
+            className="space-y-6"
+          >
+            {/* Tabbed PIM Interface */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-7 mb-6">
+                <TabsTrigger value="general" className="flex items-center space-x-2" data-testid="tab-general">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">General</span>
+                </TabsTrigger>
+                <TabsTrigger value="attributes" className="flex items-center space-x-2" data-testid="tab-attributes">
+                  <Layers className="h-4 w-4" />
+                  <span className="hidden sm:inline">Attributes</span>
+                </TabsTrigger>
+                <TabsTrigger value="media" className="flex items-center space-x-2" data-testid="tab-media">
+                  <Image className="h-4 w-4" />
+                  <span className="hidden sm:inline">Media</span>
+                </TabsTrigger>
+                <TabsTrigger value="seo" className="flex items-center space-x-2" data-testid="tab-seo">
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">SEO</span>
+                </TabsTrigger>
+                <TabsTrigger value="variants" className="flex items-center space-x-2" data-testid="tab-variants">
+                  <Package className="h-4 w-4" />
+                  <span className="hidden sm:inline">Variants</span>
+                </TabsTrigger>
+                <TabsTrigger value="channels" className="flex items-center space-x-2" data-testid="tab-channels">
+                  <Globe className="h-4 w-4" />
+                  <span className="hidden sm:inline">Channels</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center space-x-2" data-testid="tab-history">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">History</span>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* General Tab */}
+              <TabsContent value="general" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Main Content */}
+                  <div className="lg:col-span-2 space-y-6">
                 
                 {/* Basic Information */}
                 <Card>
@@ -353,6 +505,35 @@ export default function ProductEdit() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Pricing Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pricing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="price">Price</Label>
+                        <Input
+                          id="price"
+                          {...form.register("price")}
+                          placeholder="29.99"
+                          data-testid="input-price"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="compareAtPrice">Compare At Price</Label>
+                        <Input
+                          id="compareAtPrice"
+                          {...form.register("compareAtPrice")}
+                          placeholder="39.99"
+                          data-testid="input-compare-at-price"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Sidebar */}
@@ -377,6 +558,7 @@ export default function ProductEdit() {
                           <SelectItem value="draft">Draft</SelectItem>
                           <SelectItem value="review">Review</SelectItem>
                           <SelectItem value="live">Live</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="archived">Archived</SelectItem>
                         </SelectContent>
                       </Select>
@@ -463,9 +645,165 @@ export default function ProductEdit() {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-            </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Attributes Tab */}
+              <TabsContent value="attributes" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Specifications</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="weight">Weight</Label>
+                        <Input
+                          id="weight"
+                          {...form.register("weight")}
+                          placeholder="e.g. 250g"
+                          data-testid="input-weight"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dimensions">Dimensions</Label>
+                        <Input
+                          id="dimensions"
+                          {...form.register("dimensions")}
+                          placeholder="e.g. 40mm x 12mm"
+                          data-testid="input-dimensions"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="material">Material</Label>
+                        <Input
+                          id="material"
+                          {...form.register("material")}
+                          placeholder="e.g. Stainless Steel"
+                          data-testid="input-material"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="color">Color</Label>
+                        <Input
+                          id="color"
+                          {...form.register("color")}
+                          placeholder="e.g. Black"
+                          data-testid="input-color"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Media Tab */}
+              <TabsContent value="media" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Digital Assets</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Image className="h-12 w-12 mx-auto mb-4" />
+                      <p>Media management coming soon</p>
+                      <p className="text-sm">Upload and manage product images, videos, and documents</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* SEO Tab */}
+              <TabsContent value="seo" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Search Engine Optimization</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="metaTitle">Meta Title</Label>
+                      <Input
+                        id="metaTitle"
+                        {...form.register("metaTitle")}
+                        placeholder="SEO-optimized title"
+                        data-testid="input-meta-title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="metaDescription">Meta Description</Label>
+                      <Textarea
+                        id="metaDescription"
+                        {...form.register("metaDescription")}
+                        placeholder="Brief description for search engines"
+                        rows={3}
+                        data-testid="textarea-meta-description"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="keywords">Keywords</Label>
+                      <Input
+                        id="keywords"
+                        {...form.register("keywords")}
+                        placeholder="keyword1, keyword2, keyword3"
+                        data-testid="input-keywords"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Variants Tab */}
+              <TabsContent value="variants" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Variants</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Package className="h-12 w-12 mx-auto mb-4" />
+                      <p>Variant management coming soon</p>
+                      <p className="text-sm">Manage color, size, and other product variations</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Channels Tab */}
+              <TabsContent value="channels" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Publishing Channels</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Globe className="h-12 w-12 mx-auto mb-4" />
+                      <p>Channel management coming soon</p>
+                      <p className="text-sm">Manage product availability across different sales channels</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* History Tab */}
+              <TabsContent value="history" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Change History</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <History className="h-12 w-12 mx-auto mb-4" />
+                      <p>Change tracking coming soon</p>
+                      <p className="text-sm">View detailed audit trail of all product modifications</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+            </Tabs>
           </form>
+          </div>
         </main>
       </div>
     </div>
