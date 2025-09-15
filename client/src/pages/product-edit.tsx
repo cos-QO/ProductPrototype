@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRoute, useLocation } from "wouter";
+import { SyndicationDashboard } from "@/components/syndication-dashboard";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/navigation";
@@ -771,18 +772,7 @@ export default function ProductEdit() {
 
               {/* Channels Tab */}
               <TabsContent value="channels" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Publishing Channels</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Globe className="h-12 w-12 mx-auto mb-4" />
-                      <p>Channel management coming soon</p>
-                      <p className="text-sm">Manage product availability across different sales channels</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <SyndicationDashboard productId={productId} />
               </TabsContent>
 
               {/* History Tab */}
