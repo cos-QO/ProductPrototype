@@ -134,15 +134,52 @@ export const brandRetailers = pgTable("brand_retailers", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Syndication channels table
+export const syndicationChannels = pgTable("syndication_channels", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).unique().notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // ecommerce, marketplace, social, api
+  endpoint: varchar("endpoint", { length: 500 }),
+  apiKey: varchar("api_key", { length: 255 }),
+  webhookUrl: varchar("webhook_url", { length: 500 }),
+  settings: jsonb("settings"), // Channel-specific configuration
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Product syndication status per channel
+export const productSyndications = pgTable("product_syndications", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id),
+  channelId: integer("channel_id").references(() => syndicationChannels.id),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, syncing, live, error, paused
+  externalId: varchar("external_id", { length: 255 }), // ID in external system
+  externalUrl: varchar("external_url", { length: 500 }), // URL in external system
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: varchar("last_sync_status", { length: 50 }),
+  errorMessage: text("error_message"),
+  syncRetries: integer("sync_retries").default(0),
+  isEnabled: boolean("is_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // API syndication logs
 export const syndicationLogs = pgTable("syndication_logs", {
   id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => syndicationChannels.id),
+  productId: integer("product_id").references(() => products.id),
+  action: varchar("action", { length: 50 }).notNull(), // create, update, delete, sync
   endpoint: varchar("endpoint", { length: 255 }).notNull(),
   method: varchar("method", { length: 10 }).notNull(),
   status: integer("status"),
-  productId: integer("product_id").references(() => products.id),
   responseTime: integer("response_time"),
+  requestPayload: jsonb("request_payload"),
+  responsePayload: jsonb("response_payload"),
   errorMessage: text("error_message"),
+  triggeredBy: varchar("triggered_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -183,6 +220,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   targetAssociations: many(productAssociations, {
     relationName: "targetProduct",
   }),
+  syndications: many(productSyndications),
   syndicationLogs: many(syndicationLogs),
 }));
 
@@ -251,10 +289,34 @@ export const brandRetailersRelations = relations(brandRetailers, ({ one }) => ({
   }),
 }));
 
+export const syndicationChannelsRelations = relations(syndicationChannels, ({ many }) => ({
+  productSyndications: many(productSyndications),
+  syndicationLogs: many(syndicationLogs),
+}));
+
+export const productSyndicationsRelations = relations(productSyndications, ({ one }) => ({
+  product: one(products, {
+    fields: [productSyndications.productId],
+    references: [products.id],
+  }),
+  channel: one(syndicationChannels, {
+    fields: [productSyndications.channelId],
+    references: [syndicationChannels.id],
+  }),
+}));
+
 export const syndicationLogsRelations = relations(syndicationLogs, ({ one }) => ({
   product: one(products, {
     fields: [syndicationLogs.productId],
     references: [products.id],
+  }),
+  channel: one(syndicationChannels, {
+    fields: [syndicationLogs.channelId],
+    references: [syndicationChannels.id],
+  }),
+  user: one(users, {
+    fields: [syndicationLogs.triggeredBy],
+    references: [users.id],
   }),
 }));
 
@@ -286,6 +348,23 @@ export const insertProductAttributeSchema = createInsertSchema(productAttributes
   createdAt: true,
 });
 
+export const insertSyndicationChannelSchema = createInsertSchema(syndicationChannels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductSyndicationSchema = createInsertSchema(productSyndications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSyndicationLogSchema = createInsertSchema(syndicationLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -301,4 +380,9 @@ export type ProductAttribute = typeof productAttributes.$inferSelect;
 export type InsertProductAttribute = z.infer<typeof insertProductAttributeSchema>;
 export type ProductAssociation = typeof productAssociations.$inferSelect;
 export type BrandRetailer = typeof brandRetailers.$inferSelect;
+export type SyndicationChannel = typeof syndicationChannels.$inferSelect;
+export type InsertSyndicationChannel = z.infer<typeof insertSyndicationChannelSchema>;
+export type ProductSyndication = typeof productSyndications.$inferSelect;
+export type InsertProductSyndication = z.infer<typeof insertProductSyndicationSchema>;
 export type SyndicationLog = typeof syndicationLogs.$inferSelect;
+export type InsertSyndicationLog = z.infer<typeof insertSyndicationLogSchema>;

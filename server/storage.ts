@@ -8,6 +8,8 @@ import {
   productFamilyItems,
   productAssociations,
   brandRetailers,
+  syndicationChannels,
+  productSyndications,
   syndicationLogs,
   type User,
   type UpsertUser,
@@ -21,6 +23,12 @@ import {
   type InsertProductFamily,
   type ProductAttribute,
   type InsertProductAttribute,
+  type SyndicationChannel,
+  type InsertSyndicationChannel,
+  type ProductSyndication,
+  type InsertProductSyndication,
+  type SyndicationLog,
+  type InsertSyndicationLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, like, and, or, count, sql } from "drizzle-orm";
@@ -57,6 +65,24 @@ export interface IStorage {
   // Product family operations
   createProductFamily(family: InsertProductFamily): Promise<ProductFamily>;
   getProductFamilies(brandId?: number): Promise<ProductFamily[]>;
+  
+  // Syndication channel operations
+  createSyndicationChannel(channel: InsertSyndicationChannel): Promise<SyndicationChannel>;
+  getSyndicationChannels(): Promise<SyndicationChannel[]>;
+  getSyndicationChannel(id: number): Promise<SyndicationChannel | undefined>;
+  updateSyndicationChannel(id: number, updates: Partial<InsertSyndicationChannel>): Promise<SyndicationChannel>;
+  deleteSyndicationChannel(id: number): Promise<void>;
+  
+  // Product syndication operations
+  createProductSyndication(syndication: InsertProductSyndication): Promise<ProductSyndication>;
+  getProductSyndications(productId?: number, channelId?: number): Promise<ProductSyndication[]>;
+  getProductSyndication(productId: number, channelId: number): Promise<ProductSyndication | undefined>;
+  updateProductSyndication(id: number, updates: Partial<InsertProductSyndication>): Promise<ProductSyndication>;
+  deleteProductSyndication(id: number): Promise<void>;
+  
+  // Syndication logs operations
+  createSyndicationLog(log: InsertSyndicationLog): Promise<SyndicationLog>;
+  getSyndicationLogs(productId?: number, channelId?: number, limit?: number): Promise<SyndicationLog[]>;
   
   // Dashboard analytics
   getDashboardStats(userId: string): Promise<{
@@ -246,6 +272,162 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await query.orderBy(desc(productFamilies.createdAt));
+  }
+
+  // Syndication channel operations
+  async createSyndicationChannel(channel: InsertSyndicationChannel): Promise<SyndicationChannel> {
+    const [newChannel] = await db.insert(syndicationChannels).values(channel).returning();
+    return newChannel;
+  }
+
+  async getSyndicationChannels(): Promise<SyndicationChannel[]> {
+    return await db
+      .select()
+      .from(syndicationChannels)
+      .where(eq(syndicationChannels.isActive, true))
+      .orderBy(desc(syndicationChannels.createdAt));
+  }
+
+  async getSyndicationChannel(id: number): Promise<SyndicationChannel | undefined> {
+    const [channel] = await db
+      .select()
+      .from(syndicationChannels)
+      .where(eq(syndicationChannels.id, id));
+    return channel;
+  }
+
+  async updateSyndicationChannel(id: number, updates: Partial<InsertSyndicationChannel>): Promise<SyndicationChannel> {
+    const [updatedChannel] = await db
+      .update(syndicationChannels)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(syndicationChannels.id, id))
+      .returning();
+    return updatedChannel;
+  }
+
+  async deleteSyndicationChannel(id: number): Promise<void> {
+    await db.delete(syndicationChannels).where(eq(syndicationChannels.id, id));
+  }
+
+  // Product syndication operations
+  async createProductSyndication(syndication: InsertProductSyndication): Promise<ProductSyndication> {
+    const [newSyndication] = await db.insert(productSyndications).values(syndication).returning();
+    return newSyndication;
+  }
+
+  async getProductSyndications(productId?: number, channelId?: number): Promise<ProductSyndication[]> {
+    let query = db
+      .select({
+        id: productSyndications.id,
+        productId: productSyndications.productId,
+        channelId: productSyndications.channelId,
+        status: productSyndications.status,
+        externalId: productSyndications.externalId,
+        externalUrl: productSyndications.externalUrl,
+        lastSyncAt: productSyndications.lastSyncAt,
+        lastSyncStatus: productSyndications.lastSyncStatus,
+        errorMessage: productSyndications.errorMessage,
+        syncRetries: productSyndications.syncRetries,
+        isEnabled: productSyndications.isEnabled,
+        createdAt: productSyndications.createdAt,
+        updatedAt: productSyndications.updatedAt,
+        channelName: syndicationChannels.name,
+        channelType: syndicationChannels.type,
+        productName: products.name,
+      })
+      .from(productSyndications)
+      .leftJoin(syndicationChannels, eq(productSyndications.channelId, syndicationChannels.id))
+      .leftJoin(products, eq(productSyndications.productId, products.id));
+
+    const conditions = [];
+    
+    if (productId) {
+      conditions.push(eq(productSyndications.productId, productId));
+    }
+    
+    if (channelId) {
+      conditions.push(eq(productSyndications.channelId, channelId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query.orderBy(desc(productSyndications.updatedAt));
+  }
+
+  async getProductSyndication(productId: number, channelId: number): Promise<ProductSyndication | undefined> {
+    const [syndication] = await db
+      .select()
+      .from(productSyndications)
+      .where(
+        and(
+          eq(productSyndications.productId, productId),
+          eq(productSyndications.channelId, channelId)
+        )
+      );
+    return syndication;
+  }
+
+  async updateProductSyndication(id: number, updates: Partial<InsertProductSyndication>): Promise<ProductSyndication> {
+    const [updatedSyndication] = await db
+      .update(productSyndications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(productSyndications.id, id))
+      .returning();
+    return updatedSyndication;
+  }
+
+  async deleteProductSyndication(id: number): Promise<void> {
+    await db.delete(productSyndications).where(eq(productSyndications.id, id));
+  }
+
+  // Syndication logs operations
+  async createSyndicationLog(log: InsertSyndicationLog): Promise<SyndicationLog> {
+    const [newLog] = await db.insert(syndicationLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getSyndicationLogs(productId?: number, channelId?: number, limit: number = 100): Promise<SyndicationLog[]> {
+    let query = db
+      .select({
+        id: syndicationLogs.id,
+        channelId: syndicationLogs.channelId,
+        productId: syndicationLogs.productId,
+        action: syndicationLogs.action,
+        endpoint: syndicationLogs.endpoint,
+        method: syndicationLogs.method,
+        status: syndicationLogs.status,
+        responseTime: syndicationLogs.responseTime,
+        requestPayload: syndicationLogs.requestPayload,
+        responsePayload: syndicationLogs.responsePayload,
+        errorMessage: syndicationLogs.errorMessage,
+        triggeredBy: syndicationLogs.triggeredBy,
+        createdAt: syndicationLogs.createdAt,
+        channelName: syndicationChannels.name,
+        productName: products.name,
+      })
+      .from(syndicationLogs)
+      .leftJoin(syndicationChannels, eq(syndicationLogs.channelId, syndicationChannels.id))
+      .leftJoin(products, eq(syndicationLogs.productId, products.id));
+
+    const conditions = [];
+    
+    if (productId) {
+      conditions.push(eq(syndicationLogs.productId, productId));
+    }
+    
+    if (channelId) {
+      conditions.push(eq(syndicationLogs.channelId, channelId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query
+      .orderBy(desc(syndicationLogs.createdAt))
+      .limit(limit);
   }
 
   // Dashboard analytics

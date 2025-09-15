@@ -2,7 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertBrandSchema, insertProductSchema } from "@shared/schema";
+import { syndicationService } from "./syndication";
+import { 
+  insertBrandSchema, 
+  insertProductSchema,
+  insertSyndicationChannelSchema,
+  insertProductSyndicationSchema,
+} from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
@@ -246,6 +252,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updates = insertProductSchema.partial().parse(req.body);
       const updatedProduct = await storage.updateProduct(productId, updates);
+      
+      // Trigger real-time syndication for product updates
+      if (updatedProduct) {
+        try {
+          await syndicationService.syndicateToAllChannels(
+            updatedProduct, 
+            'update', 
+            userId
+          );
+        } catch (error) {
+          console.error("Syndication error:", error);
+          // Don't fail the update if syndication fails
+        }
+      }
+      
       res.json(updatedProduct);
     } catch (error) {
       console.error("Error updating product:", error);
@@ -419,6 +440,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ]
     });
+  });
+
+  // Syndication Channels Routes
+  app.get('/api/syndication/channels', isAuthenticated, async (req, res) => {
+    try {
+      const channels = await storage.getSyndicationChannels();
+      res.json(channels);
+    } catch (error) {
+      console.error("Error fetching syndication channels:", error);
+      res.status(500).json({ message: "Failed to fetch syndication channels" });
+    }
+  });
+
+  app.post('/api/syndication/channels', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'brand_owner') {
+        return res.status(403).json({ message: "Only brand owners can create syndication channels" });
+      }
+
+      const channelData = insertSyndicationChannelSchema.parse(req.body);
+      const channel = await storage.createSyndicationChannel(channelData);
+      res.status(201).json(channel);
+    } catch (error) {
+      console.error("Error creating syndication channel:", error);
+      res.status(400).json({ message: "Failed to create syndication channel" });
+    }
+  });
+
+  app.get('/api/syndication/channels/:id', isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getSyndicationChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Syndication channel not found" });
+      }
+      
+      res.json(channel);
+    } catch (error) {
+      console.error("Error fetching syndication channel:", error);
+      res.status(500).json({ message: "Failed to fetch syndication channel" });
+    }
+  });
+
+  app.patch('/api/syndication/channels/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'brand_owner') {
+        return res.status(403).json({ message: "Only brand owners can update syndication channels" });
+      }
+
+      const updates = insertSyndicationChannelSchema.partial().parse(req.body);
+      const updatedChannel = await storage.updateSyndicationChannel(channelId, updates);
+      res.json(updatedChannel);
+    } catch (error) {
+      console.error("Error updating syndication channel:", error);
+      res.status(400).json({ message: "Failed to update syndication channel" });
+    }
+  });
+
+  // Product Syndication Routes
+  app.get('/api/products/:id/syndications', isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const syndications = await storage.getProductSyndications(productId);
+      res.json(syndications);
+    } catch (error) {
+      console.error("Error fetching product syndications:", error);
+      res.status(500).json({ message: "Failed to fetch product syndications" });
+    }
+  });
+
+  app.post('/api/products/:id/syndicate', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { channelId, action = 'create' } = req.body;
+
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Check permissions - brand owners can syndicate their products
+      const brand = await storage.getBrand(product.brandId!);
+      if (brand?.ownerId !== userId) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const result = await syndicationService.syndicateProduct(
+        product,
+        channelId,
+        action,
+        userId
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error syndicating product:", error);
+      res.status(400).json({ message: "Failed to syndicate product" });
+    }
+  });
+
+  app.post('/api/products/:id/syndicate-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { action = 'create' } = req.body;
+
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Check permissions
+      const brand = await storage.getBrand(product.brandId!);
+      if (brand?.ownerId !== userId) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const results = await syndicationService.syndicateToAllChannels(
+        product,
+        action,
+        userId
+      );
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error syndicating product to all channels:", error);
+      res.status(400).json({ message: "Failed to syndicate product to all channels" });
+    }
+  });
+
+  app.get('/api/products/:id/syndication-status', isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const status = await syndicationService.getSyndicationStatus(productId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching syndication status:", error);
+      res.status(500).json({ message: "Failed to fetch syndication status" });
+    }
+  });
+
+  // Syndication Logs Routes
+  app.get('/api/syndication/logs', isAuthenticated, async (req, res) => {
+    try {
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      const channelId = req.query.channelId ? parseInt(req.query.channelId as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+
+      const logs = await storage.getSyndicationLogs(productId, channelId, limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching syndication logs:", error);
+      res.status(500).json({ message: "Failed to fetch syndication logs" });
+    }
+  });
+
+  // Retry failed syndications
+  app.post('/api/syndication/retry', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'brand_owner') {
+        return res.status(403).json({ message: "Only brand owners can retry syndications" });
+      }
+
+      const { productId } = req.body;
+      await syndicationService.retryFailedSyndications(productId);
+      res.json({ message: "Retry process initiated" });
+    } catch (error) {
+      console.error("Error retrying syndications:", error);
+      res.status(500).json({ message: "Failed to retry syndications" });
+    }
   });
 
   // Serve uploaded files
