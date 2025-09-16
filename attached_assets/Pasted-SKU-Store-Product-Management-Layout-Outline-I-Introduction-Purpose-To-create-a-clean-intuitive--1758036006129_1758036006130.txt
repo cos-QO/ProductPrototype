@@ -1,0 +1,88 @@
+SKU Store Product Management Layout Outline
+I. Introduction
+Purpose: To create a clean, intuitive layout designed around user workflow.
+Goal: Efficient centralization, enrichment, and distribution of accurate product data.
+
+II. Dashboard
+The operational hub for product data management.
+A. Key Metrics
+Displays KPIs like:
+
+
+% of products with complete information
+Number of products awaiting approval
+Enrichment progress per channel
+B. Quick Search and Filtering
+Prominent search bar
+Filters by category, status, brand, etc.
+Also Filter by what is waiting for in the workflow
+C. Task Lists
+Highlights tasks needing attention (e.g., missing info, workflow steps)
+D. User Activity
+Recent activity feed for collaboration visibility
+Complete audit trail for all changes by product and by user
+
+III. Product Details Page
+Central interface for product information enrichment.
+A. Header
+Product Identity: Name, SKU, brand, status (e.g., Draft, Published)
+Action Buttons: Save, Publish, Request Approval, Translate
+Breadcrumbs: Navigation hierarchy (e.g., Electronics > Laptops > Apple MacBook Air)
+
+
+B. Tabbed Navigation
+Organizes data into logical sections to prevent overload.
+1. General
+Basic info: Name, description, brand, unique identifiers
+2. Attributes/Specifications
+Organized attribute editing (e.g., Technical Specs, Materials)
+3. Media
+Integrated DAM for images, videos, and documents
+Features: Multiple versions, image editing, cropping tools
+4. Individual Keywords
+Metadata, URLs, keywords
+Channel-specific SEO fields
+On-site search term mapping
+5. Variants
+Management of product variations (e.g., size, color, shape…)
+6. Kits and Bundles
+Manage the assembly of various individual SKU’s that represent a complete product merchandised solution
+7. Syndication
+Publishing status across platforms (e.g., website, Amazon)
+8. History
+Full audit trail of changes (who, what, when)
+IV. Data Enrichment Interface
+Tools to streamline and improve product data quality.
+A. Bulk Editing
+Edit multiple products at once (only specific fields)
+At a Brand, Category, Subcategory or individual SKU level
+
+
+B. Validation Rules
+Progress bars and alerts for missing/non-compliant data
+
+
+C. Workflow Management
+Tracks enrichment steps and assigned users
+Will need a hierarchical user permissioning structure 
+
+
+
+V. Collaborative and Localization Features
+Supports cross-functional and international teams.
+A. Roles and Permissions
+Custom views based on user roles (e.g., marketing vs. e-commerce)
+B. Comment Functionality
+In-line notes for team communication
+C. Localization View
+Interface for multi-language and regional data management
+
+
+
+VI. Workflow and Automation Interface
+Provides transparency and control over automation.
+A. Kanban-style Workflows
+Visual, card-based progression through enrichment/approval stages
+B. Integration Status
+Displays connections to ERP, e-commerce platforms
+Alerts for synchronization issues

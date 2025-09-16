@@ -10,6 +10,8 @@ import Dashboard from "@/pages/dashboard";
 import Brands from "@/pages/brands";
 import Products from "@/pages/products";
 import ProductEdit from "@/pages/product-edit";
+import ProductManagementDashboard from "@/pages/product-management-dashboard";
+import ProductDetails from "@/pages/product-details";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -22,9 +24,12 @@ function Router() {
       ) : isAuthenticated ? (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/product-management" component={ProductManagementDashboard} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
           <Route path="/products/:id/edit" component={ProductEdit} />
+          <Route path="/products/:id/view" component={ProductDetails} />
+          <Route path="/products/:id/manage" component={ProductDetails} />
         </>
       ) : (
         // Not authenticated - show landing for all routes
