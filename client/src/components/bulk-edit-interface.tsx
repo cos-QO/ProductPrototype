@@ -88,6 +88,13 @@ export default function BulkEditInterface() {
     selected: false
   })) || [];
 
+  // Initialize selected products when products load
+  useEffect(() => {
+    if (bulkEditProducts.length > 0 && selectedProducts.length === 0) {
+      setSelectedProducts(bulkEditProducts);
+    }
+  }, [bulkEditProducts.length]);
+
   // Filter products
   const filteredProducts = bulkEditProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -401,7 +408,7 @@ export default function BulkEditInterface() {
                   <SelectValue placeholder="Leave unchanged" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Leave unchanged</SelectItem>
+                  <SelectItem value="unchanged">Leave unchanged</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="review">Under Review</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
@@ -420,7 +427,7 @@ export default function BulkEditInterface() {
                   <SelectValue placeholder="Leave unchanged" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Leave unchanged</SelectItem>
+                  <SelectItem value="unchanged">Leave unchanged</SelectItem>
                   {(brands as any[])?.map((brand: any) => (
                     <SelectItem key={brand.id} value={brand.id.toString()}>
                       {brand.name}

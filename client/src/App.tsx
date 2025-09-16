@@ -12,6 +12,7 @@ import Products from "@/pages/products";
 import ProductEdit from "@/pages/product-edit";
 import ProductManagementDashboard from "@/pages/product-management-dashboard";
 import ProductDetails from "@/pages/product-details";
+import BulkEdit from "@/pages/bulk-edit";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,6 +26,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/product-management" component={ProductManagementDashboard} />
+          <Route path="/bulk-edit" component={BulkEdit} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
           <Route path="/products/:id/edit" component={ProductEdit} />
