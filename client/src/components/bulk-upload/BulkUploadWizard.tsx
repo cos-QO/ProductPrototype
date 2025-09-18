@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -54,33 +55,26 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
   // WebSocket connection for real-time updates
   const [ws, setWs] = useState<WebSocket | null>(null);
   
-  // Define wizard steps first
+  // Define enhanced 3-step wizard flow
   const wizardSteps: WizardStep[] = [
     {
       id: 'upload',
-      title: 'File Upload',
-      description: 'Upload your product data file',
+      title: 'Uploading',
+      description: 'Select file and configure upload',
       component: FileUploadStep,
-      isValid: !!sessionData && sessionData.status === 'analyzing',
+      isValid: !!sessionData && (sessionData.status === 'analyzing' || sessionData.status === 'mapping' || sessionData.status === 'previewing'),
     },
     {
-      id: 'mapping',
-      title: 'Field Mapping',
-      description: 'Map your file fields to product attributes',
-      component: FieldMappingStep,
-      isValid: fieldMappings.length > 0,
+      id: 'processing',
+      title: 'Processing',
+      description: 'Mapping fields and validating data',
+      component: currentStepIndex === 1 && fieldMappings.length === 0 ? FieldMappingStep : DataPreviewStep,
+      isValid: fieldMappings.length > 0 && validationErrors.filter(e => e.severity === 'error').length === 0,
     },
     {
-      id: 'preview',
-      title: 'Data Preview',
-      description: 'Review and validate your data',
-      component: DataPreviewStep,
-      isValid: validationErrors.filter(e => e.severity === 'error').length === 0,
-    },
-    {
-      id: 'import',
-      title: 'Import',
-      description: 'Execute the import process',
+      id: 'complete',
+      title: 'Done',
+      description: 'Import execution and results',
       component: ImportExecutionStep,
       isValid: true,
     },
@@ -91,9 +85,18 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
   const canGoBack = currentStepIndex > 0 && !importProgress;
   const isLastStep = currentStepIndex === wizardSteps.length - 1;
 
-  // Navigation handlers
+  // Enhanced navigation handlers for 3-step flow
   const handleNext = () => {
-    if (canProceed && !isLastStep) {
+    if (!canProceed || isLastStep) return;
+    
+    // Special handling for the consolidated steps
+    if (currentStepIndex === 0 && sessionData) {
+      // Move from Upload to Processing step
+      setCurrentStepIndex(1);
+    } else if (currentStepIndex === 1 && fieldMappings.length > 0 && validationErrors.filter(e => e.severity === 'error').length === 0) {
+      // Move from Processing to Done step
+      setCurrentStepIndex(2);
+    } else {
       setCurrentStepIndex(prev => prev + 1);
     }
   };
@@ -268,75 +271,99 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
       <DialogContent 
         className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
         role="dialog"
-        aria-labelledby="bulk-upload-title"
-        aria-describedby="bulk-upload-description"
         aria-modal="true"
       >
-        {/* Header */}
         <DialogHeader className="flex-shrink-0 border-b pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle id="bulk-upload-title" className="text-2xl font-bold">
-                Bulk Upload Products
-              </DialogTitle>
-              <p id="bulk-upload-description" className="text-muted-foreground mt-1">
-                Import multiple products using our guided wizard
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm">
-                <HelpCircle className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <DialogTitle className="text-2xl font-bold">Bulk Upload Products</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Import multiple products using our guided wizard
+          </DialogDescription>
+          <div className="flex items-center justify-end space-x-2 mt-2">
+            <Button variant="ghost" size="sm">
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DialogHeader>
 
-        {/* Progress Indicator */}
+        {/* Enhanced 3-Step Progress Indicator */}
         <div className="flex-shrink-0 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4" role="navigation" aria-label="Wizard progress">
+            <div className="flex items-center space-x-6" role="navigation" aria-label="Wizard progress">
               {wizardSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
                         index < currentStepIndex
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-lg'
                           : index === currentStepIndex
-                          ? 'bg-primary/10 text-primary border-2 border-primary'
+                          ? 'bg-primary/20 text-primary border-2 border-primary ring-2 ring-primary/20'
                           : 'bg-muted text-muted-foreground'
                       }`}
                       aria-label={`Step ${index + 1}: ${step.title}${index === currentStepIndex ? ' (current)' : index < currentStepIndex ? ' (completed)' : ' (upcoming)'}`}
                     >
-                      {index + 1}
+                      {index < currentStepIndex ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        index + 1
+                      )}
                     </div>
                     <div className="hidden sm:block">
-                      <p className="text-sm font-medium">{step.title}</p>
+                      <p className={`text-sm font-medium transition-colors ${
+                        index === currentStepIndex ? 'text-primary' : 'text-foreground'
+                      }`}>{step.title}</p>
                       <p className="text-xs text-muted-foreground">{step.description}</p>
                     </div>
                   </div>
                   {index < wizardSteps.length - 1 && (
-                    <div
-                      className={`hidden sm:block w-12 h-px mx-4 transition-colors ${
+                    <div className="hidden sm:flex items-center mx-4">
+                      <div
+                        className={`w-16 h-0.5 transition-all duration-300 ${
+                          index < currentStepIndex ? 'bg-primary shadow-sm' : 'bg-muted'
+                        }`}
+                      />
+                      <div className={`w-2 h-2 rounded-full ml-2 transition-all duration-300 ${
                         index < currentStepIndex ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    />
+                      }`} />
+                    </div>
                   )}
                 </div>
               ))}
             </div>
-            <Badge variant="outline" className="hidden sm:inline-flex">
-              Step {currentStepIndex + 1} of {wizardSteps.length}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant={currentStepIndex === wizardSteps.length - 1 ? "default" : "outline"} className="hidden sm:inline-flex">
+                Step {currentStepIndex + 1} of {wizardSteps.length}
+              </Badge>
+              {importProgress && (
+                <Badge variant="secondary" className="animate-pulse">
+                  {Math.round((importProgress.processedRecords / importProgress.totalRecords) * 100)}%
+                </Badge>
+              )}
+            </div>
           </div>
-          <Progress 
-            value={progressPercentage} 
-            className="h-2" 
-            aria-label={`Wizard progress: ${Math.round(progressPercentage)}% complete`}
-          />
+          
+          {/* Enhanced Progress Bar */}
+          <div className="space-y-2">
+            <Progress 
+              value={importProgress ? (importProgress.processedRecords / importProgress.totalRecords) * 100 : progressPercentage} 
+              className="h-2" 
+              aria-label={`Wizard progress: ${Math.round(importProgress ? (importProgress.processedRecords / importProgress.totalRecords) * 100 : progressPercentage)}% complete`}
+            />
+            
+            {/* Mobile Step Labels */}
+            <div className="flex sm:hidden justify-between text-xs text-muted-foreground">
+              {wizardSteps.map((step, index) => (
+                <span key={step.id} className={index === currentStepIndex ? 'text-primary font-medium' : ''}>
+                  {step.title}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         <Separator className="flex-shrink-0" />
@@ -355,7 +382,7 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
         <div className="flex-1 overflow-auto py-6">
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-2" aria-level="2">{currentStep.title}</h3>
+              <h3 className="text-lg font-semibold mb-2" aria-level={2}>{currentStep.title}</h3>
               <p className="text-muted-foreground">{currentStep.description}</p>
             </div>
             

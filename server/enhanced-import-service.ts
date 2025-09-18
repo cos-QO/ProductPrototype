@@ -48,6 +48,18 @@ interface SourceField {
   nullPercentage: number;
   uniquePercentage: number;
   isRequired: boolean;
+  metadata?: {
+    abbreviationExpansion?: string;
+    normalizedName?: string;
+    inferredType?: string;
+    patterns?: string[];
+    statistics?: {
+      min?: number;
+      max?: number;
+      avgLength?: number;
+      commonValues?: Array<{ value: any; count: number }>;
+    };
+  };
 }
 
 interface FieldMapping {
@@ -123,7 +135,7 @@ export class EnhancedImportService {
   // Step 1: Initialize upload session
   async initializeSession(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.claims?.sub || 'local-dev-user';
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -157,7 +169,7 @@ export class EnhancedImportService {
     }
   }
 
-  // Step 2: Analyze uploaded file and detect fields
+  // Step 2: Enhanced file analysis with multi-strategy field mapping
   async analyzeFile(req: Request, res: Response) {
     try {
       const { sessionId } = req.params;
@@ -179,60 +191,88 @@ export class EnhancedImportService {
         status: 'analyzing'
       });
 
-      // Parse file and extract data
-      const { data, totalRecords } = await this.parseFileData(file);
+      // Enhanced field extraction using the advanced service
+      const { FieldExtractionService } = await import('./services/field-extraction-service');
+      const fieldExtractor = FieldExtractionService.getInstance();
       
-      // Analyze field structure
-      const sourceFields = await this.analyzeFields(data);
+      const fileType = this.getFileTypeFromExtension(file.originalname) as 'csv' | 'json' | 'xlsx';
       
-      // Generate intelligent field mappings using the simplified or complex system
-      let suggestedMappings;
+      const extractedFields = await fieldExtractor.extractFieldsFromFile(
+        file.buffer,
+        file.originalname,
+        fileType,
+        {
+          maxSampleSize: 100,
+          includeStatistics: true,
+          expandAbbreviations: true,
+          inferTypes: true,
+          analyzePatterns: true
+        }
+      );
+
+      // Multi-strategy field mapping using the enhanced engine
+      let suggestedMappings: FieldMapping[] = [];
       
-      // Try simplified mapping first (user's preferred approach)
       try {
-        const { SimpleFieldMappingService } = await import('./services/simple-field-mapping');
-        const simpleMapping = SimpleFieldMappingService.getInstance();
+        // First, try the multi-strategy mapping engine
+        const { MultiStrategyFieldMapping } = await import('./services/multi-strategy-field-mapping');
+        const multiStrategyMapper = MultiStrategyFieldMapping.getInstance();
         
-        if (simpleMapping.isAvailable()) {
-          console.log('Using simplified field mapping (OpenRouter direct integration)');
-          
-          // Convert to simplified format
-          const extractedFields = {
-            fields: sourceFields.map(f => f.name),
-            sampleData: this.convertToSampleData(sourceFields),
-            fileType: this.getFileTypeFromExtension(fileName) as 'csv' | 'json' | 'xlsx'
-          };
-          
-          const result = await simpleMapping.processFileForMapping(extractedFields);
-          
-          if (result.success) {
-            // Convert simplified mappings back to enhanced format
-            suggestedMappings = result.mappings.map(m => ({
-              sourceField: m.sourceField,
-              targetField: m.targetField,
-              confidence: m.confidence,
-              strategy: 'llm' as const,
-              metadata: { reasoning: m.reasoning, system: 'simplified' }
-            }));
-            
-            console.log(`Simplified mapping completed: ${suggestedMappings.length} mappings, cost: ${result.usage?.cost.toFixed(6)}`);
-          } else {
-            throw new Error(result.error || 'Simplified mapping failed');
-          }
+        console.log('Using enhanced multi-strategy field mapping engine');
+        
+        const mappingResult = await multiStrategyMapper.generateMappings(extractedFields);
+        
+        if (mappingResult.success) {
+          suggestedMappings = mappingResult.mappings;
+          console.log(`Multi-strategy mapping completed: ${suggestedMappings.length} mappings, confidence: ${mappingResult.confidence}%, strategies: ${mappingResult.strategiesUsed.join(', ')}, cost: $${mappingResult.cost?.toFixed(6) || '0'}`);
         } else {
-          throw new Error('OpenRouter not available');
+          throw new Error(mappingResult.error || 'Multi-strategy mapping failed');
         }
       } catch (error) {
-        console.log('Simplified mapping not available, falling back to complex system:', error.message);
+        console.log('Multi-strategy mapping failed, falling back to simple system:', error.message);
         
-        // Fallback to complex field mapping engine
-        const { fieldMappingEngine } = await import('./field-mapping-engine');
-        suggestedMappings = await fieldMappingEngine.generateMappings(sourceFields);
+        // Fallback to simplified mapping
+        try {
+          const { SimpleFieldMappingService } = await import('./services/simple-field-mapping');
+          const simpleMapping = SimpleFieldMappingService.getInstance();
+          
+          if (simpleMapping.isAvailable()) {
+            console.log('Using simplified field mapping fallback');
+            
+            const simpleExtractedFields = {
+              fields: extractedFields.fields.map(f => f.name),
+              sampleData: extractedFields.sampleData,
+              fileType: extractedFields.fileType
+            };
+            
+            const result = await simpleMapping.processFileForMapping(simpleExtractedFields);
+            
+            if (result.success) {
+              suggestedMappings = result.mappings.map(m => ({
+                sourceField: m.sourceField,
+                targetField: m.targetField,
+                confidence: m.confidence,
+                strategy: 'llm' as const,
+                metadata: { reasoning: m.reasoning, system: 'simplified-fallback' }
+              }));
+              
+              console.log(`Simplified fallback mapping completed: ${suggestedMappings.length} mappings, cost: $${result.usage?.cost.toFixed(6) || '0'}`);
+            } else {
+              throw new Error(result.error || 'Simplified mapping failed');
+            }
+          } else {
+            throw new Error('OpenRouter not available');
+          }
+        } catch (fallbackError) {
+          console.error('All mapping strategies failed:', fallbackError);
+          // Provide empty mappings but continue processing
+          suggestedMappings = [];
+        }
       }
 
       // Update session with analysis results
       await this.updateSession(sessionId, {
-        totalRecords,
+        totalRecords: extractedFields.metadata.totalRecords,
         fieldMappings: suggestedMappings,
         status: 'mapping'
       });
@@ -244,9 +284,9 @@ export class EnhancedImportService {
           name: file.originalname,
           size: file.size,
           type: file.mimetype,
-          totalRecords
+          totalRecords: extractedFields.metadata.totalRecords
         },
-        sourceFields,
+        sourceFields: extractedFields.fields,
         suggestedMappings
       };
 

@@ -1,10 +1,10 @@
-// Simplified Bulk Upload System - Main Exports
-export { SimpleBulkUpload as default } from './SimpleBulkUpload';
-export { SimpleBulkUpload as BulkUploadWizard } from './SimpleBulkUpload';
+// Enhanced Bulk Upload System - Main Exports
+export { BulkUploadWizard as default } from './BulkUploadWizard';
+export { BulkUploadWizard } from './BulkUploadWizard';
 
-// Legacy complex components (deprecated)
+// Legacy components (available but deprecated)
+export { SimpleBulkUpload } from './SimpleBulkUpload';
 export { BulkUploadWizardResponsive as BulkUploadWizardComplex } from './BulkUploadWizardResponsive';
-export { BulkUploadWizard as BulkUploadWizardDesktop } from './BulkUploadWizard';
 export { BulkUploadWizardMobile } from './BulkUploadWizardMobile';
 
 // Step Components
@@ -21,5 +21,5 @@ export { ErrorRecoveryDialog } from './components/ErrorRecoveryDialog';
 export type * from './types';
 
 // Re-export for backwards compatibility
-export { SimpleBulkUpload as BulkUploadDialog };
-export { SimpleBulkUpload as EnhancedBulkUpload };
+export { BulkUploadWizard as BulkUploadDialog } from './BulkUploadWizard';
+export { BulkUploadWizard as EnhancedBulkUpload } from './BulkUploadWizard';

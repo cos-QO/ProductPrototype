@@ -18,6 +18,7 @@ import {
   X 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import TemplateDownloadSection from '../components/TemplateDownloadSection';
 import type { UploadSession, SourceField } from '../types';
 
 interface FileUploadStepProps {
@@ -41,28 +42,42 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     warnings: string[];
   } | null>(null);
 
-  // File upload mutation
+  // Enhanced file upload mutation with multi-strategy analysis
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      // Step 1: Initialize session
+      const sessionResponse = await apiRequest('POST', '/api/enhanced-import/initialize');
+      const { sessionId } = sessionResponse;
+      
+      // Simulate initial progress
+      setUploadProgress(20);
+      
+      // Step 2: Upload and analyze file with enhanced services
       const formData = new FormData();
       formData.append('file', file);
       
-      // Simulate upload progress
       const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
+        setUploadProgress(prev => Math.min(prev + 5, 85));
+      }, 300);
 
       try {
-        const response = await apiRequest('POST', '/api/upload/initiate', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const response = await apiRequest('POST', `/api/enhanced-import/analyze/${sessionId}`, formData);
         
         clearInterval(progressInterval);
         setUploadProgress(100);
         
-        return response;
+        return {
+          ...response,
+          sessionId,
+          session: {
+            id: sessionId,
+            fileName: file.name,
+            fileSize: file.size,
+            fileFormat: file.name.split('.').pop(),
+            status: 'analyzed',
+            userId: 'current-user' // This would come from auth context
+          }
+        };
       } catch (error) {
         clearInterval(progressInterval);
         setUploadProgress(0);
@@ -72,17 +87,22 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     onSuccess: (data) => {
       setSessionData(data.session);
       setAnalysisData({
-        sourceFields: data.sourceFields,
-        recordCount: data.recordCount,
+        sourceFields: data.sourceFields || [],
+        recordCount: data.fileInfo?.totalRecords || 0,
         warnings: data.warnings || [],
       });
       
+      const mappingCount = data.suggestedMappings?.length || 0;
+      const confidence = data.suggestedMappings?.length > 0 
+        ? Math.round(data.suggestedMappings.reduce((sum: number, m: any) => sum + m.confidence, 0) / mappingCount)
+        : 0;
+      
       toast({
-        title: 'File Uploaded Successfully',
-        description: `Analyzed ${data.recordCount} records with ${data.sourceFields.length} fields`,
+        title: 'File Analyzed Successfully',
+        description: `Processed ${data.fileInfo?.totalRecords || 0} records with ${data.sourceFields?.length || 0} fields. Found ${mappingCount} field mappings (${confidence}% avg confidence)`,
       });
       
-      // Auto-advance after successful upload
+      // Auto-advance to processing step after successful upload
       setTimeout(() => {
         onNext();
       }, 1500);
@@ -161,6 +181,18 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Template Download Section - Positioned Above Upload Zone */}
+      {!sessionData && (
+        <TemplateDownloadSection
+          isMobile={isMobile}
+          isCompact={false}
+          onDownload={(format, filename) => {
+            downloadTemplateMutation.mutate(format);
+          }}
+          isLoading={downloadTemplateMutation.isPending}
+        />
+      )}
+
       {/* Upload Zone */}
       {!sessionData && (
         <Card>
@@ -300,102 +332,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         </Card>
       )}
 
-      {/* Template Download Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Need a Template?</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Download our pre-formatted templates to ensure compatibility
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className={cn("gap-4", isMobile ? "grid grid-cols-1" : "grid grid-cols-1 md:grid-cols-3")}>
-            <Button 
-              variant="outline" 
-              onClick={() => downloadTemplateMutation.mutate('csv')}
-              disabled={downloadTemplateMutation.isPending}
-              className="flex items-center justify-center space-x-2"
-            >
-              <Download className="h-4 w-4" />
-              <span>CSV Template</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => downloadTemplateMutation.mutate('xlsx')}
-              disabled={downloadTemplateMutation.isPending}
-              className="flex items-center justify-center space-x-2"
-            >
-              <Download className="h-4 w-4" />
-              <span>Excel Template</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => downloadTemplateMutation.mutate('json')}
-              disabled={downloadTemplateMutation.isPending}
-              className="flex items-center justify-center space-x-2"
-            >
-              <Download className="h-4 w-4" />
-              <span>JSON Template</span>
-            </Button>
-          </div>
-          
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p><strong>Templates include:</strong></p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Required fields: name, sku, price</li>
-              <li>Optional fields: description, brand, category, stock</li>
-              <li>Sample data with proper formatting</li>
-              <li>Field descriptions and validation rules</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Getting Started Guide */}
-      {!sessionData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">Supported File Formats</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>CSV</strong> - Comma-separated values</li>
-                  <li>• <strong>JSON</strong> - JavaScript Object Notation</li>
-                  <li>• <strong>XLSX</strong> - Excel spreadsheet</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">File Requirements</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Maximum file size: 100MB</li>
-                  <li>• Maximum records: 10,000</li>
-                  <li>• UTF-8 encoding recommended</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Required Fields</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Name</strong> - Product name</li>
-                  <li>• <strong>SKU</strong> - Stock keeping unit</li>
-                  <li>• <strong>Price</strong> - Product price</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Import Process</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• AI-powered field mapping</li>
-                  <li>• Data validation and preview</li>
-                  <li>• Batch processing with progress</li>
-                  <li>• Error recovery and reporting</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
     </div>
   );
 };

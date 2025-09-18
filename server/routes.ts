@@ -961,6 +961,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const enhancedImportService = await import('./enhanced-import-service');
   const { enhancedImportService: eis } = enhancedImportService;
 
+  // MISSING ENHANCED IMPORT ENDPOINTS - Frontend expects /api/enhanced-import/* paths
+  
+  // Frontend expected endpoint #1: Initialize enhanced import session
+  app.post('/api/enhanced-import/initialize', uploadRateLimiter, isAuthenticated, csrfProtection, async (req: any, res) => {
+    console.log('[ENHANCED IMPORT] Initialize session called via /api/enhanced-import/initialize');
+    await eis.initializeSession(req, res);
+  });
+
+  // Frontend expected endpoint #2: Analyze uploaded file with enhanced field mapping
+  app.post('/api/enhanced-import/analyze/:sessionId', 
+    uploadRateLimiter,
+    isAuthenticated,
+    csrfProtection,
+    importUpload.single('file'),
+    async (req: any, res) => {
+      console.log(`[ENHANCED IMPORT] Analyze file called via /api/enhanced-import/analyze/${req.params.sessionId}`);
+      
+      // Scan uploaded file for security threats
+      if (req.file) {
+        const scanResult = await scanFileContent(req.file.path);
+        if (!scanResult.safe) {
+          // Remove the uploaded file
+          await fs.unlink(req.file.path).catch(() => {});
+          return res.status(400).json({ 
+            error: 'File contains potentially malicious content', 
+            threats: scanResult.threats 
+          });
+        }
+      }
+      await eis.analyzeFile(req, res);
+    }
+  );
+
+  // EXISTING UPLOAD ROUTES (Alternative paths)
+
   // 1. Initialize upload session
   app.post('/api/upload/initiate', uploadRateLimiter, isAuthenticated, csrfProtection, async (req: any, res) => {
     await eis.initializeSession(req, res);
