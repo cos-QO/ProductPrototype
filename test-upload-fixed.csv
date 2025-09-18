@@ -1,0 +1,2 @@
+name,slug,short_description,long_description,story,brand_id,parent_id,sku,gtin,status,is_variant,price,compare_at_price,stock,low_stock_threshold,weight,dimensions,tags,variants,category,condition,warranty
+Test CSV Upload,test-csv-upload,Testing CSV upload functionality,"Test product to verify that CSV upload functionality works after database migration fix.",This product tests the bulk upload system functionality.,1,,TEST-CSV-001,1234567890123,active,false,9999,11999,50,10,200,10x5x3,"test,csv,upload","Color: Red|Blue",Electronics,new,1 year warranty
