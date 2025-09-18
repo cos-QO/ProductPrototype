@@ -1,12 +1,13 @@
-import { Request, Response } from 'express';
-import { db } from './db';
-import { 
-  brands, 
-  products, 
-  productAttributes, 
-  importSessions, 
-  fieldMappingCache, 
-  importHistory, 
+import { Request, Response } from "express";
+import { promises as fs } from "fs";
+import { db } from "./db";
+import {
+  brands,
+  products,
+  productAttributes,
+  importSessions,
+  fieldMappingCache,
+  importHistory,
   importBatches,
   type ImportSession,
   type InsertImportSession,
@@ -15,13 +16,13 @@ import {
   type ImportHistory,
   type InsertImportHistory,
   type ImportBatch,
-  type InsertImportBatch
-} from '@shared/schema';
-import multer from 'multer';
-import { parse } from 'csv-parse/sync';
-import * as XLSX from 'xlsx';
-import { v4 as uuidv4 } from 'uuid';
-import { eq, desc, and } from 'drizzle-orm';
+  type InsertImportBatch,
+} from "@shared/schema";
+import multer from "multer";
+import { parse } from "csv-parse/sync";
+import * as XLSX from "xlsx";
+import { v4 as uuidv4 } from "uuid";
+import { eq, desc, and } from "drizzle-orm";
 
 // Enhanced file upload configuration is now handled by secure middleware
 // The secure upload is imported from middleware/security.ts
@@ -43,7 +44,7 @@ interface FileAnalysisResult {
 
 interface SourceField {
   name: string;
-  dataType: 'string' | 'number' | 'boolean' | 'date' | 'json';
+  dataType: "string" | "number" | "boolean" | "date" | "json";
   sampleValues: any[];
   nullPercentage: number;
   uniquePercentage: number;
@@ -66,7 +67,7 @@ interface FieldMapping {
   sourceField: string;
   targetField: string;
   confidence: number; // 0-100
-  strategy: 'exact' | 'fuzzy' | 'llm' | 'historical' | 'statistical';
+  strategy: "exact" | "fuzzy" | "llm" | "historical" | "statistical";
   metadata?: any;
 }
 
@@ -85,7 +86,7 @@ interface ValidationError {
   field: string;
   value: any;
   rule: string;
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
   suggestion?: string;
   autoFix?: {
     action: string;
@@ -122,7 +123,7 @@ export class EnhancedImportService {
     batchSize: 100,
     maxConcurrency: 5,
     retryAttempts: 3,
-    targetLatency: 10
+    targetLatency: 10,
   };
 
   static getInstance(): EnhancedImportService {
@@ -135,21 +136,22 @@ export class EnhancedImportService {
   // Step 1: Initialize upload session
   async initializeSession(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.claims?.sub || 'local-dev-user';
+      const userId = (req as any).user?.claims?.sub || "local-dev-user";
       if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
+        return res.status(401).json({ error: "User not authenticated" });
       }
 
       const sessionId = uuidv4();
       const sessionData: InsertImportSession = {
         sessionId,
         userId,
-        status: 'initiated',
+        status: "initiated",
         processingRate: 0,
-        estimatedTimeRemaining: 0
+        estimatedTimeRemaining: 0,
       };
 
-      const [session] = await db.insert(importSessions)
+      const [session] = await db
+        .insert(importSessions)
         .values(sessionData)
         .returning();
 
@@ -158,13 +160,13 @@ export class EnhancedImportService {
       res.json({
         success: true,
         sessionId,
-        message: 'Upload session initialized'
+        message: "Upload session initialized",
       });
     } catch (error: any) {
-      console.error('Session initialization error:', error);
+      console.error("Session initialization error:", error);
       res.status(500).json({
-        error: 'Failed to initialize session',
-        message: error.message
+        error: "Failed to initialize session",
+        message: error.message,
       });
     }
   }
@@ -176,11 +178,11 @@ export class EnhancedImportService {
       const file = req.file;
 
       if (!file) {
-        return res.status(400).json({ error: 'No file uploaded' });
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
       if (!sessionId) {
-        return res.status(400).json({ error: 'Session ID required' });
+        return res.status(400).json({ error: "Session ID required" });
       }
 
       // Update session with file information
@@ -188,17 +190,31 @@ export class EnhancedImportService {
         fileName: file.originalname,
         fileSize: file.size,
         fileType: file.mimetype,
-        status: 'analyzing'
+        status: "analyzing",
       });
 
       // Enhanced field extraction using the advanced service
-      const { FieldExtractionService } = await import('./services/field-extraction-service');
+      const { FieldExtractionService } = await import(
+        "./services/field-extraction-service"
+      );
       const fieldExtractor = FieldExtractionService.getInstance();
-      
-      const fileType = this.getFileTypeFromExtension(file.originalname) as 'csv' | 'json' | 'xlsx';
-      
+
+      const fileType = this.getFileTypeFromExtension(file.originalname) as
+        | "csv"
+        | "json"
+        | "xlsx";
+
+      // Read file from disk since we're using diskStorage, not memoryStorage
+      if (!file.path) {
+        throw new Error(
+          "File path is missing - multer might be using memory storage instead of disk storage",
+        );
+      }
+
+      const fileBuffer = await fs.readFile(file.path);
+
       const extractedFields = await fieldExtractor.extractFieldsFromFile(
-        file.buffer,
+        fileBuffer,
         file.originalname,
         fileType,
         {
@@ -206,65 +222,84 @@ export class EnhancedImportService {
           includeStatistics: true,
           expandAbbreviations: true,
           inferTypes: true,
-          analyzePatterns: true
-        }
+          analyzePatterns: true,
+        },
       );
 
       // Multi-strategy field mapping using the enhanced engine
       let suggestedMappings: FieldMapping[] = [];
-      
+
       try {
         // First, try the multi-strategy mapping engine
-        const { MultiStrategyFieldMapping } = await import('./services/multi-strategy-field-mapping');
+        const { MultiStrategyFieldMapping } = await import(
+          "./services/multi-strategy-field-mapping"
+        );
         const multiStrategyMapper = MultiStrategyFieldMapping.getInstance();
-        
-        console.log('Using enhanced multi-strategy field mapping engine');
-        
-        const mappingResult = await multiStrategyMapper.generateMappings(extractedFields);
-        
+
+        console.log("Using enhanced multi-strategy field mapping engine");
+
+        const mappingResult =
+          await multiStrategyMapper.generateMappings(extractedFields);
+
         if (mappingResult.success) {
           suggestedMappings = mappingResult.mappings;
-          console.log(`Multi-strategy mapping completed: ${suggestedMappings.length} mappings, confidence: ${mappingResult.confidence}%, strategies: ${mappingResult.strategiesUsed.join(', ')}, cost: $${mappingResult.cost?.toFixed(6) || '0'}`);
+          console.log(
+            `Multi-strategy mapping completed: ${suggestedMappings.length} mappings, confidence: ${mappingResult.confidence}%, strategies: ${mappingResult.strategiesUsed.join(", ")}, cost: $${mappingResult.cost?.toFixed(6) || "0"}`,
+          );
         } else {
-          throw new Error(mappingResult.error || 'Multi-strategy mapping failed');
+          throw new Error(
+            mappingResult.error || "Multi-strategy mapping failed",
+          );
         }
       } catch (error) {
-        console.log('Multi-strategy mapping failed, falling back to simple system:', error.message);
-        
+        console.log(
+          "Multi-strategy mapping failed, falling back to simple system:",
+          error.message,
+        );
+
         // Fallback to simplified mapping
         try {
-          const { SimpleFieldMappingService } = await import('./services/simple-field-mapping');
+          const { SimpleFieldMappingService } = await import(
+            "./services/simple-field-mapping"
+          );
           const simpleMapping = SimpleFieldMappingService.getInstance();
-          
+
           if (simpleMapping.isAvailable()) {
-            console.log('Using simplified field mapping fallback');
-            
+            console.log("Using simplified field mapping fallback");
+
             const simpleExtractedFields = {
-              fields: extractedFields.fields.map(f => f.name),
+              fields: extractedFields.fields.map((f) => f.name),
               sampleData: extractedFields.sampleData,
-              fileType: extractedFields.fileType
+              fileType: extractedFields.fileType,
             };
-            
-            const result = await simpleMapping.processFileForMapping(simpleExtractedFields);
-            
+
+            const result = await simpleMapping.processFileForMapping(
+              simpleExtractedFields,
+            );
+
             if (result.success) {
-              suggestedMappings = result.mappings.map(m => ({
+              suggestedMappings = result.mappings.map((m) => ({
                 sourceField: m.sourceField,
                 targetField: m.targetField,
                 confidence: m.confidence,
-                strategy: 'llm' as const,
-                metadata: { reasoning: m.reasoning, system: 'simplified-fallback' }
+                strategy: "llm" as const,
+                metadata: {
+                  reasoning: m.reasoning,
+                  system: "simplified-fallback",
+                },
               }));
-              
-              console.log(`Simplified fallback mapping completed: ${suggestedMappings.length} mappings, cost: $${result.usage?.cost.toFixed(6) || '0'}`);
+
+              console.log(
+                `Simplified fallback mapping completed: ${suggestedMappings.length} mappings, cost: $${result.usage?.cost.toFixed(6) || "0"}`,
+              );
             } else {
-              throw new Error(result.error || 'Simplified mapping failed');
+              throw new Error(result.error || "Simplified mapping failed");
             }
           } else {
-            throw new Error('OpenRouter not available');
+            throw new Error("OpenRouter not available");
           }
         } catch (fallbackError) {
-          console.error('All mapping strategies failed:', fallbackError);
+          console.error("All mapping strategies failed:", fallbackError);
           // Provide empty mappings but continue processing
           suggestedMappings = [];
         }
@@ -274,7 +309,7 @@ export class EnhancedImportService {
       await this.updateSession(sessionId, {
         totalRecords: extractedFields.metadata.totalRecords,
         fieldMappings: suggestedMappings,
-        status: 'mapping'
+        status: "mapping",
       });
 
       const result: FileAnalysisResult = {
@@ -284,22 +319,22 @@ export class EnhancedImportService {
           name: file.originalname,
           size: file.size,
           type: file.mimetype,
-          totalRecords: extractedFields.metadata.totalRecords
+          totalRecords: extractedFields.metadata.totalRecords,
         },
         sourceFields: extractedFields.fields,
-        suggestedMappings
+        suggestedMappings,
       };
 
       res.json(result);
     } catch (error: any) {
-      console.error('File analysis error:', error);
+      console.error("File analysis error:", error);
       await this.updateSession(req.params.sessionId, {
-        status: 'failed',
-        errorLog: { error: error.message }
+        status: "failed",
+        errorLog: { error: error.message },
       });
       res.status(500).json({
-        error: 'File analysis failed',
-        message: error.message
+        error: "File analysis failed",
+        message: error.message,
       });
     }
   }
@@ -311,13 +346,15 @@ export class EnhancedImportService {
       const { mappings } = req.body as { mappings: FieldMapping[] };
 
       if (!sessionId || !mappings) {
-        return res.status(400).json({ error: 'Session ID and mappings required' });
+        return res
+          .status(400)
+          .json({ error: "Session ID and mappings required" });
       }
 
       // Update session with new mappings
       await this.updateSession(sessionId, {
         fieldMappings: mappings,
-        status: 'mapping'
+        status: "mapping",
       });
 
       // Cache successful mappings for future learning
@@ -325,14 +362,14 @@ export class EnhancedImportService {
 
       res.json({
         success: true,
-        message: 'Field mappings updated successfully',
-        mappings
+        message: "Field mappings updated successfully",
+        mappings,
       });
     } catch (error: any) {
-      console.error('Mapping override error:', error);
+      console.error("Mapping override error:", error);
       res.status(500).json({
-        error: 'Failed to update mappings',
-        message: error.message
+        error: "Failed to update mappings",
+        message: error.message,
       });
     }
   }
@@ -345,27 +382,32 @@ export class EnhancedImportService {
 
       const session = await this.getSession(sessionId);
       if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ error: "Session not found" });
       }
 
       // Get the original file data (this would be cached in production)
       const fileData = await this.getCachedFileData(sessionId);
       if (!fileData) {
-        return res.status(400).json({ error: 'File data not found. Please re-upload.' });
+        return res
+          .status(400)
+          .json({ error: "File data not found. Please re-upload." });
       }
 
       // Apply field mappings
-      const mappedData = await this.applyFieldMappings(fileData, session.fieldMappings as FieldMapping[]);
-      
+      const mappedData = await this.applyFieldMappings(
+        fileData,
+        session.fieldMappings as FieldMapping[],
+      );
+
       // Validate data
       const validationResults = await this.validateData(mappedData);
-      
+
       // Generate preview subset
       const previewData = mappedData.slice(0, Number(limit));
 
       // Update session status
       await this.updateSession(sessionId, {
-        status: 'previewing'
+        status: "previewing",
       });
 
       const result: ValidationResult = {
@@ -375,15 +417,15 @@ export class EnhancedImportService {
         validRecords: validationResults.validCount,
         invalidRecords: validationResults.invalidCount,
         errors: validationResults.errors,
-        previewData
+        previewData,
       };
 
       res.json(result);
     } catch (error: any) {
-      console.error('Preview generation error:', error);
+      console.error("Preview generation error:", error);
       res.status(500).json({
-        error: 'Preview generation failed',
-        message: error.message
+        error: "Preview generation failed",
+        message: error.message,
       });
     }
   }
@@ -396,14 +438,14 @@ export class EnhancedImportService {
 
       const session = await this.getSession(sessionId);
       if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ error: "Session not found" });
       }
 
       // Update session to processing
       await this.updateSession(sessionId, {
-        status: 'processing',
+        status: "processing",
         importConfig,
-        startedAt: new Date()
+        startedAt: new Date(),
       });
 
       // Start background processing
@@ -411,15 +453,15 @@ export class EnhancedImportService {
 
       res.json({
         success: true,
-        message: 'Import started',
+        message: "Import started",
         sessionId,
-        status: 'processing'
+        status: "processing",
       });
     } catch (error: any) {
-      console.error('Import execution error:', error);
+      console.error("Import execution error:", error);
       res.status(500).json({
-        error: 'Import execution failed',
-        message: error.message
+        error: "Import execution failed",
+        message: error.message,
       });
     }
   }
@@ -431,59 +473,63 @@ export class EnhancedImportService {
 
       const session = await this.getSession(sessionId);
       if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ error: "Session not found" });
       }
 
       const progress: ImportProgress = {
         sessionId,
-        status: session.status || 'unknown',
+        status: session.status || "unknown",
         totalRecords: session.totalRecords || 0,
         processedRecords: session.processedRecords || 0,
         successfulRecords: session.successfulRecords || 0,
         failedRecords: session.failedRecords || 0,
         currentBatch: 0, // Calculate from batches
-        totalBatches: Math.ceil((session.totalRecords || 0) / this.batchConfig.batchSize),
+        totalBatches: Math.ceil(
+          (session.totalRecords || 0) / this.batchConfig.batchSize,
+        ),
         processingRate: session.processingRate || 0,
         estimatedTimeRemaining: session.estimatedTimeRemaining || 0,
-        errors: []
+        errors: [],
       };
 
       res.json(progress);
     } catch (error: any) {
-      console.error('Progress retrieval error:', error);
+      console.error("Progress retrieval error:", error);
       res.status(500).json({
-        error: 'Failed to get progress',
-        message: error.message
+        error: "Failed to get progress",
+        message: error.message,
       });
     }
   }
 
   // Private helper methods
-  private async parseFileData(file: Express.Multer.File): Promise<{ data: any[], totalRecords: number }> {
+  private async parseFileData(
+    file: Express.Multer.File,
+  ): Promise<{ data: any[]; totalRecords: number }> {
     // Use the optimized file processor for better performance and streaming support
-    const { fileProcessor } = await import('./file-processor');
+    const { fileProcessor } = await import("./file-processor");
     const result = await fileProcessor.processFile(file);
-    
+
     if (!result.success) {
-      throw new Error(result.error || 'File processing failed');
+      throw new Error(result.error || "File processing failed");
     }
-    
+
     // For small files processed in memory
     if (result.data) {
       return { data: result.data, totalRecords: result.data.length };
     }
-    
+
     // For large files processed with streaming
     if (result.streamPath && result.metadata.recordCount) {
       // For the analysis phase, we can work with the metadata and sample data
       // The actual data processing will be handled by the batch processor
-      return { 
-        data: result.metadata.sampleData || [], 
-        totalRecords: result.metadata.recordCount 
+      return {
+        data: result.metadata.sampleData || [],
+        totalRecords: result.metadata.recordCount,
       };
     }
-    
-    throw new Error('No data returned from file processor');
+
+    throw new Error("No data returned from file processor");
   }
 
   private async analyzeFields(data: any[]): Promise<SourceField[]> {
@@ -493,8 +539,10 @@ export class EnhancedImportService {
     const sample = data.slice(0, sampleSize);
     const fieldNames = Object.keys(sample[0] || {});
 
-    return fieldNames.map(fieldName => {
-      const values = sample.map(row => row[fieldName]).filter(v => v !== null && v !== undefined);
+    return fieldNames.map((fieldName) => {
+      const values = sample
+        .map((row) => row[fieldName])
+        .filter((v) => v !== null && v !== undefined);
       const nullCount = sample.length - values.length;
       const uniqueValues = new Set(values);
 
@@ -504,45 +552,58 @@ export class EnhancedImportService {
         sampleValues: Array.from(uniqueValues).slice(0, 5),
         nullPercentage: (nullCount / sample.length) * 100,
         uniquePercentage: (uniqueValues.size / values.length) * 100,
-        isRequired: nullCount === 0
+        isRequired: nullCount === 0,
       };
     });
   }
 
-  private inferDataType(values: any[]): 'string' | 'number' | 'boolean' | 'date' | 'json' {
-    if (values.length === 0) return 'string';
+  private inferDataType(
+    values: any[],
+  ): "string" | "number" | "boolean" | "date" | "json" {
+    if (values.length === 0) return "string";
 
-    const numberCount = values.filter(v => typeof v === 'number' || !isNaN(Number(v))).length;
-    const booleanCount = values.filter(v => typeof v === 'boolean' || v === 'true' || v === 'false').length;
-    const dateCount = values.filter(v => !isNaN(Date.parse(v))).length;
+    const numberCount = values.filter(
+      (v) => typeof v === "number" || !isNaN(Number(v)),
+    ).length;
+    const booleanCount = values.filter(
+      (v) => typeof v === "boolean" || v === "true" || v === "false",
+    ).length;
+    const dateCount = values.filter((v) => !isNaN(Date.parse(v))).length;
 
     const total = values.length;
-    if (numberCount / total > 0.8) return 'number';
-    if (booleanCount / total > 0.8) return 'boolean';
-    if (dateCount / total > 0.8) return 'date';
-    
-    return 'string';
+    if (numberCount / total > 0.8) return "number";
+    if (booleanCount / total > 0.8) return "boolean";
+    if (dateCount / total > 0.8) return "date";
+
+    return "string";
   }
 
   // Field mapping is now handled by the dedicated Field Mapping Engine
 
-  private async applyFieldMappings(data: any[], mappings: FieldMapping[]): Promise<any[]> {
+  private async applyFieldMappings(
+    data: any[],
+    mappings: FieldMapping[],
+  ): Promise<any[]> {
     if (!mappings || mappings.length === 0) return data;
 
-    return data.map(row => {
+    return data.map((row) => {
       const mappedRow: any = {};
-      
+
       for (const mapping of mappings) {
         if (row.hasOwnProperty(mapping.sourceField)) {
           mappedRow[mapping.targetField] = row[mapping.sourceField];
         }
       }
-      
+
       return mappedRow;
     });
   }
 
-  private async validateData(data: any[]): Promise<{ validCount: number, invalidCount: number, errors: ValidationError[] }> {
+  private async validateData(data: any[]): Promise<{
+    validCount: number;
+    invalidCount: number;
+    errors: ValidationError[];
+  }> {
     const errors: ValidationError[] = [];
     let validCount = 0;
     let invalidCount = 0;
@@ -550,7 +611,7 @@ export class EnhancedImportService {
     for (let i = 0; i < data.length; i++) {
       const record = data[i];
       const recordErrors = await this.validateRecord(record, i);
-      
+
       if (recordErrors.length > 0) {
         errors.push(...recordErrors);
         invalidCount++;
@@ -562,18 +623,21 @@ export class EnhancedImportService {
     return { validCount, invalidCount, errors };
   }
 
-  private async validateRecord(record: any, index: number): Promise<ValidationError[]> {
+  private async validateRecord(
+    record: any,
+    index: number,
+  ): Promise<ValidationError[]> {
     const errors: ValidationError[] = [];
 
     // Required field validation
-    if (!record.name || record.name.trim() === '') {
+    if (!record.name || record.name.trim() === "") {
       errors.push({
         recordIndex: index,
-        field: 'name',
+        field: "name",
         value: record.name,
-        rule: 'Required field missing',
-        severity: 'error',
-        suggestion: 'Product name is required'
+        rule: "Required field missing",
+        severity: "error",
+        suggestion: "Product name is required",
       });
     }
 
@@ -583,58 +647,63 @@ export class EnhancedImportService {
       if (isNaN(price) || price < 0) {
         errors.push({
           recordIndex: index,
-          field: 'price',
+          field: "price",
           value: record.price,
-          rule: 'Invalid price format',
-          severity: 'error',
-          suggestion: 'Price must be a positive number',
+          rule: "Invalid price format",
+          severity: "error",
+          suggestion: "Price must be a positive number",
           autoFix: {
-            action: 'Convert to number',
-            newValue: Math.abs(price) || 0
-          }
+            action: "Convert to number",
+            newValue: Math.abs(price) || 0,
+          },
         });
       }
     }
 
     // SKU validation
-    if (record.sku && typeof record.sku !== 'string') {
+    if (record.sku && typeof record.sku !== "string") {
       errors.push({
         recordIndex: index,
-        field: 'sku',
+        field: "sku",
         value: record.sku,
-        rule: 'Invalid SKU format',
-        severity: 'warning',
-        suggestion: 'SKU should be a string',
+        rule: "Invalid SKU format",
+        severity: "warning",
+        suggestion: "SKU should be a string",
         autoFix: {
-          action: 'Convert to string',
-          newValue: String(record.sku)
-        }
+          action: "Convert to string",
+          newValue: String(record.sku),
+        },
       });
     }
 
     return errors;
   }
 
-  private async updateSession(sessionId: string, updates: Partial<InsertImportSession>) {
+  private async updateSession(
+    sessionId: string,
+    updates: Partial<InsertImportSession>,
+  ) {
     try {
-      await db.update(importSessions)
+      await db
+        .update(importSessions)
         .set({ ...updates, updatedAt: new Date() })
         .where(eq(importSessions.sessionId, sessionId));
     } catch (error) {
-      console.error('Error updating session:', error);
+      console.error("Error updating session:", error);
     }
   }
 
   private async getSession(sessionId: string): Promise<ImportSession | null> {
     try {
-      const sessions = await db.select()
+      const sessions = await db
+        .select()
         .from(importSessions)
         .where(eq(importSessions.sessionId, sessionId))
         .limit(1);
-      
+
       return sessions.length > 0 ? sessions[0] : null;
     } catch (error) {
-      console.error('Error getting session:', error);
+      console.error("Error getting session:", error);
       return null;
     }
   }
@@ -650,13 +719,13 @@ export class EnhancedImportService {
       // Get session data
       const session = await this.getSession(sessionId);
       if (!session) {
-        throw new Error('Session not found');
+        throw new Error("Session not found");
       }
 
       // Get cached file data (in production, this would be retrieved from cache/storage)
       const fileData = await this.getCachedFileData(sessionId);
       if (!fileData) {
-        throw new Error('File data not found. Please re-upload.');
+        throw new Error("File data not found. Please re-upload.");
       }
 
       // Apply field mappings
@@ -664,21 +733,20 @@ export class EnhancedImportService {
       const mappedData = await this.applyFieldMappings(fileData, mappings);
 
       // Import the batch processor
-      const { batchProcessor } = await import('./batch-processor');
-      
+      const { batchProcessor } = await import("./batch-processor");
+
       // Start batch processing
       await batchProcessor.processBulkImport(
-        sessionId, 
-        mappedData, 
+        sessionId,
+        mappedData,
         mappings,
-        importConfig.entityType || 'product'
+        importConfig.entityType || "product",
       );
-
     } catch (error) {
-      console.error('Batch import error:', error);
+      console.error("Batch import error:", error);
       await this.updateSession(sessionId, {
-        status: 'failed',
-        errorLog: { error: error.message }
+        status: "failed",
+        errorLog: { error: error.message },
       });
     }
   }
@@ -687,30 +755,74 @@ export class EnhancedImportService {
    * Convert source fields to sample data format for simplified mapping
    */
   private convertToSampleData(sourceFields: SourceField[]): any[][] {
-    const maxSamples = Math.max(...sourceFields.map(f => f.sampleValues.length));
+    const maxSamples = Math.max(
+      ...sourceFields.map((f) => f.sampleValues.length),
+    );
     const sampleData: any[][] = [];
-    
+
     for (let i = 0; i < Math.min(maxSamples, 3); i++) {
-      const row = sourceFields.map(field => 
-        field.sampleValues[i] !== undefined ? field.sampleValues[i] : null
+      const row = sourceFields.map((field) =>
+        field.sampleValues[i] !== undefined ? field.sampleValues[i] : null,
       );
       sampleData.push(row);
     }
-    
+
     return sampleData;
+  }
+
+  /**
+   * Cache successful field mappings for future learning
+   */
+  private async cacheMappings(mappings: FieldMapping[]): Promise<void> {
+    try {
+      for (const mapping of mappings) {
+        const cacheData: InsertFieldMappingCache = {
+          sourceField: mapping.sourceField,
+          targetField: mapping.targetField,
+          confidence: mapping.confidence,
+          strategy: mapping.strategy,
+          metadata: mapping.metadata,
+          createdAt: new Date(),
+        };
+
+        // Insert or update cache entry
+        await db
+          .insert(fieldMappingCache)
+          .values(cacheData)
+          .onConflictDoUpdate({
+            target: [
+              fieldMappingCache.sourceField,
+              fieldMappingCache.targetField,
+            ],
+            set: {
+              confidence: cacheData.confidence,
+              strategy: cacheData.strategy,
+              metadata: cacheData.metadata,
+              updatedAt: new Date(),
+            },
+          });
+      }
+    } catch (error) {
+      console.error("Error caching field mappings:", error);
+      // Don't throw error - this is non-critical
+    }
   }
 
   /**
    * Get file type from file extension
    */
   private getFileTypeFromExtension(fileName: string): string {
-    const ext = fileName.toLowerCase().split('.').pop();
+    const ext = fileName.toLowerCase().split(".").pop();
     switch (ext) {
-      case 'csv': return 'csv';
-      case 'json': return 'json';
-      case 'xlsx':
-      case 'xls': return 'xlsx';
-      default: return 'json'; // default fallback
+      case "csv":
+        return "csv";
+      case "json":
+        return "json";
+      case "xlsx":
+      case "xls":
+        return "xlsx";
+      default:
+        return "json"; // default fallback
     }
   }
 }

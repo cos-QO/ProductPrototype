@@ -18,20 +18,20 @@ async function getCSRFToken(): Promise<string> {
   }
 
   try {
-    const response = await fetch('/api/csrf-token', {
-      credentials: 'include',
+    const response = await fetch("/api/csrf-token", {
+      credentials: "include",
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch CSRF token: ${response.status}`);
     }
-    
+
     const data = await response.json();
     csrfTokenCache = data.csrfToken;
-    csrfTokenExpiry = Date.now() + (50 * 60 * 1000); // 50 minutes
+    csrfTokenExpiry = Date.now() + 50 * 60 * 1000; // 50 minutes
     return csrfTokenCache;
   } catch (error) {
-    console.error('Failed to fetch CSRF token:', error);
+    console.error("Failed to fetch CSRF token:", error);
     throw error;
   }
 }
@@ -41,17 +41,21 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<any> {
+  // Check if data is FormData - handle differently for file uploads
+  const isFormData = data instanceof FormData;
+
   const headers: Record<string, string> = {
-    ...(data ? { "Content-Type": "application/json" } : {}),
+    // Don't set Content-Type for FormData - let browser set it with boundary
+    ...(data && !isFormData ? { "Content-Type": "application/json" } : {}),
   };
 
   // Add CSRF token for state-changing operations
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
     try {
       const csrfToken = await getCSRFToken();
-      headers['x-csrf-token'] = csrfToken;
+      headers["x-csrf-token"] = csrfToken;
     } catch (error) {
-      console.error('Failed to get CSRF token for request:', error);
+      console.error("Failed to get CSRF token for request:", error);
       // Continue with request - let backend handle the missing token
     }
   }
@@ -59,7 +63,8 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    // Send FormData as-is, JSON.stringify for other data
+    body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     credentials: "include",
   });
 
@@ -68,23 +73,24 @@ export async function apiRequest(
     // Clear the cache and retry once
     csrfTokenCache = null;
     csrfTokenExpiry = 0;
-    
-    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+
+    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
       try {
         const newCsrfToken = await getCSRFToken();
-        headers['x-csrf-token'] = newCsrfToken;
-        
+        headers["x-csrf-token"] = newCsrfToken;
+
         const retryRes = await fetch(url, {
           method,
           headers,
-          body: data ? JSON.stringify(data) : undefined,
+          // Send FormData as-is, JSON.stringify for other data (same as above)
+          body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
           credentials: "include",
         });
-        
+
         await throwIfResNotOk(retryRes);
         return await retryRes.json();
       } catch (retryError) {
-        console.error('Retry with new CSRF token failed:', retryError);
+        console.error("Retry with new CSRF token failed:", retryError);
         // Fall through to original error handling
       }
     }
