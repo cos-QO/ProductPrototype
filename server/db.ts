@@ -1,15 +1,37 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+const { Pool } = pg;
 import * as schema from "@shared/schema";
+import { createMockDb, initializeSampleData } from "./mock-database";
 
-neonConfig.webSocketConstructor = ws;
+// Use PostgreSQL or mock database
+let pool: any;
+let db: any;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:postgres123@localhost:5432/queenone_dev";
+
+if (DATABASE_URL.includes('mock')) {
+  console.warn("⚠️  Using mock database for UI testing only");
+  
+  // Initialize sample data on first load
+  initializeSampleData();
+  
+  // Create mock pool
+  pool = {
+    query: () => Promise.resolve({ rows: [] }),
+    connect: () => Promise.resolve({
+      query: () => Promise.resolve({ rows: [] }),
+      release: () => Promise.resolve(),
+    }),
+  };
+  
+  // Use the comprehensive mock database
+  db = createMockDb();
+  
+} else {
+  console.log("🔌 Connecting to PostgreSQL:", DATABASE_URL.replace(/:[^:@]*@/, ':****@'));
+  pool = new Pool({ connectionString: DATABASE_URL });
+  db = drizzle(pool, { schema });
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export { pool, db };

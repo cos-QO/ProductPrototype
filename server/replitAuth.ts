@@ -8,7 +8,10 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
+// For local development, skip Replit auth requirements
+const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.REPLIT_DOMAINS?.includes('repl');
+
+if (!process.env.REPLIT_DOMAINS && !isLocalDev) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
 
@@ -24,6 +27,22 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  
+  // For local development, use memory store instead of PostgreSQL
+  if (isLocalDev) {
+    return session({
+      secret: process.env.SESSION_SECRET || 'development-secret-key',
+      resave: false,
+      saveUninitialized: true,
+      cookie: {
+        maxAge: sessionTtl,
+        httpOnly: true,
+        secure: false, // Set to false for local development
+        sameSite: 'lax'
+      }
+    });
+  }
+  
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -71,6 +90,31 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Skip OIDC setup for local development
+  if (isLocalDev) {
+    console.log("🔓 Running in local development mode - auth bypassed");
+    
+    // Create a mock user for local development
+    const mockUser = {
+      claims: {
+        sub: 'local-dev-user',
+        email: 'dev@localhost',
+        name: 'Local Developer',
+      }
+    };
+    
+    // Auto-login for local development
+    app.use((req: any, res, next) => {
+      if (!req.user) {
+        req.user = mockUser;
+        req.isAuthenticated = () => true;
+      }
+      next();
+    });
+    
+    return;
+  }
 
   const config = await getOidcConfig();
 
@@ -128,6 +172,11 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Skip auth check for local development
+  if (isLocalDev) {
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

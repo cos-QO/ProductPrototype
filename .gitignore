@@ -4,3 +4,40 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Claude-related files and folders
+/.claude/
+.claude/
+CLAUDE.md
+AGENT.md
+*.claude
+*.claude.md
+.claude*
+
+# Cursor/Other AI tools
+.cursorrules
+.cursor/
+.codeium/
+.continue/
+.aider/
+.github/copilot/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+~*

@@ -144,8 +144,9 @@ export default function ProductEdit() {
         dimensions: product.dimensions || "",
         material: product.material || "",
         color: product.color || "",
-        price: product.price || "",
-        compareAtPrice: product.compareAtPrice || "",
+        // Convert prices from cents to dollars for display
+        price: product.price ? (product.price / 100).toFixed(2) : "",
+        compareAtPrice: product.compareAtPrice ? (product.compareAtPrice / 100).toFixed(2) : "",
       });
     }
   }, [product, form]);
@@ -189,13 +190,14 @@ export default function ProductEdit() {
 
   // Update product mutation
   const updateProductMutation = useMutation({
-    mutationFn: async (data: ProductEditForm) => {
+    mutationFn: async (data: any) => {
       const response = await apiRequest("PATCH", `/api/products/${productId}`, data);
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products", productId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
         description: "Product updated successfully",
@@ -228,7 +230,24 @@ export default function ProductEdit() {
     console.log("Form isValid:", form.formState.isValid);
     console.log("All form values:", form.getValues());
     console.log("BrandId specifically:", form.getValues("brandId"));
-    updateProductMutation.mutate(data);
+    
+    // Filter out fields that don't exist in the database schema
+    const validDatabaseFields = {
+      name: data.name,
+      slug: data.slug,
+      shortDescription: data.shortDescription || "",
+      longDescription: data.longDescription || "",
+      story: data.story || "",
+      brandId: data.brandId,
+      sku: data.sku || "",
+      status: data.status,
+      isVariant: data.isVariant,
+      price: data.price,
+      compareAtPrice: data.compareAtPrice,
+    };
+    
+    console.log("Filtered database fields:", validDatabaseFields);
+    updateProductMutation.mutate(validDatabaseFields);
   };
 
   if (isLoading || !isAuthenticated) {

@@ -53,6 +53,10 @@ export interface IStorage {
   deleteProduct(id: number): Promise<void>;
   getProductsByBrand(brandId: number): Promise<Product[]>;
   
+  // Count operations
+  countProducts(userId?: string): Promise<number>;
+  countBrands(userId?: string): Promise<number>;
+  
   // Media asset operations
   createMediaAsset(asset: InsertMediaAsset): Promise<MediaAsset>;
   getMediaAssets(productId?: number, brandId?: number): Promise<MediaAsset[]>;
@@ -171,8 +175,13 @@ export class DatabaseStorage implements IStorage {
         brandId: products.brandId,
         parentId: products.parentId,
         sku: products.sku,
+        gtin: products.gtin,
         status: products.status,
         isVariant: products.isVariant,
+        price: products.price,
+        compareAtPrice: products.compareAtPrice,
+        stock: products.stock,
+        lowStockThreshold: products.lowStockThreshold,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         brandName: brands.name,
@@ -194,12 +203,13 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions));
     }
 
-    return await query.orderBy(desc(products.createdAt));
+    const result = await query.orderBy(desc(products.createdAt));
+    return result || [];
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.id, id));
-    return product;
+    const result = await db.select().from(products).where(eq(products.id, id));
+    return result?.[0];
   }
 
   async updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product> {
@@ -212,15 +222,69 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProduct(id: number): Promise<void> {
-    await db.delete(products).where(eq(products.id, id));
+    // Use a transaction to ensure all related data is deleted consistently
+    await db.transaction(async (tx) => {
+      console.log(`[DELETE] Starting deletion of product ${id}`);
+      
+      // Delete associated syndication logs first
+      const deletedLogs = await tx.delete(syndicationLogs).where(eq(syndicationLogs.productId, id)).returning();
+      console.log(`[DELETE] Deleted ${deletedLogs.length} syndication logs`);
+      
+      // Delete associated product syndications
+      const deletedSyndications = await tx.delete(productSyndications).where(eq(productSyndications.productId, id)).returning();
+      console.log(`[DELETE] Deleted ${deletedSyndications.length} product syndications`);
+      
+      // Delete associated media assets
+      const deletedMedia = await tx.delete(mediaAssets).where(eq(mediaAssets.productId, id)).returning();
+      console.log(`[DELETE] Deleted ${deletedMedia.length} media assets`);
+      
+      // Delete associated product attributes
+      const deletedAttributes = await tx.delete(productAttributes).where(eq(productAttributes.productId, id)).returning();
+      console.log(`[DELETE] Deleted ${deletedAttributes.length} product attributes`);
+      
+      // Finally delete the product itself
+      console.log(`[DELETE] About to delete product ${id}`);
+      const deletedProduct = await tx.delete(products).where(eq(products.id, id)).returning();
+      console.log(`[DELETE] Successfully deleted product ${id}`, deletedProduct.length > 0 ? 'found' : 'not found');
+    });
   }
 
   async getProductsByBrand(brandId: number): Promise<Product[]> {
-    return await db
+    const result = await db
       .select()
       .from(products)
       .where(eq(products.brandId, brandId))
       .orderBy(desc(products.createdAt));
+    return result || [];
+  }
+
+  // Count operations
+  async countProducts(userId?: string): Promise<number> {
+    let query = db
+      .select({ count: count() })
+      .from(products);
+    
+    if (userId) {
+      query = query
+        .leftJoin(brands, eq(products.brandId, brands.id))
+        .where(eq(brands.ownerId, userId));
+    }
+    
+    const result = await query;
+    return result[0]?.count ?? 0;
+  }
+
+  async countBrands(userId?: string): Promise<number> {
+    let query = db
+      .select({ count: count() })
+      .from(brands);
+    
+    if (userId) {
+      query = query.where(eq(brands.ownerId, userId));
+    }
+    
+    const result = await query;
+    return result[0]?.count ?? 0;
   }
 
   // Media asset operations
@@ -238,7 +302,8 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(mediaAssets.brandId, brandId));
     }
     
-    return await query.orderBy(desc(mediaAssets.createdAt));
+    const result = await query.orderBy(desc(mediaAssets.createdAt));
+    return result || [];
   }
 
   async deleteMediaAsset(id: number): Promise<void> {
@@ -440,26 +505,29 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [brandCount] = await db
+    const brandCountResult = await db
       .select({ count: count() })
       .from(brands)
       .where(eq(brands.ownerId, userId));
+    const brandCount = brandCountResult?.[0];
 
-    const [productCount] = await db
+    const productCountResult = await db
       .select({ count: count() })
       .from(products)
       .leftJoin(brands, eq(products.brandId, brands.id))
       .where(eq(brands.ownerId, userId));
+    const productCount = productCountResult?.[0];
 
-    const [syncCount] = await db
+    const syncCountResult = await db
       .select({ count: count() })
       .from(syndicationLogs)
       .where(sql`${syndicationLogs.createdAt} >= ${today}`);
+    const syncCount = syncCountResult?.[0];
 
     return {
-      totalBrands: brandCount.count,
-      totalProducts: productCount.count,
-      apiSyncsToday: syncCount.count,
+      totalBrands: brandCount?.count || 0,
+      totalProducts: productCount?.count || 0,
+      apiSyncsToday: syncCount?.count || 0,
       avgTimeToMarket: 8.2, // Mock value for now
     };
   }

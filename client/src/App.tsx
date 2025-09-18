@@ -10,35 +10,47 @@ import Dashboard from "@/pages/dashboard";
 import Brands from "@/pages/brands";
 import Products from "@/pages/products";
 import ProductEdit from "@/pages/product-edit";
+import ProductNew from "@/pages/product-new";
 import ProductManagementDashboard from "@/pages/product-management-dashboard";
 import ProductDetails from "@/pages/product-details";
 import BulkEdit from "@/pages/bulk-edit";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes - always accessible */}
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      
       {isLoading ? (
         // Show loading state - could add a loading component here
         <Route path="/" component={Landing} />
       ) : isAuthenticated ? (
+        // Authenticated routes
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/product-management" component={ProductManagementDashboard} />
           <Route path="/bulk-edit" component={BulkEdit} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
+          <Route path="/products/new" component={ProductNew} />
           <Route path="/products/:id/edit" component={ProductEdit} />
           <Route path="/products/:id/view" component={ProductDetails} />
           <Route path="/products/:id/manage" component={ProductDetails} />
         </>
       ) : (
-        // Not authenticated - show landing for all routes
+        // Not authenticated - show landing for protected routes
         <>
           <Route path="/" component={Landing} />
+          <Route path="/dashboard" component={Landing} />
           <Route path="/brands" component={Landing} />
           <Route path="/products" component={Landing} />
+          <Route path="/products/new" component={Landing} />
           <Route path="/products/:id/edit" component={Landing} />
         </>
       )}

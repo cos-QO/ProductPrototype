@@ -112,6 +112,7 @@ export default function BulkEditInterface() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
         description: `Updated ${selectedProducts.filter(p => p.selected).length} products successfully`,

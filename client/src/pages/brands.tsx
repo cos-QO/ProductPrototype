@@ -66,6 +66,7 @@ export default function Brands() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       setIsRegistrationOpen(false);
       form.reset();
       toast({
@@ -99,6 +100,7 @@ export default function Brands() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
         description: "Brand deleted successfully",

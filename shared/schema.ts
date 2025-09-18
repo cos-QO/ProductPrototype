@@ -35,6 +35,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("retailer"), // brand_owner, retailer, content_team
+  passwordHash: varchar("password_hash", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -65,8 +66,13 @@ export const products: any = pgTable("products", {
   brandId: integer("brand_id").references(() => brands.id),
   parentId: integer("parent_id").references(() => products.id), // for variants
   sku: varchar("sku", { length: 100 }).unique(),
+  gtin: varchar("gtin", { length: 20 }),
   status: varchar("status").default("draft"), // draft, review, live, archived
   isVariant: boolean("is_variant").default(false),
+  price: integer("price"), // Store as cents to avoid float issues
+  compareAtPrice: integer("compare_at_price"),
+  stock: integer("stock"),
+  lowStockThreshold: integer("low_stock_threshold"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -183,11 +189,85 @@ export const syndicationLogs = pgTable("syndication_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Import session tracking for enhanced bulk upload
+export const importSessions = pgTable("import_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("session_id", { length: 255 }).unique().notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  fileName: varchar("file_name", { length: 500 }),
+  fileSize: integer("file_size"),
+  fileType: varchar("file_type", { length: 50 }),
+  totalRecords: integer("total_records"),
+  processedRecords: integer("processed_records").default(0),
+  successfulRecords: integer("successful_records").default(0),
+  failedRecords: integer("failed_records").default(0),
+  status: varchar("status", { length: 50 }).default("initiated"), // initiated, analyzing, mapping, previewing, processing, completed, failed, cancelled
+  errorLog: jsonb("error_log"),
+  fieldMappings: jsonb("field_mappings"),
+  importConfig: jsonb("import_config"),
+  processingRate: integer("processing_rate"), // records per second
+  estimatedTimeRemaining: integer("estimated_time_remaining"), // seconds
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Field mapping cache for intelligent learning
+export const fieldMappingCache = pgTable("field_mapping_cache", {
+  id: serial("id").primaryKey(),
+  sourceField: varchar("source_field", { length: 255 }).notNull(),
+  targetField: varchar("target_field", { length: 255 }).notNull(),
+  confidence: integer("confidence"), // 0-100 for percentage
+  strategy: varchar("strategy", { length: 50 }).notNull(), // exact, fuzzy, llm, historical, statistical
+  dataType: varchar("data_type", { length: 50 }).notNull(), // string, number, boolean, date, json
+  sampleValues: jsonb("sample_values"),
+  metadata: jsonb("metadata"), // Additional context about the mapping
+  usageCount: integer("usage_count").default(1),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Import history and audit trail
+export const importHistory = pgTable("import_history", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("session_id").references(() => importSessions.sessionId),
+  recordIndex: integer("record_index").notNull(),
+  recordData: jsonb("record_data").notNull(),
+  validationErrors: jsonb("validation_errors"),
+  importStatus: varchar("import_status", { length: 50 }).notNull(), // success, failed, skipped, fixed
+  entityType: varchar("entity_type", { length: 50 }).notNull(), // product, brand, attribute
+  entityId: integer("entity_id"), // ID of created/updated entity
+  processingTime: integer("processing_time"), // milliseconds
+  retryCount: integer("retry_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Import batch processing tracking
+export const importBatches = pgTable("import_batches", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("session_id").references(() => importSessions.sessionId),
+  batchNumber: integer("batch_number").notNull(),
+  startIndex: integer("start_index").notNull(),
+  endIndex: integer("end_index").notNull(),
+  recordCount: integer("record_count").notNull(),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, processing, completed, failed
+  processingTime: integer("processing_time"), // milliseconds
+  successCount: integer("success_count").default(0),
+  failureCount: integer("failure_count").default(0),
+  workerThread: varchar("worker_thread", { length: 100 }),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedBrands: many(brands),
   uploadedAssets: many(mediaAssets),
   retailerPermissions: many(brandRetailers),
+  importSessions: many(importSessions),
 }));
 
 export const brandsRelations = relations(brands, ({ one, many }) => ({
@@ -320,6 +400,29 @@ export const syndicationLogsRelations = relations(syndicationLogs, ({ one }) => 
   }),
 }));
 
+export const importSessionsRelations = relations(importSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [importSessions.userId],
+    references: [users.id],
+  }),
+  history: many(importHistory),
+  batches: many(importBatches),
+}));
+
+export const importHistoryRelations = relations(importHistory, ({ one }) => ({
+  session: one(importSessions, {
+    fields: [importHistory.sessionId],
+    references: [importSessions.sessionId],
+  }),
+}));
+
+export const importBatchesRelations = relations(importBatches, ({ one }) => ({
+  session: one(importSessions, {
+    fields: [importBatches.sessionId],
+    references: [importSessions.sessionId],
+  }),
+}));
+
 // Insert schemas
 export const insertBrandSchema = createInsertSchema(brands).omit({
   id: true,
@@ -365,8 +468,30 @@ export const insertSyndicationLogSchema = createInsertSchema(syndicationLogs).om
   createdAt: true,
 });
 
+export const insertImportSessionSchema = createInsertSchema(importSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFieldMappingCacheSchema = createInsertSchema(fieldMappingCache).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+});
+
+export const insertImportHistorySchema = createInsertSchema(importHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertImportBatchSchema = createInsertSchema(importBatches).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
-export type UpsertUser = typeof users.$inferInsert;
+export type UpsertUser = typeof users.$inferInsert & { password?: string };
 export type User = typeof users.$inferSelect;
 export type Brand = typeof brands.$inferSelect;
 export type InsertBrand = z.infer<typeof insertBrandSchema>;
@@ -386,3 +511,11 @@ export type ProductSyndication = typeof productSyndications.$inferSelect;
 export type InsertProductSyndication = z.infer<typeof insertProductSyndicationSchema>;
 export type SyndicationLog = typeof syndicationLogs.$inferSelect;
 export type InsertSyndicationLog = z.infer<typeof insertSyndicationLogSchema>;
+export type ImportSession = typeof importSessions.$inferSelect;
+export type InsertImportSession = z.infer<typeof insertImportSessionSchema>;
+export type FieldMappingCache = typeof fieldMappingCache.$inferSelect;
+export type InsertFieldMappingCache = z.infer<typeof insertFieldMappingCacheSchema>;
+export type ImportHistory = typeof importHistory.$inferSelect;
+export type InsertImportHistory = z.infer<typeof insertImportHistorySchema>;
+export type ImportBatch = typeof importBatches.$inferSelect;
+export type InsertImportBatch = z.infer<typeof insertImportBatchSchema>;

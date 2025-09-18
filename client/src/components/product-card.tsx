@@ -64,8 +64,22 @@ export default function ProductCard({ product, onDelete, isDeleting }: ProductCa
     >
       {/* Product Image Placeholder */}
       <div className="w-full h-48 bg-muted flex items-center justify-center relative overflow-hidden">
-        <Box className="h-16 w-16 text-muted-foreground opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent"></div>
+        {product.mediaAssets && product.mediaAssets.length > 0 ? (
+          <img
+            src={product.mediaAssets[0].url}
+            alt={product.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = `/placeholders/product-fallback.svg`;
+              e.currentTarget.classList.add('p-12');
+            }}
+          />
+        ) : (
+          <>
+            <Box className="h-16 w-16 text-muted-foreground opacity-30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent"></div>
+          </>
+        )}
       </div>
       
       <CardContent className="p-4">
