@@ -1,0 +1,21 @@
+name,description,price,sku,category,brand_id,stock,status
+Ultra Gaming Laptop,High-performance gaming laptop with RTX 4080,1299.99,UGL-4080,Electronics,1,50,active
+Wireless Bluetooth Headphones,Premium noise-cancelling headphones,299.99,WBH-NC300,Electronics,1,100,active
+Mechanical Gaming Keyboard,RGB backlit mechanical keyboard,159.99,MGK-RGB,Electronics,1,75,active
+4K Gaming Monitor,27-inch 4K gaming monitor 144Hz,599.99,4KGM-27,Electronics,1,25,active
+Gaming Mouse Pro,Precision gaming mouse with 12000 DPI,89.99,GMP-12K,Electronics,1,200,active
+Ergonomic Office Chair,Premium ergonomic chair for office,449.99,EOC-PREM,Furniture,2,30,active
+Standing Desk Electric,Height adjustable electric standing desk,799.99,SDE-ADJ,Furniture,2,15,active
+Desk Lamp LED,Adjustable LED desk lamp with USB charging,79.99,DL-LED-USB,Furniture,2,60,active
+Wireless Charger Pad,Fast wireless charging pad 15W,39.99,WCP-15W,Electronics,1,150,active
+Smart Home Assistant,Voice-controlled smart home hub,149.99,SHA-VOICE,Electronics,1,80,active
+Bluetooth Speaker,Portable waterproof Bluetooth speaker,129.99,BTS-WATER,Electronics,1,120,active
+USB-C Hub,8-in-1 USB-C hub with HDMI and power delivery,69.99,USBCH-8IN1,Electronics,1,90,active
+External SSD Drive,1TB external SSD with USB 3.2,199.99,ESSD-1TB,Electronics,1,40,active
+Webcam 4K,Ultra HD 4K webcam for streaming,249.99,WC-4K-ULTRA,Electronics,1,35,active
+Laptop Stand Aluminum,Adjustable aluminum laptop stand,59.99,LSA-ADJ,Furniture,2,70,active
+Coffee Mug Ceramic,Premium ceramic coffee mug 12oz,19.99,CMC-12OZ,Kitchen,3,300,active
+Water Bottle Steel,Insulated stainless steel water bottle,29.99,WBS-INSUL,Kitchen,3,250,active
+Notebook Leather,Premium leather bound notebook A5,34.99,NL-A5-PREM,Office,3,100,active
+Pen Set Luxury,Luxury fountain pen set with case,149.99,PSL-FOUNTAIN,Office,3,25,active
+Desk Organizer Wood,Wooden desk organizer with compartments,49.99,DOW-COMP,Office,3,45,active

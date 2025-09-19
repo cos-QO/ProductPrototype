@@ -1,0 +1,4 @@
+name,sku,price,description,category
+Product A,SKU-001,19.99,A great product,Electronics
+Product B,SKU-002,29.99,,Home
+Product C,SKU-003,,Very cheap product

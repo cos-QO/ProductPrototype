@@ -195,13 +195,15 @@ export const importSessions = pgTable("import_sessions", {
   sessionId: varchar("session_id", { length: 255 }).unique().notNull(),
   userId: varchar("user_id").references(() => users.id),
   fileName: varchar("file_name", { length: 500 }),
+  filePath: varchar("file_path", { length: 1000 }), // Path to uploaded file for persistence
   fileSize: integer("file_size"),
   fileType: varchar("file_type", { length: 50 }),
   totalRecords: integer("total_records"),
   processedRecords: integer("processed_records").default(0),
   successfulRecords: integer("successful_records").default(0),
   failedRecords: integer("failed_records").default(0),
-  status: varchar("status", { length: 50 }).default("initiated"), // initiated, analyzing, mapping, previewing, processing, completed, failed, cancelled
+  status: varchar("status", { length: 50 }).default("initiated"), // initiated, analyzing, mapping, mapping_complete, generating_preview, preview_ready, awaiting_approval, previewing, processing, completed, failed, cancelled
+  workflowState: varchar("workflow_state", { length: 50 }), // Workflow automation state tracking
   errorLog: jsonb("error_log"),
   fieldMappings: jsonb("field_mappings"),
   importConfig: jsonb("import_config"),
@@ -519,3 +521,36 @@ export type ImportHistory = typeof importHistory.$inferSelect;
 export type InsertImportHistory = z.infer<typeof insertImportHistorySchema>;
 export type ImportBatch = typeof importBatches.$inferSelect;
 export type InsertImportBatch = z.infer<typeof insertImportBatchSchema>;
+
+// Workflow automation types
+export interface FieldMapping {
+  sourceField: string;
+  targetField: string;
+  confidence: number; // 0-100
+  strategy: "exact" | "fuzzy" | "llm" | "historical" | "statistical";
+  metadata?: any;
+}
+
+export interface ValidationResult {
+  success: boolean;
+  sessionId: string;
+  totalRecords: number;
+  validRecords: number;
+  invalidRecords: number;
+  errors: ValidationError[];
+  previewData: any[];
+  error?: string;
+}
+
+export interface ValidationError {
+  recordIndex: number;
+  field: string;
+  value: any;
+  rule: string;
+  severity: "error" | "warning";
+  suggestion?: string;
+  autoFix?: {
+    action: string;
+    newValue: any;
+  };
+}

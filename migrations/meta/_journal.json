@@ -22,6 +22,20 @@
       "when": 1758132020488,
       "tag": "0002_modern_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758275924491,
+      "tag": "0003_smart_hawkeye",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1758297741174,
+      "tag": "0004_careless_hemingway",
+      "breakpoints": true
     }
   ]
 }

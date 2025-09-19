@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { parse } from 'url';
 import { batchProcessor } from './batch-processor';
+import type { WorkflowEvent } from './services/workflow-orchestrator';
 
 // Types for WebSocket messages
 interface ProgressMessage {
@@ -54,7 +55,24 @@ interface CompletedMessage {
   };
 }
 
-type WebSocketMessage = ProgressMessage | BatchCompletedMessage | ErrorMessage | CompletedMessage;
+// Workflow-specific message types
+interface WorkflowMessage {
+  type: 'analysis_complete' | 'preview_generation_started' | 'preview_ready' | 
+        'approval_required' | 'workflow_advanced' | 'execution_started' |
+        'workflow_error' | 'mapping_suggestions';
+  sessionId: string;
+  data: any;
+  metadata?: {
+    autoAdvance?: boolean;
+    confidence?: number;
+    userAction?: boolean;
+    expectedNextStep?: number;
+    strategy?: string;
+  };
+  timestamp: string;
+}
+
+type WebSocketMessage = ProgressMessage | BatchCompletedMessage | ErrorMessage | CompletedMessage | WorkflowMessage;
 
 interface ClientConnection {
   ws: WebSocket;
@@ -214,7 +232,7 @@ export class WebSocketService {
         }
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Batch completed
@@ -232,7 +250,7 @@ export class WebSocketService {
         }
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Import completed
@@ -249,7 +267,7 @@ export class WebSocketService {
         }
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Import errors
@@ -263,7 +281,7 @@ export class WebSocketService {
         }
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Batch failed
@@ -277,7 +295,7 @@ export class WebSocketService {
         }
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Import cancelled
@@ -288,14 +306,15 @@ export class WebSocketService {
         timestamp: new Date().toISOString()
       };
       
-      this.broadcastToSession(data.sessionId, message);
+      this.legacyBroadcastToSession(data.sessionId, message);
     });
   }
 
   /**
-   * Broadcast message to all clients subscribed to a session
+   * Legacy broadcast method - replaced with enhanced version above
+   * Kept for backward compatibility with batch processor
    */
-  private broadcastToSession(sessionId: string, message: any): void {
+  private legacyBroadcastToSession(sessionId: string, message: any): void {
     const clients = this.clients.get(sessionId);
     if (!clients || clients.length === 0) {
       return;
@@ -417,6 +436,108 @@ export class WebSocketService {
       activeSessions: this.clients.size,
       sessionDetails
     };
+  }
+
+  /**
+   * NEW: Emit workflow-specific events for automation
+   */
+  async emitWorkflowEvent(sessionId: string, event: WorkflowEvent): Promise<void> {
+    try {
+      const message: WorkflowMessage = {
+        type: event.type,
+        sessionId,
+        data: event.payload,
+        metadata: event.metadata,
+        timestamp: new Date().toISOString()
+      };
+      
+      this.broadcastToSession(sessionId, message);
+      
+      // Log workflow progression for debugging
+      console.log(`[WEBSOCKET] Workflow event emitted: ${event.type} for session ${sessionId}`, {
+        confidence: event.metadata?.confidence,
+        autoAdvance: event.metadata?.autoAdvance,
+        expectedNextStep: event.metadata?.expectedNextStep
+      });
+    } catch (error) {
+      console.error('[WEBSOCKET] Error emitting workflow event:', error);
+    }
+  }
+
+  /**
+   * Emit analysis complete event
+   */
+  async emitAnalysisComplete(sessionId: string, analysisResult: any): Promise<void> {
+    await this.emitWorkflowEvent(sessionId, {
+      type: 'analysis_complete',
+      sessionId,
+      payload: analysisResult,
+      timestamp: new Date(),
+      metadata: { autoAdvance: true }
+    });
+  }
+
+  /**
+   * Emit preview ready event
+   */
+  async emitPreviewReady(sessionId: string, previewData: any): Promise<void> {
+    await this.emitWorkflowEvent(sessionId, {
+      type: 'preview_ready',
+      sessionId, 
+      payload: previewData,
+      timestamp: new Date(),
+      metadata: { autoAdvance: true }
+    });
+  }
+
+  /**
+   * Emit workflow error event
+   */
+  async emitWorkflowError(sessionId: string, error: any): Promise<void> {
+    await this.emitWorkflowEvent(sessionId, {
+      type: 'workflow_error',
+      sessionId,
+      payload: {
+        error: error.message || 'Unknown workflow error',
+        recoverable: true,
+        fallbackAction: 'manual_intervention_required'
+      },
+      timestamp: new Date(),
+      metadata: { autoAdvance: false, userAction: true }
+    });
+  }
+
+  /**
+   * Enhanced broadcast with message filtering and validation
+   */
+  private broadcastToSession(sessionId: string, message: any): void {
+    const clients = this.clients.get(sessionId);
+    if (!clients || clients.length === 0) {
+      console.log(`[WEBSOCKET] No clients connected for session ${sessionId}`);
+      return;
+    }
+
+    const messageStr = JSON.stringify(message);
+    let successCount = 0;
+    let failureCount = 0;
+    
+    clients.forEach(client => {
+      if (client.ws.readyState === WebSocket.OPEN) {
+        try {
+          client.ws.send(messageStr);
+          successCount++;
+        } catch (error) {
+          console.error('[WEBSOCKET] Error sending message to client:', error);
+          this.removeClient(client);
+          failureCount++;
+        }
+      } else {
+        this.removeClient(client);
+        failureCount++;
+      }
+    });
+
+    console.log(`[WEBSOCKET] Message broadcast to session ${sessionId}: ${successCount} sent, ${failureCount} failed`);
   }
 
   /**

@@ -6,8 +6,19 @@ export interface UploadSession {
   userId: number;
   fileName: string;
   fileSize: number;
-  fileFormat: 'csv' | 'json' | 'xlsx';
-  status: 'initiated' | 'analyzing' | 'mapping' | 'previewing' | 'importing' | 'completed' | 'failed';
+  fileFormat: "csv" | "json" | "xlsx";
+  status:
+    | "initiated"
+    | "analyzing"
+    | "mapping"
+    | "mapping_complete"
+    | "generating_preview"
+    | "preview_ready"
+    | "awaiting_approval"
+    | "previewing"
+    | "importing"
+    | "completed"
+    | "failed";
   recordCount: number;
   createdAt: string;
   updatedAt: string;
@@ -16,7 +27,7 @@ export interface UploadSession {
 
 export interface SourceField {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+  type: "string" | "number" | "boolean" | "date" | "array" | "object";
   sampleValues: any[];
   valueCount: number;
   nullCount: number;
@@ -28,7 +39,7 @@ export interface SourceField {
 export interface TargetField {
   name: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+  type: "string" | "number" | "boolean" | "date" | "array" | "object";
   required: boolean;
   description?: string;
   validation?: {
@@ -55,7 +66,7 @@ export interface ValidationError {
   field: string;
   value: any;
   rule: string;
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
   message: string;
   suggestion?: string;
   autoFix?: {
@@ -75,7 +86,7 @@ export interface ImportProgress {
   totalBatches: number;
   processingRate: number;
   estimatedTimeRemaining: number;
-  status: 'running' | 'paused' | 'completed' | 'failed';
+  status: "running" | "paused" | "completed" | "failed";
   errors: ValidationError[];
   startTime: string;
   endTime?: string;
@@ -125,7 +136,9 @@ export interface FieldMappingTableProps {
   targetFields: TargetField[];
   mappings: FieldMapping[];
   onMappingChange: (sourceField: string, targetField: string) => void;
-  onBulkAction: (action: 'accept-high-confidence' | 'clear-all' | 'auto-map') => void;
+  onBulkAction: (
+    action: "accept-high-confidence" | "clear-all" | "auto-map",
+  ) => void;
   isLoading?: boolean;
 }
 
@@ -157,7 +170,7 @@ export interface ProgressTrackerProps {
 export interface ConfidenceIndicatorProps {
   confidence: number;
   showPercentage?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 }
 
 export interface ErrorDisplayProps {
@@ -185,24 +198,34 @@ export interface MetricCardProps {
 
 // WebSocket Message Types
 export interface WebSocketMessage {
-  type: 'progress' | 'completed' | 'error' | 'mapping_suggestions' | 'validation_update';
+  type:
+    | "progress"
+    | "completed"
+    | "error"
+    | "mapping_suggestions"
+    | "validation_update"
+    | "analysis_complete"
+    | "preview_generation_started"
+    | "preview_ready"
+    | "approval_required"
+    | "workflow_advanced";
   sessionId: string;
   data: any;
   timestamp: string;
 }
 
 export interface ProgressMessage extends WebSocketMessage {
-  type: 'progress';
+  type: "progress";
   data: ImportProgress;
 }
 
 export interface CompletionMessage extends WebSocketMessage {
-  type: 'completed';
+  type: "completed";
   data: ImportResults;
 }
 
 export interface ErrorMessage extends WebSocketMessage {
-  type: 'error';
+  type: "error";
   data: {
     message: string;
     code?: string;
@@ -211,7 +234,7 @@ export interface ErrorMessage extends WebSocketMessage {
 }
 
 export interface MappingSuggestionsMessage extends WebSocketMessage {
-  type: 'mapping_suggestions';
+  type: "mapping_suggestions";
   data: {
     suggestions: FieldMapping[];
     confidence: number;
@@ -250,31 +273,37 @@ export interface PreviewResponse {
 
 export interface ImportExecutionResponse {
   sessionId: string;
-  status: 'started' | 'queued';
+  status: "started" | "queued";
   estimatedCompletionTime?: string;
 }
 
 // Error Types for Error Handling
 export interface BulkUploadError extends Error {
   code: string;
-  type: 'FILE_UPLOAD' | 'FIELD_MAPPING' | 'DATA_VALIDATION' | 'IMPORT_EXECUTION' | 'NETWORK' | 'SYSTEM';
+  type:
+    | "FILE_UPLOAD"
+    | "FIELD_MAPPING"
+    | "DATA_VALIDATION"
+    | "IMPORT_EXECUTION"
+    | "NETWORK"
+    | "SYSTEM";
   details?: any;
   recoverable: boolean;
   suggestions?: string[];
 }
 
 export interface ErrorRecoveryAction {
-  type: 'retry' | 'skip' | 'fix' | 'cancel' | 'contact_support';
+  type: "retry" | "skip" | "fix" | "cancel" | "contact_support";
   label: string;
   description: string;
   action: () => void;
 }
 
 // Utility Types
-export type WizardStepId = 'upload' | 'mapping' | 'preview' | 'import';
-export type FileFormat = 'csv' | 'json' | 'xlsx';
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
-export type ValidationSeverity = 'error' | 'warning' | 'info';
+export type WizardStepId = "upload" | "mapping" | "preview" | "import";
+export type FileFormat = "csv" | "json" | "xlsx";
+export type ConfidenceLevel = "high" | "medium" | "low";
+export type ValidationSeverity = "error" | "warning" | "info";
 
 // Form Types for Components
 export interface BulkUploadFormData {

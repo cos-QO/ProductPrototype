@@ -23,6 +23,10 @@ import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 import { v4 as uuidv4 } from "uuid";
 import { eq, desc, and } from "drizzle-orm";
+import {
+  WorkflowOrchestrator,
+  WorkflowState,
+} from "./services/workflow-orchestrator";
 
 // Enhanced file upload configuration is now handled by secure middleware
 // The secure upload is imported from middleware/security.ts
@@ -117,6 +121,7 @@ interface BatchProcessorConfig {
 
 // Enhanced Import Service Class
 export class EnhancedImportService {
+  private workflowOrchestrator = WorkflowOrchestrator.getInstance();
   private static instance: EnhancedImportService;
   private activeUploads: Map<string, ImportSession> = new Map();
   private batchConfig: BatchProcessorConfig = {
@@ -185,19 +190,20 @@ export class EnhancedImportService {
         return res.status(400).json({ error: "Session ID required" });
       }
 
-      // Update session with file information
+      // Update session with file information including file path for persistence
       await this.updateSession(sessionId, {
         fileName: file.originalname,
+        filePath: file.path, // Store file path for later retrieval
         fileSize: file.size,
         fileType: file.mimetype,
         status: "analyzing",
       });
 
-      // Enhanced field extraction using the advanced service
-      const { FieldExtractionService } = await import(
-        "./services/field-extraction-service"
+      // Enhanced field extraction using the adaptive integration service
+      const { AdaptiveFieldIntegration } = await import(
+        "./services/adaptive-field-integration"
       );
-      const fieldExtractor = FieldExtractionService.getInstance();
+      const adaptiveFieldIntegration = AdaptiveFieldIntegration.getInstance();
 
       const fileType = this.getFileTypeFromExtension(file.originalname) as
         | "csv"
@@ -226,18 +232,39 @@ export class EnhancedImportService {
         );
       }
 
-      const extractedFields = await fieldExtractor.extractFieldsFromFile(
-        fileBuffer,
-        file.originalname,
-        fileType,
-        {
-          maxSampleSize: 100,
-          includeStatistics: true,
-          expandAbbreviations: true,
-          inferTypes: true,
-          analyzePatterns: true,
-        },
-      );
+      // Use adaptive field integration for enhanced CSV parsing
+      const adaptiveResult =
+        await adaptiveFieldIntegration.extractFieldsWithAdaptiveParsing(
+          fileBuffer,
+          file.originalname,
+          {
+            maxSampleSize: 100,
+            includeStatistics: true,
+            expandAbbreviations: true,
+            inferTypes: true,
+            analyzePatterns: true,
+          },
+        );
+
+      if (!adaptiveResult.success) {
+        throw new Error(
+          adaptiveResult.error || "Adaptive field extraction failed",
+        );
+      }
+
+      const extractedFields = adaptiveResult.extractedFields;
+
+      // Log adaptive integration metadata for debugging
+      console.log("Adaptive field extraction completed:", {
+        adaptiveParsingUsed:
+          adaptiveResult.integrationMetadata.adaptiveParsingUsed,
+        fallbackToBasic: adaptiveResult.integrationMetadata.fallbackToBasic,
+        confidenceImprovement:
+          adaptiveResult.integrationMetadata.confidenceImprovement,
+        processingTime: adaptiveResult.integrationMetadata.totalProcessingTime,
+        confidence: adaptiveResult.parseResult.confidence,
+        strategy: adaptiveResult.parseResult.strategy,
+      });
 
       // Multi-strategy field mapping using the enhanced engine
       let suggestedMappings: FieldMapping[] = [];
@@ -338,11 +365,28 @@ export class EnhancedImportService {
         suggestedMappings,
       };
 
+      // WORKFLOW AUTOMATION: Trigger automatic workflow progression
+      try {
+        await this.workflowOrchestrator.handleAnalysisComplete({
+          sessionId,
+          session: await this.getSession(sessionId),
+          fieldMappings: suggestedMappings,
+          confidence: this.calculateAverageConfidence(suggestedMappings),
+        });
+      } catch (workflowError) {
+        console.error(
+          "[ENHANCED IMPORT] Workflow automation error:",
+          workflowError,
+        );
+        // Don't fail the analysis if workflow automation fails
+      }
+
       res.json(result);
     } catch (error: any) {
       console.error("File analysis error:", error);
       await this.updateSession(req.params.sessionId, {
         status: "failed",
+        workflowState: WorkflowState.FAILED,
         errorLog: { error: error.message },
       });
       res.status(500).json({
@@ -382,6 +426,31 @@ export class EnhancedImportService {
       console.error("Mapping override error:", error);
       res.status(500).json({
         error: "Failed to update mappings",
+        message: error.message,
+      });
+    }
+  }
+
+  // Step 3.5: Get field mappings for session
+  async getFieldMappings(req: Request, res: Response) {
+    try {
+      const { sessionId } = req.params;
+
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      res.json({
+        success: true,
+        mappings: session.fieldMappings || [],
+        sourceFields: session.extractedFields || [],
+        targetFields: this.getTargetFields(),
+      });
+    } catch (error: any) {
+      console.error("Error getting field mappings:", error);
+      res.status(500).json({
+        error: "Failed to get field mappings",
         message: error.message,
       });
     }
@@ -476,6 +545,112 @@ export class EnhancedImportService {
         error: "Import execution failed",
         message: error.message,
       });
+    }
+  }
+
+  // NEW: Internal preview generation for workflow orchestrator
+  async generatePreviewInternal(sessionId: string): Promise<ValidationResult> {
+    try {
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        throw new Error("Session not found");
+      }
+
+      // Get cached file data
+      const fileData = await this.getCachedFileData(sessionId);
+      if (!fileData) {
+        throw new Error("File data not found. Please re-upload.");
+      }
+
+      // Apply field mappings
+      const mappings = session.fieldMappings as FieldMapping[];
+      const mappedData = await this.applyFieldMappings(fileData, mappings);
+
+      // Validate data
+      const validationResults = await this.validateData(mappedData);
+
+      // Generate preview subset
+      const previewData = mappedData.slice(0, 20);
+
+      // Update session status
+      await this.updateSession(sessionId, {
+        status: "previewing",
+        workflowState: WorkflowState.PREVIEW_READY,
+      });
+
+      const result: ValidationResult = {
+        success: true,
+        sessionId,
+        totalRecords: mappedData.length,
+        validRecords: validationResults.validCount,
+        invalidRecords: validationResults.invalidCount,
+        errors: validationResults.errors,
+        previewData,
+      };
+
+      console.log(
+        `[ENHANCED IMPORT] Internal preview generated for session ${sessionId}: ${result.validRecords}/${result.totalRecords} valid records`,
+      );
+      return result;
+    } catch (error: any) {
+      console.error(
+        "[ENHANCED IMPORT] Internal preview generation error:",
+        error,
+      );
+      return {
+        success: false,
+        sessionId,
+        totalRecords: 0,
+        validRecords: 0,
+        invalidRecords: 0,
+        errors: [],
+        previewData: [],
+        error: error.message,
+      };
+    }
+  }
+
+  // Calculate average confidence from field mappings
+  private calculateAverageConfidence(fieldMappings: FieldMapping[]): number {
+    if (!fieldMappings || fieldMappings.length === 0) return 0;
+
+    const totalConfidence = fieldMappings.reduce(
+      (sum, mapping) => sum + (mapping.confidence || 0),
+      0,
+    );
+    const averageConfidence = totalConfidence / fieldMappings.length;
+
+    return Math.round(averageConfidence * 100) / 100; // Round to 2 decimal places
+  }
+
+  // Public method to update session (expose for workflow orchestrator)
+  async updateSession(
+    sessionId: string,
+    updates: Partial<InsertImportSession>,
+  ) {
+    try {
+      await db
+        .update(importSessions)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(importSessions.sessionId, sessionId));
+    } catch (error) {
+      console.error("Error updating session:", error);
+    }
+  }
+
+  // Public method to get session (expose for workflow orchestrator)
+  async getSession(sessionId: string): Promise<ImportSession | null> {
+    try {
+      const sessions = await db
+        .select()
+        .from(importSessions)
+        .where(eq(importSessions.sessionId, sessionId))
+        .limit(1);
+
+      return sessions.length > 0 ? sessions[0] : null;
+    } catch (error) {
+      console.error("Error getting session:", error);
+      return null;
     }
   }
 
@@ -692,39 +867,67 @@ export class EnhancedImportService {
     return errors;
   }
 
-  private async updateSession(
-    sessionId: string,
-    updates: Partial<InsertImportSession>,
-  ) {
-    try {
-      await db
-        .update(importSessions)
-        .set({ ...updates, updatedAt: new Date() })
-        .where(eq(importSessions.sessionId, sessionId));
-    } catch (error) {
-      console.error("Error updating session:", error);
-    }
-  }
-
-  private async getSession(sessionId: string): Promise<ImportSession | null> {
-    try {
-      const sessions = await db
-        .select()
-        .from(importSessions)
-        .where(eq(importSessions.sessionId, sessionId))
-        .limit(1);
-
-      return sessions.length > 0 ? sessions[0] : null;
-    } catch (error) {
-      console.error("Error getting session:", error);
-      return null;
-    }
-  }
+  // Note: updateSession and getSession methods moved above and made public for workflow orchestrator access
 
   private async getCachedFileData(sessionId: string): Promise<any[] | null> {
-    // In a real implementation, this would retrieve cached file data
-    // For now, return null to indicate the file needs to be re-uploaded
-    return null;
+    try {
+      // Get session to retrieve file path
+      const session = await this.getSession(sessionId);
+      if (!session || !session.filePath) {
+        console.log(`No file path found for session ${sessionId}`);
+        return null;
+      }
+
+      // Check if file still exists
+      try {
+        await fs.access(session.filePath);
+      } catch (accessError) {
+        console.log(`File no longer exists at path: ${session.filePath}`);
+        return null;
+      }
+
+      // Read and parse the file based on type
+      const fileBuffer = await fs.readFile(session.filePath);
+      const fileType = this.getFileTypeFromExtension(session.fileName || "");
+
+      let data: any[] = [];
+
+      switch (fileType) {
+        case "csv":
+          const csvContent = fileBuffer.toString("utf-8");
+          data = parse(csvContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+          });
+          break;
+
+        case "json":
+          const jsonContent = fileBuffer.toString("utf-8");
+          const parsed = JSON.parse(jsonContent);
+          data = Array.isArray(parsed) ? parsed : [parsed];
+          break;
+
+        case "xlsx":
+          const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          data = XLSX.utils.sheet_to_json(worksheet);
+          break;
+
+        default:
+          console.error(`Unsupported file type: ${fileType}`);
+          return null;
+      }
+
+      console.log(
+        `Successfully retrieved cached file data: ${data.length} records`,
+      );
+      return data;
+    } catch (error) {
+      console.error("Error retrieving cached file data:", error);
+      return null;
+    }
   }
 
   private async processBatchImport(sessionId: string, importConfig: any) {
@@ -837,6 +1040,43 @@ export class EnhancedImportService {
       default:
         return "json"; // default fallback
     }
+  }
+
+  private getTargetFields(): string[] {
+    // Return standard product fields for mapping
+    return [
+      "name",
+      "sku",
+      "description",
+      "shortDescription",
+      "longDescription",
+      "price",
+      "compareAtPrice",
+      "cost",
+      "stock",
+      "lowStockThreshold",
+      "weight",
+      "length",
+      "width",
+      "height",
+      "brand",
+      "category",
+      "subcategory",
+      "tags",
+      "images",
+      "status",
+      "isVariant",
+      "parentSku",
+      "variantOptions",
+      "manufacturer",
+      "supplier",
+      "barcode",
+      "gtin",
+      "mpn",
+      "taxable",
+      "taxRate",
+      "shippingRequired",
+    ];
   }
 }
 

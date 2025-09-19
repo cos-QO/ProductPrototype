@@ -19,10 +19,12 @@ const ALLOWED_MIME_TYPES = {
   ],
   documents: [
     'text/csv',
+    'application/csv',
     'application/json',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
     'application/vnd.ms-excel', // .xls (legacy)
-    'text/plain' // .txt
+    'text/plain', // .txt
+    'application/octet-stream' // fallback MIME type (requires additional validation)
   ],
   videos: [
     'video/mp4',
@@ -111,15 +113,27 @@ export const secureFileUpload = (options: {
         return cb(new Error(`File type ${ext} is not supported`));
       }
 
-      // Check MIME type
+      // Check MIME type with fallback handling
       if (!allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error(`MIME type ${file.mimetype} is not allowed`));
+        // Special handling for application/octet-stream (common fallback MIME type)
+        if (file.mimetype === 'application/octet-stream') {
+          // Validate based on file extension for known document types
+          const documentExtensions = ['.csv', '.json', '.txt'];
+          if (!documentExtensions.includes(ext)) {
+            return cb(new Error(`File type ${ext} with MIME type ${file.mimetype} is not allowed`));
+          }
+          // Allow octet-stream for document extensions (will be validated by content later)
+        } else {
+          return cb(new Error(`MIME type ${file.mimetype} is not allowed`));
+        }
       }
 
-      // Check for MIME type spoofing (basic check)
-      const expectedMimeForExt = getExpectedMimeType(ext);
-      if (expectedMimeForExt && !expectedMimeForExt.includes(file.mimetype)) {
-        return cb(new Error(`MIME type ${file.mimetype} does not match file extension ${ext}`));
+      // Check for MIME type spoofing (basic check) - skip for octet-stream since it's a fallback
+      if (file.mimetype !== 'application/octet-stream') {
+        const expectedMimeForExt = getExpectedMimeType(ext);
+        if (expectedMimeForExt && !expectedMimeForExt.includes(file.mimetype)) {
+          return cb(new Error(`MIME type ${file.mimetype} does not match file extension ${ext}`));
+        }
       }
 
       cb(null, true);
@@ -149,11 +163,11 @@ function getExpectedMimeType(ext: string): string[] | null {
     '.png': ['image/png'],
     '.gif': ['image/gif'],
     '.webp': ['image/webp'],
-    '.csv': ['text/csv', 'application/csv', 'text/plain'],
-    '.json': ['application/json', 'text/plain'],
+    '.csv': ['text/csv', 'application/csv', 'text/plain', 'application/octet-stream'],
+    '.json': ['application/json', 'text/plain', 'application/octet-stream'],
     '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
     '.xls': ['application/vnd.ms-excel'],
-    '.txt': ['text/plain'],
+    '.txt': ['text/plain', 'application/octet-stream'],
     '.mp4': ['video/mp4'],
     '.mpeg': ['video/mpeg'],
     '.mov': ['video/quicktime'],
