@@ -1,2 +1,0 @@
-name,slug,short_description,long_description,story,brand_id,parent_id,sku,gtin,status,is_variant,price,compare_at_price,stock,low_stock_threshold,weight,dimensions,tags,variants,category,condition,warranty
-Test CSV Product,test-csv-product,A test product uploaded via CSV,This is a test product to verify CSV upload functionality works correctly,Testing the bulk upload system after fixing the database migration issue,1,,TEST-CSV-001,1111111111111,active,false,9999,11999,50,10,200,10x5x3,test,csv,upload,Color: Red|Blue,Electronics,new,1 year warranty

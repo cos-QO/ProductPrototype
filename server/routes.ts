@@ -1932,6 +1932,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WebSocket Health Check (for monitoring and alerting)
+  app.get("/api/websocket/health", isAuthenticated, async (req: any, res) => {
+    try {
+      const { webSocketService } = await import("./websocket-service");
+      const health = webSocketService.healthCheck();
+
+      // Set HTTP status based on health status
+      const statusCode = health.status === 'healthy' ? 200 : 
+                        health.status === 'degraded' ? 200 : 503;
+
+      res.status(statusCode).json({
+        success: health.status !== 'error',
+        health,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error getting WebSocket health:", error);
+      res.status(503).json({
+        success: false,
+        health: {
+          status: 'error',
+          details: {
+            initialized: false,
+            serverRunning: false,
+            connectionsActive: 0,
+            uptime: null,
+            lastCheck: new Date()
+          }
+        },
+        error: "Failed to get WebSocket health",
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Error Recovery Routes
 
   // Analyze import errors and suggest fixes
@@ -2426,17 +2462,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Initialize WebSocket service for real-time communication
-  const { webSocketService } = await import("./websocket-service");
-
   // Serve uploaded files with security
   app.use("/uploads", secureFileServing("uploads"));
   app.use("/uploads", express.static("uploads"));
 
   const httpServer = createServer(app);
 
-  // Initialize WebSocket service with the HTTP server
-  webSocketService.initialize(httpServer);
+  // NOTE: WebSocket service initialization is handled in index.ts to avoid duplicate initialization
 
   return httpServer;
 }

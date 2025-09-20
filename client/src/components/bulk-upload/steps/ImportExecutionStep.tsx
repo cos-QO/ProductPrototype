@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Loader2, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
+import React, { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
   Database,
   Zap,
   Download,
@@ -20,10 +20,46 @@ import {
   RotateCcw,
   Play,
   Pause,
-  Square
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { UploadSession, ImportProgress, ImportResults, ValidationError } from '../types';
+  Square,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type {
+  UploadSession,
+  ImportProgress,
+  ImportResults,
+  ValidationError,
+} from "../types";
+
+// Validation helpers to prevent NaN and undefined values
+const validateSessionData = (
+  sessionData: UploadSession | null,
+): UploadSession | null => {
+  if (!sessionData) return null;
+
+  return {
+    ...sessionData,
+    recordCount: Math.max(0, sessionData.recordCount || 0),
+    fileSize: Math.max(0, sessionData.fileSize || 0),
+    fileFormat: sessionData.fileFormat || "csv",
+  };
+};
+
+const validateProgressData = (
+  progress: ImportProgress | null,
+): ImportProgress | null => {
+  if (!progress) return null;
+
+  return {
+    ...progress,
+    totalRecords: Math.max(0, progress.totalRecords || 0),
+    processedRecords: Math.max(0, progress.processedRecords || 0),
+    successfulRecords: Math.max(0, progress.successfulRecords || 0),
+    failedRecords: Math.max(0, progress.failedRecords || 0),
+    processingRate: Math.max(0, progress.processingRate || 0),
+    estimatedTimeRemaining: Math.max(0, progress.estimatedTimeRemaining || 0),
+    errors: progress.errors || [],
+  };
+};
 
 interface ImportExecutionStepProps {
   sessionData: UploadSession | null;
@@ -44,9 +80,7 @@ const MetricCard: React.FC<{
   className?: string;
 }> = ({ icon, label, value, sublabel, className }) => (
   <div className={cn("text-center p-4 rounded-lg", className)}>
-    <div className="flex items-center justify-center mb-2">
-      {icon}
-    </div>
+    <div className="flex items-center justify-center mb-2">{icon}</div>
     <div className="text-2xl font-bold">{value}</div>
     <div className="text-sm text-muted-foreground">{label}</div>
     {sublabel && (
@@ -60,9 +94,16 @@ const ProgressTracker: React.FC<{
   progress: ImportProgress;
   showDetails?: boolean;
 }> = ({ progress, showDetails = true }) => {
-  const progressPercentage = Math.round((progress.processedRecords / progress.totalRecords) * 100);
-  
+  // Safe calculation to prevent NaN
+  const progressPercentage = (() => {
+    const processed = progress?.processedRecords || 0;
+    const total = progress?.totalRecords || 0;
+    return total > 0 ? Math.round((processed / total) * 100) : 0;
+  })();
+
   const formatDuration = (seconds: number) => {
+    // Safety check for invalid numbers
+    if (!seconds || isNaN(seconds) || seconds < 0) return "0s";
     if (seconds < 60) return `${Math.round(seconds)}s`;
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.round(seconds % 60);
@@ -70,9 +111,14 @@ const ProgressTracker: React.FC<{
   };
 
   const getElapsedTime = () => {
-    const start = new Date(progress.startTime);
-    const now = new Date();
-    return (now.getTime() - start.getTime()) / 1000;
+    try {
+      const start = new Date(progress?.startTime || Date.now());
+      const now = new Date();
+      const elapsed = (now.getTime() - start.getTime()) / 1000;
+      return Math.max(0, elapsed); // Ensure non-negative
+    } catch (error) {
+      return 0; // Fallback for invalid dates
+    }
   };
 
   return (
@@ -80,49 +126,53 @@ const ProgressTracker: React.FC<{
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Import Progress</h3>
         <span className="text-sm text-muted-foreground">
-          {progress.processedRecords} / {progress.totalRecords} records
+          {progress?.processedRecords || 0} / {progress?.totalRecords || 0}{" "}
+          records
         </span>
       </div>
-      
+
       <Progress value={progressPercentage} className="h-3" />
-      
+
       {showDetails && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard 
+          <MetricCard
             icon={<Database className="h-4 w-4" />}
-            label="Processed" 
-            value={progress.processedRecords}
-            sublabel={`of ${progress.totalRecords}`}
+            label="Processed"
+            value={progress?.processedRecords || 0}
+            sublabel={`of ${progress?.totalRecords || 0}`}
             className="bg-blue-50 dark:bg-blue-900/20"
           />
-          <MetricCard 
+          <MetricCard
             icon={<CheckCircle className="h-4 w-4 text-green-500" />}
-            label="Successful" 
-            value={progress.successfulRecords}
+            label="Successful"
+            value={progress?.successfulRecords || 0}
             sublabel="imports"
             className="bg-green-50 dark:bg-green-900/20"
           />
-          <MetricCard 
+          <MetricCard
             icon={<XCircle className="h-4 w-4 text-red-500" />}
-            label="Failed" 
-            value={progress.failedRecords}
+            label="Failed"
+            value={progress?.failedRecords || 0}
             sublabel="errors"
             className="bg-red-50 dark:bg-red-900/20"
           />
-          <MetricCard 
+          <MetricCard
             icon={<Zap className="h-4 w-4 text-blue-500" />}
-            label="Rate" 
-            value={`${progress.processingRate}/sec`}
+            label="Rate"
+            value={`${progress?.processingRate || 0}/sec`}
             sublabel="processing"
             className="bg-yellow-50 dark:bg-yellow-900/20"
           />
         </div>
       )}
-      
-      {progress.estimatedTimeRemaining > 0 && (
+
+      {(progress?.estimatedTimeRemaining || 0) > 0 && (
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Elapsed: {formatDuration(getElapsedTime())}</span>
-          <span>Estimated remaining: {formatDuration(progress.estimatedTimeRemaining)}</span>
+          <span>
+            Estimated remaining:{" "}
+            {formatDuration(progress?.estimatedTimeRemaining || 0)}
+          </span>
         </div>
       )}
     </div>
@@ -155,7 +205,10 @@ const ErrorFeed: React.FC<{
       <CardContent>
         <ScrollArea className="h-40">
           {errors.slice(0, 20).map((error, index) => (
-            <div key={index} className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+            <div
+              key={index}
+              className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded"
+            >
               <p className="text-sm font-medium">Row {error.recordIndex + 1}</p>
               <p className="text-sm text-muted-foreground">{error.message}</p>
               {error.suggestion && (
@@ -188,26 +241,33 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
   const { toast } = useToast();
   const [hasStarted, setHasStarted] = useState(false);
 
+  // Validate incoming data to prevent NaN calculations
+  const validatedSessionData = validateSessionData(sessionData);
+  const validatedProgress = validateProgressData(importProgress);
+
   // Execute import mutation
   const executeImportMutation = useMutation({
     mutationFn: async () => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await apiRequest('POST', `/api/import/${sessionData.id}/execute`);
+      if (!validatedSessionData?.id) throw new Error("No session");
+
+      const response = await apiRequest(
+        "POST",
+        `/api/import/${validatedSessionData.id}/execute`,
+      );
       return response;
     },
     onSuccess: (data) => {
       setHasStarted(true);
       toast({
-        title: 'Import Started',
-        description: 'Your bulk import is now in progress',
+        title: "Import Started",
+        description: "Your bulk import is now in progress",
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Import Failed to Start',
-        description: error.message || 'Failed to start import process',
-        variant: 'destructive',
+        title: "Import Failed to Start",
+        description: error.message || "Failed to start import process",
+        variant: "destructive",
       });
     },
   });
@@ -215,24 +275,27 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
   // Cancel import mutation
   const cancelImportMutation = useMutation({
     mutationFn: async () => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await apiRequest('POST', `/api/import/${sessionData.id}/cancel`);
+      if (!validatedSessionData?.id) throw new Error("No session");
+
+      const response = await apiRequest(
+        "POST",
+        `/api/import/${validatedSessionData.id}/cancel`,
+      );
       return response;
     },
     onSuccess: () => {
       setImportProgress(null);
       setHasStarted(false);
       toast({
-        title: 'Import Cancelled',
-        description: 'The import process has been cancelled',
+        title: "Import Cancelled",
+        description: "The import process has been cancelled",
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Cancel Failed',
-        description: error.message || 'Failed to cancel import',
-        variant: 'destructive',
+        title: "Cancel Failed",
+        description: error.message || "Failed to cancel import",
+        variant: "destructive",
       });
     },
   });
@@ -240,53 +303,58 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
   // Retry failed records mutation
   const retryFailedMutation = useMutation({
     mutationFn: async () => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await apiRequest('POST', `/api/import/${sessionData.id}/retry`);
+      if (!validatedSessionData?.id) throw new Error("No session");
+
+      const response = await apiRequest(
+        "POST",
+        `/api/import/${validatedSessionData.id}/retry`,
+      );
       return response;
     },
     onSuccess: () => {
       toast({
-        title: 'Retry Started',
-        description: 'Retrying failed records',
+        title: "Retry Started",
+        description: "Retrying failed records",
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Retry Failed',
-        description: error.message || 'Failed to retry import',
-        variant: 'destructive',
+        title: "Retry Failed",
+        description: error.message || "Failed to retry import",
+        variant: "destructive",
       });
     },
   });
 
   // Export error report
   const exportErrorReport = async () => {
-    if (!sessionData?.id) return;
-    
+    if (!validatedSessionData?.id) return;
+
     try {
-      const response = await fetch(`/api/import/${sessionData.id}/errors/export`);
-      if (!response.ok) throw new Error('Failed to export');
-      
+      const response = await fetch(
+        `/api/import/${validatedSessionData.id}/errors/export`,
+      );
+      if (!response.ok) throw new Error("Failed to export");
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `import-errors-${sessionData.id}.csv`;
+      a.download = `import-errors-${validatedSessionData.id}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       toast({
-        title: 'Report Downloaded',
-        description: 'Error report has been downloaded',
+        title: "Report Downloaded",
+        description: "Error report has been downloaded",
       });
     } catch (error) {
       toast({
-        title: 'Export Failed',
-        description: 'Failed to download error report',
-        variant: 'destructive',
+        title: "Export Failed",
+        description: "Failed to download error report",
+        variant: "destructive",
       });
     }
   };
@@ -314,7 +382,7 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
   if (importResults) {
     // Import completed
     const hasErrors = importResults.failedRecords > 0;
-    
+
     return (
       <div className="space-y-6">
         <Card>
@@ -327,12 +395,20 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{importResults.successfulRecords}</div>
-                <div className="text-sm text-muted-foreground">Products Added</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {importResults.successfulRecords}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Products Added
+                </div>
               </div>
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{Math.round(importResults.processingTime)}s</div>
-                <div className="text-sm text-muted-foreground">Processing Time</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.round(importResults.processingTime)}s
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Processing Time
+                </div>
               </div>
             </div>
 
@@ -341,7 +417,7 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Partial Import</AlertTitle>
                 <AlertDescription>
-                  {importResults.failedRecords} records failed to import. 
+                  {importResults.failedRecords} records failed to import.
                   Download the error report to review and fix these records.
                 </AlertDescription>
               </Alert>
@@ -370,19 +446,27 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Total Records:</span>
-                  <div className="font-medium">{importResults.totalRecords}</div>
+                  <div className="font-medium">
+                    {importResults.totalRecords}
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Created:</span>
-                  <div className="font-medium text-green-600">{importResults.summary.created}</div>
+                  <div className="font-medium text-green-600">
+                    {importResults.summary.created}
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Updated:</span>
-                  <div className="font-medium text-blue-600">{importResults.summary.updated}</div>
+                  <div className="font-medium text-blue-600">
+                    {importResults.summary.updated}
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Failed:</span>
-                  <div className="font-medium text-red-600">{importResults.summary.failed}</div>
+                  <div className="font-medium text-red-600">
+                    {importResults.summary.failed}
+                  </div>
                 </div>
               </div>
             </div>
@@ -391,8 +475,8 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
 
         {/* Error details if any */}
         {hasErrors && (
-          <ErrorFeed 
-            errors={importResults.errors} 
+          <ErrorFeed
+            errors={importResults.errors}
             onExportReport={exportErrorReport}
           />
         )}
@@ -400,7 +484,7 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
     );
   }
 
-  if (importProgress) {
+  if (validatedProgress) {
     // Import in progress
     return (
       <div className="space-y-6">
@@ -412,11 +496,11 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ProgressTracker progress={importProgress} />
-            
+            <ProgressTracker progress={validatedProgress} />
+
             <div className="flex justify-center mt-6">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={cancelImport}
                 disabled={cancelImportMutation.isPending}
               >
@@ -428,8 +512,8 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
         </Card>
 
         {/* Real-time error feed */}
-        <ErrorFeed 
-          errors={importProgress.errors} 
+        <ErrorFeed
+          errors={validatedProgress.errors}
           onExportReport={exportErrorReport}
         />
       </div>
@@ -443,35 +527,52 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
         <CardHeader>
           <CardTitle>Ready to Import</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Your data has been validated and is ready for import. 
-            Click the button below to start the bulk import process.
+            Your data has been validated and is ready for import. Click the
+            button below to start the bulk import process.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Pre-import summary */}
-          {sessionData && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold">{sessionData.recordCount}</div>
-                <div className="text-sm text-muted-foreground">Records to Import</div>
-              </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold">{sessionData.fileFormat.toUpperCase()}</div>
-                <div className="text-sm text-muted-foreground">File Format</div>
-              </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold">~{Math.ceil(sessionData.recordCount / 100)}</div>
-                <div className="text-sm text-muted-foreground">Batches</div>
-              </div>
-            </div>
-          )}
+          {validatedSessionData &&
+            (() => {
+              // Safe calculation with fallbacks to prevent NaN
+              const recordCount = validatedSessionData.recordCount;
+              const batchCount =
+                recordCount > 0 ? Math.ceil(recordCount / 100) : 0;
+
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold">{recordCount}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Records to Import
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold">
+                      {validatedSessionData.fileFormat.toUpperCase()}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      File Format
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold">~{batchCount}</div>
+                    <div className="text-sm text-muted-foreground">Batches</div>
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* Import process info */}
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Import Process Information</AlertTitle>
             <AlertDescription className="space-y-2">
-              <p>The import will process your data in batches of 100 records for optimal performance.</p>
+              <p>
+                The import will process your data in batches of 100 records for
+                optimal performance.
+              </p>
               <ul className="list-disc list-inside space-y-1 text-sm mt-2">
                 <li>Real-time progress tracking will be displayed</li>
                 <li>You can cancel the import at any time</li>
@@ -494,7 +595,9 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
             <Button
               size="lg"
               onClick={startImport}
-              disabled={executeImportMutation.isPending || !sessionData}
+              disabled={
+                executeImportMutation.isPending || !validatedSessionData
+              }
               className="gradient-primary text-white px-8"
             >
               {executeImportMutation.isPending ? (
@@ -512,11 +615,19 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
           </div>
 
           {/* Estimated time */}
-          {sessionData && (
-            <p className="text-center text-sm text-muted-foreground">
-              Estimated completion time: ~{Math.ceil((sessionData.recordCount / 100) * 2)} seconds
-            </p>
-          )}
+          {validatedSessionData &&
+            (() => {
+              // Safe calculation with fallbacks to prevent NaN
+              const recordCount = validatedSessionData.recordCount;
+              const estimatedTime =
+                recordCount > 0 ? Math.ceil((recordCount / 100) * 2) : 0;
+
+              return (
+                <p className="text-center text-sm text-muted-foreground">
+                  Estimated completion time: ~{estimatedTime} seconds
+                </p>
+              );
+            })()}
         </CardContent>
       </Card>
     </div>
