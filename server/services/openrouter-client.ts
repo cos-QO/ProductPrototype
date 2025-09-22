@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 /**
  * OpenRouter API Client for GPT-4o-mini Integration
@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 interface OpenRouterRequest {
   model: string;
   messages: Array<{
-    role: 'system' | 'user' | 'assistant';
+    role: "system" | "user" | "assistant";
     content: string;
   }>;
   max_tokens?: number;
@@ -62,33 +62,40 @@ export class OpenRouterClient {
   private httpReferer: string;
   private appTitle: string;
   private stats: TokenUsageStats;
-  private readonly MODEL = 'openai/gpt-4o-mini';
-  
+  private readonly MODEL = "openai/gpt-4o-mini";
+
   // Pricing for GPT-4o-mini (per 1M tokens)
   private readonly PRICING = {
-    input: 0.150, // $0.150 per 1M input tokens
-    output: 0.600 // $0.600 per 1M output tokens
+    input: 0.15, // $0.150 per 1M input tokens
+    output: 0.6, // $0.600 per 1M output tokens
   };
 
   private constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY || '';
-    this.baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
-    this.httpReferer = process.env.OPENROUTER_HTTP_REFERER || 'https://github.com/QueenOne/ProductPrototype';
-    this.appTitle = process.env.OPENROUTER_X_TITLE || 'QueenOne ProductPrototype - Bulk Upload';
-    
+    this.apiKey = process.env.OPENROUTER_API_KEY || "";
+    this.baseUrl =
+      process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+    this.httpReferer =
+      process.env.OPENROUTER_HTTP_REFERER ||
+      "https://github.com/QueenOne/ProductPrototype";
+    this.appTitle =
+      process.env.OPENROUTER_X_TITLE ||
+      "QueenOne ProductPrototype - Bulk Upload";
+
     this.stats = {
       totalRequests: 0,
       totalTokens: 0,
       totalCost: 0,
       promptTokens: 0,
       completionTokens: 0,
-      averageResponseTime: 0
+      averageResponseTime: 0,
     };
 
     if (!this.apiKey) {
-      console.warn('OpenRouter API key not found. LLM field mapping will be disabled.');
+      console.warn(
+        "OpenRouter API key not found. LLM field mapping will be disabled.",
+      );
     } else {
-      console.log('OpenRouter client initialized successfully');
+      console.log("OpenRouter client initialized successfully");
     }
   }
 
@@ -123,7 +130,7 @@ export class OpenRouterClient {
       totalCost: 0,
       promptTokens: 0,
       completionTokens: 0,
-      averageResponseTime: 0
+      averageResponseTime: 0,
     };
   }
 
@@ -136,7 +143,7 @@ export class OpenRouterClient {
       timeout?: number;
       retries?: number;
       costLimit?: number; // USD limit per request
-    } = {}
+    } = {},
   ): Promise<{
     success: boolean;
     data?: OpenRouterResponse;
@@ -148,28 +155,31 @@ export class OpenRouterClient {
     };
   }> {
     const { timeout = 30000, retries = 2, costLimit = 0.01 } = options;
-    
+
     if (!this.isAvailable()) {
       return {
         success: false,
-        error: 'OpenRouter API key not configured'
+        error: "OpenRouter API key not configured",
       };
     }
 
     const startTime = Date.now();
-    let lastError: string = '';
+    let lastError: string = "";
 
     // Estimate cost before making request
     const estimatedInputTokens = this.estimateTokens(
-      request.messages.map(m => m.content).join(' ')
+      request.messages.map((m) => m.content).join(" "),
     );
     const estimatedOutputTokens = request.max_tokens || 500;
-    const estimatedCost = this.calculateCost(estimatedInputTokens, estimatedOutputTokens);
+    const estimatedCost = this.calculateCost(
+      estimatedInputTokens,
+      estimatedOutputTokens,
+    );
 
     if (estimatedCost > costLimit) {
       return {
         success: false,
-        error: `Estimated cost $${estimatedCost.toFixed(4)} exceeds limit $${costLimit.toFixed(4)}`
+        error: `Estimated cost $${estimatedCost.toFixed(4)} exceeds limit $${costLimit.toFixed(4)}`,
       };
     }
 
@@ -179,35 +189,35 @@ export class OpenRouterClient {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         const response = await fetch(`${this.baseUrl}/chat/completions`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': this.httpReferer,
-            'X-Title': this.appTitle
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": this.httpReferer,
+            "X-Title": this.appTitle,
           },
           body: JSON.stringify({
             ...request,
-            model: this.MODEL
+            model: this.MODEL,
           }),
-          signal: controller.signal
+          signal: controller.signal as any,
         });
 
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const errorData = await response.json() as OpenRouterError;
+          const errorData = (await response.json()) as OpenRouterError;
           lastError = errorData.error?.message || `HTTP ${response.status}`;
-          
+
           // Don't retry on client errors (4xx)
           if (response.status >= 400 && response.status < 500) {
             break;
           }
-          
+
           continue;
         }
 
-        const data = await response.json() as OpenRouterResponse;
+        const data = (await response.json()) as OpenRouterResponse;
         const responseTime = Date.now() - startTime;
 
         // Update statistics
@@ -218,26 +228,30 @@ export class OpenRouterClient {
           data,
           usage: {
             tokens: data.usage.total_tokens,
-            cost: this.calculateCost(data.usage.prompt_tokens, data.usage.completion_tokens),
-            responseTime
-          }
+            cost: this.calculateCost(
+              data.usage.prompt_tokens,
+              data.usage.completion_tokens,
+            ),
+            responseTime,
+          },
         };
-
       } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Unknown error';
-        
+        lastError = error instanceof Error ? error.message : "Unknown error";
+
         if (attempt === retries) {
           break;
         }
-        
+
         // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 1000),
+        );
       }
     }
 
     return {
       success: false,
-      error: `Failed after ${retries + 1} attempts: ${lastError}`
+      error: `Failed after ${retries + 1} attempts: ${lastError}`,
     };
   }
 
@@ -248,7 +262,7 @@ export class OpenRouterClient {
     sourceFields: string[],
     sampleData: any[][],
     targetFields: string[],
-    context?: string
+    context?: string,
   ): Promise<{
     success: boolean;
     mappings?: Array<{
@@ -267,53 +281,56 @@ export class OpenRouterClient {
     if (!this.isAvailable()) {
       return {
         success: false,
-        error: 'OpenRouter not available'
+        error: "OpenRouter not available",
       };
     }
 
     const systemPrompt = this.buildFieldMappingSystemPrompt();
     const userPrompt = this.buildFieldMappingUserPrompt(
-      sourceFields, 
-      sampleData, 
-      targetFields, 
-      context
+      sourceFields,
+      sampleData,
+      targetFields,
+      context,
     );
 
-    const result = await this.createCompletion({
-      model: this.MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 1000,
-      temperature: 0.1, // Low temperature for consistency
-      top_p: 0.9
-    }, {
-      costLimit: 0.005 // $0.005 limit per field mapping request
-    });
+    const result = await this.createCompletion(
+      {
+        model: this.MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 1000,
+        temperature: 0.1, // Low temperature for consistency
+        top_p: 0.9,
+      },
+      {
+        costLimit: 0.005, // $0.005 limit per field mapping request
+      },
+    );
 
     if (!result.success) {
       return {
         success: false,
         error: result.error,
-        usage: result.usage
+        usage: result.usage,
       };
     }
 
     try {
       const content = result.data!.choices[0].message.content;
       const mappings = this.parseFieldMappingResponse(content);
-      
+
       return {
         success: true,
         mappings,
-        usage: result.usage
+        usage: result.usage,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Failed to parse LLM response: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        usage: result.usage
+        error: `Failed to parse LLM response: ${error instanceof Error ? error.message : "Unknown error"}`,
+        usage: result.usage,
       };
     }
   }
@@ -385,10 +402,10 @@ Response Format (JSON only):
     sourceFields: string[],
     sampleData: any[][],
     targetFields: string[],
-    context?: string
+    context?: string,
   ): string {
     let prompt = `Please analyze and map the following source fields to the product schema:\n\n`;
-    
+
     prompt += `Source Fields:\n`;
     sourceFields.forEach((field, index) => {
       prompt += `${index + 1}. "${field}"\n`;
@@ -427,24 +444,26 @@ Response Format (JSON only):
     // Try to extract JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('No JSON found in response');
+      throw new Error("No JSON found in response");
     }
 
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       if (!parsed.mappings || !Array.isArray(parsed.mappings)) {
-        throw new Error('Invalid response format: missing mappings array');
+        throw new Error("Invalid response format: missing mappings array");
       }
 
       return parsed.mappings.map((mapping: any) => ({
-        sourceField: String(mapping.sourceField || ''),
-        targetField: String(mapping.targetField || 'unmapped'),
+        sourceField: String(mapping.sourceField || ""),
+        targetField: String(mapping.targetField || "unmapped"),
         confidence: Math.max(0, Math.min(100, Number(mapping.confidence || 0))),
-        reasoning: String(mapping.reasoning || 'No reasoning provided')
+        reasoning: String(mapping.reasoning || "No reasoning provided"),
       }));
     } catch (error) {
-      throw new Error(`JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `JSON parsing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -468,18 +487,29 @@ Response Format (JSON only):
   /**
    * Update internal statistics
    */
-  private updateStats(usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }, responseTime: number): void {
-    const cost = this.calculateCost(usage.prompt_tokens, usage.completion_tokens);
-    
+  private updateStats(
+    usage: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    },
+    responseTime: number,
+  ): void {
+    const cost = this.calculateCost(
+      usage.prompt_tokens,
+      usage.completion_tokens,
+    );
+
     this.stats.totalRequests++;
     this.stats.totalTokens += usage.total_tokens;
     this.stats.totalCost += cost;
     this.stats.promptTokens += usage.prompt_tokens;
     this.stats.completionTokens += usage.completion_tokens;
-    
+
     // Update average response time
-    this.stats.averageResponseTime = 
-      (this.stats.averageResponseTime * (this.stats.totalRequests - 1) + responseTime) / 
+    this.stats.averageResponseTime =
+      (this.stats.averageResponseTime * (this.stats.totalRequests - 1) +
+        responseTime) /
       this.stats.totalRequests;
   }
 }

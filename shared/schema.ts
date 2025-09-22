@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql } from "drizzle-orm";
 import {
   index,
   jsonb,
@@ -29,7 +29,9 @@ export const sessions = pgTable(
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -219,8 +221,10 @@ export const importSessions = pgTable("import_sessions", {
 export const fieldMappingCache = pgTable("field_mapping_cache", {
   id: serial("id").primaryKey(),
   sourceField: varchar("source_field", { length: 255 }).notNull(),
+  sourceFieldPattern: varchar("source_field_pattern", { length: 255 }),
   targetField: varchar("target_field", { length: 255 }).notNull(),
   confidence: integer("confidence"), // 0-100 for percentage
+  successRate: integer("success_rate").default(0), // 0-100 for percentage success
   strategy: varchar("strategy", { length: 50 }).notNull(), // exact, fuzzy, llm, historical, statistical
   dataType: varchar("data_type", { length: 50 }).notNull(), // string, number, boolean, date, json
   sampleValues: jsonb("sample_values"),
@@ -306,12 +310,15 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   syndicationLogs: many(syndicationLogs),
 }));
 
-export const productAttributesRelations = relations(productAttributes, ({ one }) => ({
-  product: one(products, {
-    fields: [productAttributes.productId],
-    references: [products.id],
+export const productAttributesRelations = relations(
+  productAttributes,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productAttributes.productId],
+      references: [products.id],
+    }),
   }),
-}));
+);
 
 export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
   product: one(products, {
@@ -328,37 +335,46 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
   }),
 }));
 
-export const productFamiliesRelations = relations(productFamilies, ({ one, many }) => ({
-  brand: one(brands, {
-    fields: [productFamilies.brandId],
-    references: [brands.id],
+export const productFamiliesRelations = relations(
+  productFamilies,
+  ({ one, many }) => ({
+    brand: one(brands, {
+      fields: [productFamilies.brandId],
+      references: [brands.id],
+    }),
+    items: many(productFamilyItems),
   }),
-  items: many(productFamilyItems),
-}));
+);
 
-export const productFamilyItemsRelations = relations(productFamilyItems, ({ one }) => ({
-  family: one(productFamilies, {
-    fields: [productFamilyItems.familyId],
-    references: [productFamilies.id],
+export const productFamilyItemsRelations = relations(
+  productFamilyItems,
+  ({ one }) => ({
+    family: one(productFamilies, {
+      fields: [productFamilyItems.familyId],
+      references: [productFamilies.id],
+    }),
+    product: one(products, {
+      fields: [productFamilyItems.productId],
+      references: [products.id],
+    }),
   }),
-  product: one(products, {
-    fields: [productFamilyItems.productId],
-    references: [products.id],
-  }),
-}));
+);
 
-export const productAssociationsRelations = relations(productAssociations, ({ one }) => ({
-  sourceProduct: one(products, {
-    fields: [productAssociations.sourceProductId],
-    references: [products.id],
-    relationName: "sourceProduct",
+export const productAssociationsRelations = relations(
+  productAssociations,
+  ({ one }) => ({
+    sourceProduct: one(products, {
+      fields: [productAssociations.sourceProductId],
+      references: [products.id],
+      relationName: "sourceProduct",
+    }),
+    targetProduct: one(products, {
+      fields: [productAssociations.targetProductId],
+      references: [products.id],
+      relationName: "targetProduct",
+    }),
   }),
-  targetProduct: one(products, {
-    fields: [productAssociations.targetProductId],
-    references: [products.id],
-    relationName: "targetProduct",
-  }),
-}));
+);
 
 export const brandRetailersRelations = relations(brandRetailers, ({ one }) => ({
   brand: one(brands, {
@@ -371,45 +387,57 @@ export const brandRetailersRelations = relations(brandRetailers, ({ one }) => ({
   }),
 }));
 
-export const syndicationChannelsRelations = relations(syndicationChannels, ({ many }) => ({
-  productSyndications: many(productSyndications),
-  syndicationLogs: many(syndicationLogs),
-}));
+export const syndicationChannelsRelations = relations(
+  syndicationChannels,
+  ({ many }) => ({
+    productSyndications: many(productSyndications),
+    syndicationLogs: many(syndicationLogs),
+  }),
+);
 
-export const productSyndicationsRelations = relations(productSyndications, ({ one }) => ({
-  product: one(products, {
-    fields: [productSyndications.productId],
-    references: [products.id],
+export const productSyndicationsRelations = relations(
+  productSyndications,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productSyndications.productId],
+      references: [products.id],
+    }),
+    channel: one(syndicationChannels, {
+      fields: [productSyndications.channelId],
+      references: [syndicationChannels.id],
+    }),
   }),
-  channel: one(syndicationChannels, {
-    fields: [productSyndications.channelId],
-    references: [syndicationChannels.id],
-  }),
-}));
+);
 
-export const syndicationLogsRelations = relations(syndicationLogs, ({ one }) => ({
-  product: one(products, {
-    fields: [syndicationLogs.productId],
-    references: [products.id],
+export const syndicationLogsRelations = relations(
+  syndicationLogs,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [syndicationLogs.productId],
+      references: [products.id],
+    }),
+    channel: one(syndicationChannels, {
+      fields: [syndicationLogs.channelId],
+      references: [syndicationChannels.id],
+    }),
+    user: one(users, {
+      fields: [syndicationLogs.triggeredBy],
+      references: [users.id],
+    }),
   }),
-  channel: one(syndicationChannels, {
-    fields: [syndicationLogs.channelId],
-    references: [syndicationChannels.id],
-  }),
-  user: one(users, {
-    fields: [syndicationLogs.triggeredBy],
-    references: [users.id],
-  }),
-}));
+);
 
-export const importSessionsRelations = relations(importSessions, ({ one, many }) => ({
-  user: one(users, {
-    fields: [importSessions.userId],
-    references: [users.id],
+export const importSessionsRelations = relations(
+  importSessions,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [importSessions.userId],
+      references: [users.id],
+    }),
+    history: many(importHistory),
+    batches: many(importBatches),
   }),
-  history: many(importHistory),
-  batches: many(importBatches),
-}));
+);
 
 export const importHistoryRelations = relations(importHistory, ({ one }) => ({
   session: one(importSessions, {
@@ -443,49 +471,65 @@ export const insertMediaAssetSchema = createInsertSchema(mediaAssets).omit({
   createdAt: true,
 });
 
-export const insertProductFamilySchema = createInsertSchema(productFamilies).omit({
+export const insertProductFamilySchema = createInsertSchema(
+  productFamilies,
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertProductAttributeSchema = createInsertSchema(productAttributes).omit({
+export const insertProductAttributeSchema = createInsertSchema(
+  productAttributes,
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertSyndicationChannelSchema = createInsertSchema(syndicationChannels).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProductSyndicationSchema = createInsertSchema(productSyndications).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertSyndicationLogSchema = createInsertSchema(syndicationLogs).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertImportSessionSchema = createInsertSchema(importSessions).omit({
+export const insertSyndicationChannelSchema = createInsertSchema(
+  syndicationChannels,
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertFieldMappingCacheSchema = createInsertSchema(fieldMappingCache).omit({
+export const insertProductSyndicationSchema = createInsertSchema(
+  productSyndications,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSyndicationLogSchema = createInsertSchema(
+  syndicationLogs,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertImportSessionSchema = createInsertSchema(
+  importSessions,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFieldMappingCacheSchema = createInsertSchema(
+  fieldMappingCache,
+).omit({
   id: true,
   createdAt: true,
   lastUsedAt: true,
 });
 
-export const insertImportHistorySchema = createInsertSchema(importHistory).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertImportHistorySchema = createInsertSchema(importHistory).omit(
+  {
+    id: true,
+    createdAt: true,
+  },
+);
 
 export const insertImportBatchSchema = createInsertSchema(importBatches).omit({
   id: true,
@@ -504,19 +548,27 @@ export type InsertMediaAsset = z.infer<typeof insertMediaAssetSchema>;
 export type ProductFamily = typeof productFamilies.$inferSelect;
 export type InsertProductFamily = z.infer<typeof insertProductFamilySchema>;
 export type ProductAttribute = typeof productAttributes.$inferSelect;
-export type InsertProductAttribute = z.infer<typeof insertProductAttributeSchema>;
+export type InsertProductAttribute = z.infer<
+  typeof insertProductAttributeSchema
+>;
 export type ProductAssociation = typeof productAssociations.$inferSelect;
 export type BrandRetailer = typeof brandRetailers.$inferSelect;
 export type SyndicationChannel = typeof syndicationChannels.$inferSelect;
-export type InsertSyndicationChannel = z.infer<typeof insertSyndicationChannelSchema>;
+export type InsertSyndicationChannel = z.infer<
+  typeof insertSyndicationChannelSchema
+>;
 export type ProductSyndication = typeof productSyndications.$inferSelect;
-export type InsertProductSyndication = z.infer<typeof insertProductSyndicationSchema>;
+export type InsertProductSyndication = z.infer<
+  typeof insertProductSyndicationSchema
+>;
 export type SyndicationLog = typeof syndicationLogs.$inferSelect;
 export type InsertSyndicationLog = z.infer<typeof insertSyndicationLogSchema>;
 export type ImportSession = typeof importSessions.$inferSelect;
 export type InsertImportSession = z.infer<typeof insertImportSessionSchema>;
 export type FieldMappingCache = typeof fieldMappingCache.$inferSelect;
-export type InsertFieldMappingCache = z.infer<typeof insertFieldMappingCacheSchema>;
+export type InsertFieldMappingCache = z.infer<
+  typeof insertFieldMappingCacheSchema
+>;
 export type ImportHistory = typeof importHistory.$inferSelect;
 export type InsertImportHistory = z.infer<typeof insertImportHistorySchema>;
 export type ImportBatch = typeof importBatches.$inferSelect;

@@ -122,11 +122,52 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       }, 1500);
     },
     onError: (error: any) => {
+      console.error("Upload error details:", error);
+
+      // Extract meaningful error message
+      let errorMessage = "Failed to upload file";
+      let errorDetails = "";
+
+      if (error.message) {
+        if (error.message.includes("field_mapping_cache")) {
+          errorMessage = "Database configuration issue";
+          errorDetails =
+            "The field mapping system needs to be updated. Please contact support.";
+        } else if (error.message.includes("CSV")) {
+          errorMessage = "CSV parsing failed";
+          errorDetails =
+            "Your CSV file may have formatting issues. Try saving it as a simpler CSV format or use our template.";
+        } else if (error.message.includes("File data not found")) {
+          errorMessage = "File processing interrupted";
+          errorDetails =
+            "Please try uploading your file again. The upload session may have expired.";
+        } else if (error.message.includes("column count")) {
+          errorMessage = "Inconsistent column structure";
+          errorDetails =
+            "Your CSV has rows with different numbers of columns. Please ensure all rows have the same structure.";
+        } else if (error.message.includes("Security")) {
+          errorMessage = "Security validation failed";
+          errorDetails =
+            "Your file was rejected for security reasons. Please ensure it's a clean CSV/Excel file.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
         title: "Upload Failed",
-        description: error.message || "Failed to upload file",
+        description: errorDetails || errorMessage,
         variant: "destructive",
       });
+
+      // Reset session data on critical errors
+      if (
+        errorMessage.includes("Database") ||
+        errorMessage.includes("field_mapping_cache")
+      ) {
+        setSessionData(null);
+      }
+
       setUploadProgress(0);
     },
   });

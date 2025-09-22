@@ -1,0 +1,6 @@
+item_title,cost,identifier,brief_description,category_type
+Luxury Swiss Timepiece,29999,WATCH-001,Premium automatic watch with leather strap,luxury-watches
+name,price,sku,shortDescription,product_category
+Classic Gold Ring,15999,RING-002,18k gold wedding band with diamonds,jewelry
+name,retail_price,sku,summary,product_type,internal_notes,warehouse_location,supplier_contact,last_audit_date
+Silver Pendant Necklace,8999,NECKLACE-003,Elegant sterling silver pendant with sapphire,accessories,High quality piece,Warehouse A,supplier@jewelry.com,2025-09-01

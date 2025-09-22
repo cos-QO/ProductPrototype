@@ -894,12 +894,35 @@ export class EnhancedImportService {
 
       switch (fileType) {
         case "csv":
-          const csvContent = fileBuffer.toString("utf-8");
-          data = parse(csvContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-          });
+          // Use adaptive CSV extractor for robust parsing
+          const adaptiveExtractor = (
+            await import("./services/adaptive-csv-extractor")
+          ).AdaptiveCSVExtractor.getInstance();
+          const csvResult = await adaptiveExtractor.extractCSV(
+            fileBuffer,
+            session.fileName || "file.csv",
+          );
+
+          if (csvResult.success) {
+            data = csvResult.data;
+            console.log(
+              `Successfully parsed CSV with ${csvResult.strategy} strategy (confidence: ${csvResult.confidence}%)`,
+            );
+          } else {
+            // Fallback to basic parsing for emergency cases
+            console.warn(
+              "Adaptive CSV parsing failed, attempting basic fallback:",
+              csvResult.error,
+            );
+            const csvContent = fileBuffer.toString("utf-8");
+            data = parse(csvContent, {
+              columns: true,
+              skip_empty_lines: true,
+              trim: true,
+              relax_column_count: true, // Allow inconsistent column counts
+              relax_quotes: true, // Handle malformed quotes
+            });
+          }
           break;
 
         case "json":

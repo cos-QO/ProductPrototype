@@ -1,0 +1,5 @@
+product_title,price_usd,unique_id
+"Basic Product",19.99,TEST-001
+"Product with Extra Column",29.99,TEST-002,"extra_value"
+"Missing Column",39.99
+"Normal Product",49.99,TEST-004

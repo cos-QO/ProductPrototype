@@ -7,23 +7,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Edit, 
-  Check, 
-  X, 
-  Filter, 
+import {
+  Edit,
+  Check,
+  X,
+  Filter,
   Search,
   Package,
   Tags,
   Crown,
   Save,
   Eye,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 
 interface BulkEditProduct {
@@ -51,19 +57,25 @@ interface ValidationRule {
   field: string;
   rule: string;
   message: string;
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
 }
 
 export default function BulkEditInterface() {
   const { toast } = useToast();
-  const [selectedProducts, setSelectedProducts] = useState<BulkEditProduct[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<BulkEditProduct[]>(
+    [],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [editScope, setEditScope] = useState<'selected' | 'brand' | 'category' | 'subcategory'>('selected');
+  const [editScope, setEditScope] = useState<
+    "selected" | "brand" | "category" | "subcategory"
+  >("selected");
   const [bulkEditData, setBulkEditData] = useState<BulkEditData>({});
-  const [validationResults, setValidationResults] = useState<ValidationRule[]>([]);
+  const [validationResults, setValidationResults] = useState<ValidationRule[]>(
+    [],
+  );
 
   // Fetch products for bulk editing
   const { data: products, isLoading: productsLoading } = useQuery({
@@ -82,11 +94,14 @@ export default function BulkEditInterface() {
   });
 
   // Transform products data for bulk editing
-  const bulkEditProducts: BulkEditProduct[] = (products as any[])?.map(product => ({
-    ...product,
-    brandName: (brands as any[])?.find(brand => brand.id === product.brandId)?.name || 'Unknown',
-    selected: false
-  })) || [];
+  const bulkEditProducts: BulkEditProduct[] =
+    (products as any[])?.map((product) => ({
+      ...product,
+      brandName:
+        (brands as any[])?.find((brand) => brand.id === product.brandId)
+          ?.name || "Unknown",
+      selected: false,
+    })) || [];
 
   // Initialize selected products when products load
   useEffect(() => {
@@ -96,18 +111,26 @@ export default function BulkEditInterface() {
   }, [bulkEditProducts.length]);
 
   // Filter products
-  const filteredProducts = bulkEditProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBrand = brandFilter === "all" || product.brandId.toString() === brandFilter;
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
-    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+  const filteredProducts = bulkEditProducts.filter((product) => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesBrand =
+      brandFilter === "all" || product.brandId.toString() === brandFilter;
+    const matchesStatus =
+      statusFilter === "all" || product.status === statusFilter;
+    const matchesCategory =
+      categoryFilter === "all" || product.category === categoryFilter;
     return matchesSearch && matchesBrand && matchesStatus && matchesCategory;
   });
 
   // Bulk update mutation
   const bulkUpdateMutation = useMutation({
-    mutationFn: async (data: { productIds: number[]; updates: BulkEditData; scope: string }) => {
+    mutationFn: async (data: {
+      productIds: number[];
+      updates: BulkEditData;
+      scope: string;
+    }) => {
       return await apiRequest("POST", "/api/products/bulk-update", data);
     },
     onSuccess: () => {
@@ -115,7 +138,7 @@ export default function BulkEditInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
-        description: `Updated ${selectedProducts.filter(p => p.selected).length} products successfully`,
+        description: `Updated ${selectedProducts.filter((p) => p.selected).length} products successfully`,
       });
       setSelectedProducts([]);
     },
@@ -130,7 +153,10 @@ export default function BulkEditInterface() {
 
   // Validation check mutation
   const validateMutation = useMutation({
-    mutationFn: async (data: { productIds: number[]; updates: BulkEditData }) => {
+    mutationFn: async (data: {
+      productIds: number[];
+      updates: BulkEditData;
+    }) => {
       return await apiRequest("POST", "/api/products/validate-bulk", data);
     },
     onSuccess: (data) => {
@@ -139,19 +165,19 @@ export default function BulkEditInterface() {
   });
 
   const handleProductSelection = (productId: number, selected: boolean) => {
-    setSelectedProducts(prev => 
-      prev.map(p => p.id === productId ? { ...p, selected } : p)
+    setSelectedProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, selected } : p)),
     );
   };
 
   const handleSelectAll = (selected: boolean) => {
-    setSelectedProducts(prev => 
-      prev.map(p => ({ ...p, selected }))
-    );
+    setSelectedProducts((prev) => prev.map((p) => ({ ...p, selected })));
   };
 
   const handleBulkUpdate = () => {
-    const selectedIds = selectedProducts.filter(p => p.selected).map(p => p.id);
+    const selectedIds = selectedProducts
+      .filter((p) => p.selected)
+      .map((p) => p.id);
     if (selectedIds.length === 0) {
       toast({
         title: "No Selection",
@@ -164,21 +190,23 @@ export default function BulkEditInterface() {
     bulkUpdateMutation.mutate({
       productIds: selectedIds,
       updates: bulkEditData,
-      scope: editScope
+      scope: editScope,
     });
   };
 
   const handleValidate = () => {
-    const selectedIds = selectedProducts.filter(p => p.selected).map(p => p.id);
+    const selectedIds = selectedProducts
+      .filter((p) => p.selected)
+      .map((p) => p.id);
     if (selectedIds.length === 0) return;
 
     validateMutation.mutate({
       productIds: selectedIds,
-      updates: bulkEditData
+      updates: bulkEditData,
     });
   };
 
-  const selectedCount = selectedProducts.filter(p => p.selected).length;
+  const selectedCount = selectedProducts.filter((p) => p.selected).length;
 
   return (
     <div className="space-y-6" data-testid="bulk-edit-interface">
@@ -192,12 +220,13 @@ export default function BulkEditInterface() {
                 Bulk Product Editor
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Edit multiple products at once across brands, categories, or individual selections
+                Edit multiple products at once across brands, categories, or
+                individual selections
               </p>
             </div>
             {selectedCount > 0 && (
               <Badge variant="secondary" data-testid="selection-count">
-                {selectedCount} product{selectedCount !== 1 ? 's' : ''} selected
+                {selectedCount} product{selectedCount !== 1 ? "s" : ""} selected
               </Badge>
             )}
           </div>
@@ -210,7 +239,10 @@ export default function BulkEditInterface() {
           <CardTitle className="text-lg">Edit Scope</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={editScope} onValueChange={(value) => setEditScope(value as any)}>
+          <Tabs
+            value={editScope}
+            onValueChange={(value) => setEditScope(value as any)}
+          >
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="selected" data-testid="scope-selected">
                 <Package className="h-4 w-4 mr-2" />
@@ -232,7 +264,8 @@ export default function BulkEditInterface() {
 
             <TabsContent value="selected" className="mt-4">
               <p className="text-sm text-muted-foreground">
-                Apply changes only to individually selected products from the list below.
+                Apply changes only to individually selected products from the
+                list below.
               </p>
             </TabsContent>
 
@@ -241,8 +274,15 @@ export default function BulkEditInterface() {
                 <p className="text-sm text-muted-foreground">
                   Apply changes to all products within selected brands.
                 </p>
-                <Select value={bulkEditData.brandId?.toString() || ""} 
-                       onValueChange={(value) => setBulkEditData(prev => ({ ...prev, brandId: parseInt(value) }))}>
+                <Select
+                  value={bulkEditData.brandId?.toString() || ""}
+                  onValueChange={(value) =>
+                    setBulkEditData((prev) => ({
+                      ...prev,
+                      brandId: parseInt(value),
+                    }))
+                  }
+                >
                   <SelectTrigger data-testid="select-bulk-brand">
                     <SelectValue placeholder="Select brand for bulk edit" />
                   </SelectTrigger>
@@ -262,8 +302,12 @@ export default function BulkEditInterface() {
                 <p className="text-sm text-muted-foreground">
                   Apply changes to all products within selected categories.
                 </p>
-                <Select value={bulkEditData.category || ""} 
-                       onValueChange={(value) => setBulkEditData(prev => ({ ...prev, category: value }))}>
+                <Select
+                  value={bulkEditData.category || ""}
+                  onValueChange={(value) =>
+                    setBulkEditData((prev) => ({ ...prev, category: value }))
+                  }
+                >
                   <SelectTrigger data-testid="select-bulk-category">
                     <SelectValue placeholder="Select category for bulk edit" />
                   </SelectTrigger>
@@ -288,7 +332,9 @@ export default function BulkEditInterface() {
                     <SelectValue placeholder="Select subcategory for bulk edit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="placeholder">Subcategory functionality coming soon</SelectItem>
+                    <SelectItem value="placeholder">
+                      Subcategory functionality coming soon
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -310,9 +356,12 @@ export default function BulkEditInterface() {
                 data-testid="bulk-search-input"
               />
             </div>
-            
+
             <Select value={brandFilter} onValueChange={setBrandFilter}>
-              <SelectTrigger className="w-[150px]" data-testid="bulk-filter-brand">
+              <SelectTrigger
+                className="w-[150px]"
+                data-testid="bulk-filter-brand"
+              >
                 <SelectValue placeholder="Brand" />
               </SelectTrigger>
               <SelectContent>
@@ -326,7 +375,10 @@ export default function BulkEditInterface() {
             </Select>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]" data-testid="bulk-filter-status">
+              <SelectTrigger
+                className="w-[150px]"
+                data-testid="bulk-filter-status"
+              >
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -338,15 +390,15 @@ export default function BulkEditInterface() {
               </SelectContent>
             </Select>
 
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => handleSelectAll(true)}
               data-testid="button-select-all"
             >
               Select All
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => handleSelectAll(false)}
               data-testid="button-clear-selection"
             >
@@ -365,14 +417,19 @@ export default function BulkEditInterface() {
           <CardContent>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredProducts.map((product) => (
-                <div 
-                  key={product.id} 
+                <div
+                  key={product.id}
                   className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
                   data-testid={`product-item-${product.id}`}
                 >
                   <Checkbox
-                    checked={selectedProducts.find(p => p.id === product.id)?.selected || false}
-                    onCheckedChange={(checked) => handleProductSelection(product.id, !!checked)}
+                    checked={
+                      selectedProducts.find((p) => p.id === product.id)
+                        ?.selected || false
+                    }
+                    onCheckedChange={(checked) =>
+                      handleProductSelection(product.id, !!checked)
+                    }
                     data-testid={`checkbox-${product.id}`}
                   />
                   <div className="flex-1 min-w-0">
@@ -381,7 +438,7 @@ export default function BulkEditInterface() {
                       <span>{product.sku}</span>
                       <span>•</span>
                       <span>{product.brandName}</span>
-                      <Badge variant="outline" size="sm">{product.status}</Badge>
+                      <Badge variant="outline">{product.status}</Badge>
                     </div>
                   </div>
                 </div>
@@ -395,15 +452,18 @@ export default function BulkEditInterface() {
           <CardHeader>
             <CardTitle>Bulk Edit Fields</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Only specify fields you want to update. Empty fields will remain unchanged.
+              Only specify fields you want to update. Empty fields will remain
+              unchanged.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select 
-                value={bulkEditData.status || ""} 
-                onValueChange={(value) => setBulkEditData(prev => ({ ...prev, status: value }))}
+              <Select
+                value={bulkEditData.status || ""}
+                onValueChange={(value) =>
+                  setBulkEditData((prev) => ({ ...prev, status: value }))
+                }
               >
                 <SelectTrigger data-testid="bulk-edit-status">
                   <SelectValue placeholder="Leave unchanged" />
@@ -420,9 +480,14 @@ export default function BulkEditInterface() {
 
             <div className="space-y-2">
               <Label>Brand</Label>
-              <Select 
-                value={bulkEditData.brandId?.toString() || ""} 
-                onValueChange={(value) => setBulkEditData(prev => ({ ...prev, brandId: value ? parseInt(value) : undefined }))}
+              <Select
+                value={bulkEditData.brandId?.toString() || ""}
+                onValueChange={(value) =>
+                  setBulkEditData((prev) => ({
+                    ...prev,
+                    brandId: value ? parseInt(value) : undefined,
+                  }))
+                }
               >
                 <SelectTrigger data-testid="bulk-edit-brand">
                   <SelectValue placeholder="Leave unchanged" />
@@ -442,7 +507,12 @@ export default function BulkEditInterface() {
               <Label>Short Description (will overwrite existing)</Label>
               <Textarea
                 value={bulkEditData.shortDescription || ""}
-                onChange={(e) => setBulkEditData(prev => ({ ...prev, shortDescription: e.target.value }))}
+                onChange={(e) =>
+                  setBulkEditData((prev) => ({
+                    ...prev,
+                    shortDescription: e.target.value,
+                  }))
+                }
                 placeholder="Leave empty to keep existing descriptions"
                 rows={3}
                 data-testid="bulk-edit-description"
@@ -457,10 +527,12 @@ export default function BulkEditInterface() {
                 <Label className="text-red-600">Validation Issues</Label>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {validationResults.map((rule, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={`flex items-center space-x-2 p-2 rounded text-sm ${
-                        rule.severity === 'error' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
+                        rule.severity === "error"
+                          ? "bg-red-50 text-red-700"
+                          : "bg-yellow-50 text-yellow-700"
                       }`}
                       data-testid={`validation-${index}`}
                     >
@@ -489,7 +561,7 @@ export default function BulkEditInterface() {
                 data-testid="button-bulk-update"
               >
                 <Save className="h-4 w-4 mr-2" />
-                Update {selectedCount} Product{selectedCount !== 1 ? 's' : ''}
+                Update {selectedCount} Product{selectedCount !== 1 ? "s" : ""}
               </Button>
             </div>
           </CardContent>
