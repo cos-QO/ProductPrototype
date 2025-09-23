@@ -29,6 +29,7 @@ import {
   sanitizeInput,
   secureFileServing,
   generateCSRFToken,
+  validateFilePath,
 } from "./middleware/security";
 
 // Configure secure multer for file uploads
@@ -281,7 +282,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle logo upload if present
         if (req.file) {
           const fileName = `brand-logo-${Date.now()}${path.extname(req.file.originalname)}`;
+
+          // SECURITY: Validate filename and prevent path traversal
+          if (!validateFilePath(fileName)) {
+            await fs.unlink(req.file.path).catch(() => {});
+            return res.status(400).json({ error: "Invalid filename" });
+          }
+
           const logoPath = path.join("uploads", fileName);
+          const resolvedPath = path.resolve(logoPath);
+          const resolvedUploadsDir = path.resolve("uploads");
+
+          // SECURITY: Ensure file stays within uploads directory
+          if (!resolvedPath.startsWith(resolvedUploadsDir)) {
+            await fs.unlink(req.file.path).catch(() => {});
+            return res.status(400).json({ error: "Invalid file path" });
+          }
+
           await fs.rename(req.file.path, logoPath);
           validatedData.logoUrl = `/uploads/${fileName}`;
         }
@@ -2503,6 +2520,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+
+  // TEST DATA GENERATOR ROUTES - Automated CSV Generation System
+  try {
+    const { TestDataGeneratorRoutes } = await import("./test-data-generator");
+    const testDataRoutes = new TestDataGeneratorRoutes();
+    app.use("/api/test-data", isAuthenticated, testDataRoutes.getRouter());
+    console.log(
+      "[ROUTES] Test Data Generator routes registered at /api/test-data/*",
+    );
+  } catch (error) {
+    console.warn(
+      "[ROUTES] Test Data Generator routes could not be loaded:",
+      error,
+    );
+  }
 
   // Serve uploaded files with security
   app.use("/uploads", secureFileServing("uploads"));

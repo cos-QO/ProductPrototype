@@ -1,10 +1,34 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import session from "express-session";
+import csrf from "csrf";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Security: Session configuration for CSRF protection and session security
+app.use(
+  session({
+    secret:
+      process.env.SESSION_SECRET ||
+      (() => {
+        throw new Error("SESSION_SECRET environment variable is required");
+      })(),
+    name: "qone_session", // Custom session name to avoid fingerprinting
+    resave: false,
+    saveUninitialized: false,
+    rolling: true, // Reset session expiry on activity
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      httpOnly: true, // Prevent XSS access to cookies
+      maxAge: 8 * 60 * 60 * 1000, // 8 hours (shorter for security)
+      sameSite: "strict", // CSRF protection
+    },
+  }),
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -43,7 +67,7 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   // Initialize WebSocket service for real-time progress tracking
-  const { webSocketService } = await import('./websocket-service');
+  const { webSocketService } = await import("./websocket-service");
   webSocketService.initialize(server);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -67,27 +91,27 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
     log(`WebSocket server available at ws://localhost:${port}/ws`);
   });
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    log('SIGTERM received, shutting down gracefully');
+  process.on("SIGTERM", () => {
+    log("SIGTERM received, shutting down gracefully");
     webSocketService.shutdown();
     server.close(() => {
-      log('Server closed');
+      log("Server closed");
       process.exit(0);
     });
   });
 
-  process.on('SIGINT', () => {
-    log('SIGINT received, shutting down gracefully');
+  process.on("SIGINT", () => {
+    log("SIGINT received, shutting down gracefully");
     webSocketService.shutdown();
     server.close(() => {
-      log('Server closed');
+      log("Server closed");
       process.exit(0);
     });
   });

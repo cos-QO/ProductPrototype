@@ -9,6 +9,9 @@ import {
   integer,
   boolean,
   serial,
+  decimal,
+  interval,
+  date,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -268,6 +271,136 @@ export const importBatches = pgTable("import_batches", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Test execution tracking for automated edge case testing
+export const testExecutions = pgTable("test_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  scenario: jsonb("scenario").notNull(),
+  status: varchar("status", { length: 20 }).default("pending"),
+  results: jsonb("results"),
+  performanceMetrics: jsonb("performance_metrics"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Core approval request tracking
+export const approvalRequests = pgTable("approval_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type", { length: 50 }).notNull(),
+  riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+  priority: varchar("priority", { length: 20 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  context: jsonb("context").notNull(),
+  riskAssessment: jsonb("risk_assessment").notNull(),
+  
+  // Assignment and routing
+  assignedTo: varchar("assigned_to", { length: 100 }).array().notNull(),
+  currentApprover: varchar("current_approver", { length: 100 }),
+  escalationPath: varchar("escalation_path", { length: 100 }).array(),
+  
+  // Status and timing
+  status: varchar("status", { length: 20 }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  deadline: timestamp("deadline").notNull(),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by", { length: 100 }),
+  
+  // Decision tracking
+  decision: jsonb("decision"),
+  decisionReasoning: text("decision_reasoning"),
+  
+  // Integration references
+  testExecutionId: varchar("test_execution_id").references(() => testExecutions.id),
+  importSessionId: varchar("import_session_id").references(() => importSessions.sessionId),
+  
+  // Metadata
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+}, (table) => [
+  index("idx_approval_requests_status").on(table.status),
+  index("idx_approval_requests_assigned_to").on(table.assignedTo),
+  index("idx_approval_requests_created_at").on(table.createdAt),
+  index("idx_approval_requests_deadline").on(table.deadline),
+  index("idx_approval_requests_risk_level").on(table.riskLevel),
+  index("idx_approval_requests_type").on(table.type),
+]);
+
+// Approval decision audit trail
+export const approvalDecisions = pgTable("approval_decisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  approvalRequestId: varchar("approval_request_id").notNull().references(() => approvalRequests.id),
+  decision: varchar("decision", { length: 20 }).notNull(),
+  approver: varchar("approver", { length: 100 }).notNull(),
+  reasoning: text("reasoning"),
+  conditions: jsonb("conditions"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  
+  // Decision context
+  contextAtDecision: jsonb("context_at_decision").notNull(),
+  systemRecommendation: varchar("system_recommendation", { length: 20 }),
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }),
+  
+  // Metadata
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+}, (table) => [
+  index("idx_approval_decisions_approval_request_id").on(table.approvalRequestId),
+  index("idx_approval_decisions_approver").on(table.approver),
+  index("idx_approval_decisions_timestamp").on(table.timestamp),
+]);
+
+// User approval preferences and learning
+export const approvalPreferences = pgTable("approval_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  
+  // Automation preferences
+  autoApproveLowRisk: boolean("auto_approve_low_risk").default(false),
+  autoApproveConfidenceThreshold: decimal("auto_approve_confidence_threshold", { precision: 3, scale: 2 }).default(sql`0.85`),
+  preferredNotificationMethod: varchar("preferred_notification_method", { length: 20 }).default("in_app"),
+  
+  // Delegation settings
+  delegateTo: varchar("delegate_to", { length: 100 }),
+  delegationRules: jsonb("delegation_rules").default(sql`'{}'::jsonb`),
+  
+  // Learning data
+  decisionPatterns: jsonb("decision_patterns").default(sql`'{}'::jsonb`),
+  performanceMetrics: jsonb("performance_metrics").default(sql`'{}'::jsonb`),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_approval_preferences_user_id").on(table.userId),
+]);
+
+// Approval performance metrics
+export const approvalMetrics = pgTable("approval_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: date("date").notNull(),
+  approver: varchar("approver", { length: 100 }),
+  
+  // Metrics
+  totalApprovals: integer("total_approvals").default(0),
+  automatedApprovals: integer("automated_approvals").default(0),
+  manualApprovals: integer("manual_approvals").default(0),
+  averageDecisionTime: interval("average_decision_time"),
+  
+  // Accuracy metrics
+  correctDecisions: integer("correct_decisions").default(0),
+  incorrectDecisions: integer("incorrect_decisions").default(0),
+  accuracyRate: decimal("accuracy_rate", { precision: 5, scale: 4 }),
+  
+  // Performance breakdown
+  approvalsByType: jsonb("approvals_by_type").default(sql`'{}'::jsonb`),
+  approvalsByRisk: jsonb("approvals_by_risk").default(sql`'{}'::jsonb`),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_approval_metrics_date").on(table.date),
+  index("idx_approval_metrics_approver").on(table.approver),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedBrands: many(brands),
@@ -453,6 +586,29 @@ export const importBatchesRelations = relations(importBatches, ({ one }) => ({
   }),
 }));
 
+export const testExecutionsRelations = relations(testExecutions, ({ many }) => ({
+  approvalRequests: many(approvalRequests),
+}));
+
+export const approvalRequestsRelations = relations(approvalRequests, ({ one, many }) => ({
+  testExecution: one(testExecutions, {
+    fields: [approvalRequests.testExecutionId],
+    references: [testExecutions.id],
+  }),
+  importSession: one(importSessions, {
+    fields: [approvalRequests.importSessionId],
+    references: [importSessions.sessionId],
+  }),
+  decisions: many(approvalDecisions),
+}));
+
+export const approvalDecisionsRelations = relations(approvalDecisions, ({ one }) => ({
+  approvalRequest: one(approvalRequests, {
+    fields: [approvalDecisions.approvalRequestId],
+    references: [approvalRequests.id],
+  }),
+}));
+
 // Insert schemas
 export const insertBrandSchema = createInsertSchema(brands).omit({
   id: true,
@@ -536,6 +692,32 @@ export const insertImportBatchSchema = createInsertSchema(importBatches).omit({
   createdAt: true,
 });
 
+export const insertTestExecutionSchema = createInsertSchema(testExecutions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApprovalRequestSchema = createInsertSchema(approvalRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApprovalDecisionSchema = createInsertSchema(approvalDecisions).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertApprovalPreferencesSchema = createInsertSchema(approvalPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertApprovalMetricsSchema = createInsertSchema(approvalMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert & { password?: string };
 export type User = typeof users.$inferSelect;
@@ -573,8 +755,18 @@ export type ImportHistory = typeof importHistory.$inferSelect;
 export type InsertImportHistory = z.infer<typeof insertImportHistorySchema>;
 export type ImportBatch = typeof importBatches.$inferSelect;
 export type InsertImportBatch = z.infer<typeof insertImportBatchSchema>;
+export type TestExecution = typeof testExecutions.$inferSelect;
+export type InsertTestExecution = z.infer<typeof insertTestExecutionSchema>;
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type InsertApprovalRequest = z.infer<typeof insertApprovalRequestSchema>;
+export type ApprovalDecision = typeof approvalDecisions.$inferSelect;
+export type InsertApprovalDecision = z.infer<typeof insertApprovalDecisionSchema>;
+export type ApprovalPreferences = typeof approvalPreferences.$inferSelect;
+export type InsertApprovalPreferences = z.infer<typeof insertApprovalPreferencesSchema>;
+export type ApprovalMetrics = typeof approvalMetrics.$inferSelect;
+export type InsertApprovalMetrics = z.infer<typeof insertApprovalMetricsSchema>;
 
-// Workflow automation types
+// Workflow automation types  
 export interface FieldMapping {
   sourceField: string;
   targetField: string;
@@ -605,4 +797,57 @@ export interface ValidationError {
     action: string;
     newValue: any;
   };
+}
+
+// Approval system types
+export type ApprovalType = 'data_integrity' | 'performance_impact' | 'security_risk' | 'business_logic' | 'large_dataset';
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'escalated' | 'timeout';
+export type DecisionType = 'approve' | 'reject' | 'escalate' | 'delegate';
+
+export interface ApprovalContext {
+  scenario?: any;
+  currentResults?: any;
+  riskAssessment: {
+    level: RiskLevel;
+    factors: string[];
+    score: number;
+    mitigationOptions: string[];
+  };
+  recommendations: {
+    action: string;
+    reasoning: string;
+    confidence: number;
+  }[];
+  historicalOutcomes?: any[];
+  businessImpact?: string;
+  technicalImpact?: string;
+}
+
+export interface ApprovalWorkflow {
+  id: string;
+  request: ApprovalRequest;
+  currentStep: string;
+  nextSteps: string[];
+  timeoutBehavior: 'escalate' | 'auto_approve' | 'auto_reject' | 'hold';
+  escalationTriggers: string[];
+}
+
+export interface RiskAssessment {
+  level: RiskLevel;
+  score: number; // 0-100
+  factors: string[];
+  impactAreas: string[];
+  mitigationStrategies: string[];
+  confidenceLevel: number;
+}
+
+export interface RoutingDecision {
+  route: 'automated' | 'approval_required' | 'escalation';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  assignedApprovers: string[];
+  timeoutDuration: number; // minutes
+  escalationPath: string[];
+  reasoning: string;
+  confidence: number;
 }

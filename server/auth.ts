@@ -5,8 +5,22 @@ import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
 
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || "development-secret-change-in-production";
+// JWT configuration with secure environment validation
+const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required for security");
+  }
+  if (secret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters long");
+  }
+  if (secret === "development-secret-change-in-production") {
+    throw new Error(
+      "JWT_SECRET cannot use the default development value in production",
+    );
+  }
+  return secret;
+})();
 const JWT_EXPIRES_IN = "7d";
 
 // Argon2id configuration (most secure option)
@@ -28,7 +42,10 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 // Verify password
-export async function verifyPassword(passwordHash: string, password: string): Promise<boolean> {
+export async function verifyPassword(
+  passwordHash: string,
+  password: string,
+): Promise<boolean> {
   try {
     return await argon2.verify(passwordHash, password);
   } catch (error) {
@@ -40,12 +57,12 @@ export async function verifyPassword(passwordHash: string, password: string): Pr
 // Generate JWT token
 export function generateToken(userId: string): string {
   return jwt.sign(
-    { 
+    {
       userId,
       iat: Date.now(),
     },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN },
   );
 }
 
@@ -65,12 +82,16 @@ export async function registerUser(
   password: string,
   firstName: string,
   lastName: string,
-  role: "brand_owner" | "retailer" | "content_team" = "retailer"
+  role: "brand_owner" | "retailer" | "content_team" = "retailer",
 ) {
   try {
     // Check if user already exists
-    const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
     if (existingUser && existingUser.length > 0) {
       throw new Error("User with this email already exists");
     }
@@ -79,13 +100,16 @@ export async function registerUser(
     const passwordHash = await hashPassword(password);
 
     // Create new user
-    const newUser = await db.insert(users).values({
-      email,
-      passwordHash,
-      firstName,
-      lastName,
-      role,
-    }).returning();
+    const newUser = await db
+      .insert(users)
+      .values({
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        role,
+      })
+      .returning();
 
     if (!newUser || newUser.length === 0) {
       throw new Error("Failed to create user");
@@ -104,7 +128,11 @@ export async function registerUser(
 export async function loginUser(email: string, password: string) {
   try {
     // Find user by email
-    const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
     if (!user || user.length === 0) {
       throw new Error("Invalid email or password");
@@ -139,22 +167,18 @@ export async function loginUser(email: string, password: string) {
 }
 
 // Middleware to protect routes
-export async function authenticateToken(req: Request & { user?: any }, res: Response, next: NextFunction) {
+export async function authenticateToken(
+  req: Request & { user?: any },
+  res: Response,
+  next: NextFunction,
+) {
   try {
-    // In development mode with mock auth, bypass
-    if (process.env.NODE_ENV === 'development' && process.env.DATABASE_URL?.includes('mock')) {
-      req.user = {
-        id: 'local-dev-user',
-        email: 'dev@localhost',
-        firstName: 'Local',
-        lastName: 'Developer',
-        role: 'brand_owner',
-      };
-      return next();
-    }
+    // SECURITY: Removed dangerous development mode bypass
+    // All authentication must go through proper token validation
 
     // Check for token in cookies or authorization header
-    const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+    const token =
+      req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
 
     if (!token) {
       return res.status(401).json({ message: "Authentication required" });
@@ -167,7 +191,11 @@ export async function authenticateToken(req: Request & { user?: any }, res: Resp
     }
 
     // Get user from database
-    const user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, decoded.userId))
+      .limit(1);
 
     if (!user || user.length === 0) {
       return res.status(401).json({ message: "User not found" });
@@ -176,7 +204,7 @@ export async function authenticateToken(req: Request & { user?: any }, res: Resp
     // Attach user to request (without password)
     const { passwordHash: _, ...userWithoutPassword } = user[0];
     req.user = userWithoutPassword;
-    
+
     next();
   } catch (error) {
     console.error("Authentication error:", error);
@@ -203,7 +231,9 @@ export function requireRole(...roles: string[]) {
 export const googleOAuthConfig = {
   clientId: process.env.GOOGLE_CLIENT_ID || "",
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-  redirectUri: process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/auth/google/callback",
+  redirectUri:
+    process.env.GOOGLE_REDIRECT_URI ||
+    "http://localhost:5000/api/auth/google/callback",
   scope: ["openid", "email", "profile"],
 };
 

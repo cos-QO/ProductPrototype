@@ -88,6 +88,12 @@ export enum ErrorPatternType {
   XSS_PATTERNS = 'xss_patterns',
   UNICODE_EDGE_CASES = 'unicode_edge_cases',
   
+  // Format errors (missing from original)
+  TRUNCATED_DATA = 'truncated_data',
+  MALFORMED_CSV = 'malformed_csv',
+  MIXED_LINE_ENDINGS = 'mixed_line_endings',
+  ENCODING_ISSUES = 'encoding_issues',
+  
   // Business logic errors
   DUPLICATE_SKUS = 'duplicate_skus',
   INVALID_PRICING = 'invalid_pricing',
