@@ -41,3 +41,31 @@ AGENT.md
 *.backup
 *.old
 ~*
+
+# Logs
+*.log
+server.log
+logs/
+*.log.*
+
+# Uploads directory (user files)
+uploads/*
+!uploads/.gitkeep
+
+# Firebase
+.firebase/
+.firebaserc
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Runtime files
+.pid
+.seed
+*.seed
+
+# Development utilities
+.env.development.local
+.env.test.local
+.env.production.local

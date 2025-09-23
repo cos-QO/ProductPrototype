@@ -67,13 +67,15 @@ export async function importCSV(req: Request, res: Response) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
     
-    // Parse CSV
+    // Parse CSV with safer parsing options
     const records = parse(file.buffer.toString(), {
       columns: true,
       skip_empty_lines: true,
       trim: true,
-      cast: true,
-      cast_date: true
+      cast: false,  // Disable auto-casting to prevent data corruption
+      cast_date: false,  // Disable date auto-casting
+      relax_quotes: true,  // Handle malformed quotes gracefully
+      relax_column_count: true  // Handle varying column counts
     });
     
     const result = await processImport(type, records);

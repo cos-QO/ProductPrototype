@@ -221,8 +221,10 @@ export class FileProcessor {
         columns: true,
         skip_empty_lines: true,
         trim: true,
-        cast: true,
-        cast_date: true
+        cast: false,  // Disable auto-casting to prevent data corruption
+        cast_date: false,  // Disable date auto-casting
+        relax_quotes: true,  // Handle malformed quotes gracefully
+        relax_column_count: true  // Handle varying column counts
       });
 
       let isFirst = true;
@@ -481,8 +483,10 @@ export class FileProcessor {
         columns: true,
         skip_empty_lines: true,
         trim: true,
-        cast: true,
-        cast_date: true
+        cast: false,  // Disable auto-casting to prevent data corruption
+        cast_date: false,  // Disable date auto-casting
+        relax_quotes: true,  // Handle malformed quotes gracefully
+        relax_column_count: true  // Handle varying column counts
       });
 
       parser.on('readable', function() {

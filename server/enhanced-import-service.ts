@@ -516,11 +516,45 @@ export class EnhancedImportService {
   async executeImport(req: Request, res: Response) {
     try {
       const { sessionId } = req.params;
-      const { importConfig = {} } = req.body;
+      const { importConfig = {}, skipErrorRecovery = false } = req.body;
 
       const session = await this.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
+      }
+
+      // Check if error recovery should be applied first
+      if (!skipErrorRecovery) {
+        const { errorRecoveryService } = await import(
+          "./services/error-recovery-service"
+        );
+        const recoveryInstance = errorRecoveryService;
+
+        try {
+          // Apply any recovered data modifications
+          const recoveredData =
+            await recoveryInstance.applyRecoveredData(sessionId);
+          console.log(
+            `[ENHANCED IMPORT] Applied error recovery data for session ${sessionId}`,
+          );
+
+          // Store recovered data in session (you might want to save this to a temp file)
+          await this.updateSession(sessionId, {
+            metadata: {
+              ...(session.metadata || {}),
+              hasRecoveredData: true,
+              recoveredRecordCount: recoveredData.length,
+            },
+          });
+
+          // Clean up recovery session
+          recoveryInstance.cleanupRecoverySession(sessionId);
+        } catch (recoveryError) {
+          console.log(
+            `[ENHANCED IMPORT] No recovery data to apply for session ${sessionId}: ${recoveryError.message}`,
+          );
+          // Continue with normal processing if no recovery data
+        }
       }
 
       // Update session to processing

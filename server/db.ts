@@ -10,7 +10,7 @@ let db: any;
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres123@localhost:5432/queenone_dev?sslmode=disable";
+  "postgresql://postgres:postgres123@localhost:5433/queenone_dev?sslmode=disable";
 
 if (DATABASE_URL.includes("mock")) {
   console.warn("⚠️  Using mock database for UI testing only");

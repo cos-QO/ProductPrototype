@@ -149,6 +149,7 @@ export interface DataPreviewTableProps {
   fieldMappings: FieldMapping[];
   onErrorFix: (recordIndex: number, field: string, newValue: any) => void;
   onBulkFix: (errors: ValidationError[]) => void;
+  onErrorsResolved?: (resolvedErrors: ValidationError[]) => void;
   isLoading?: boolean;
 }
 

@@ -1,9 +1,0 @@
-product_title,price_usd,unique_id,product_summary,category_name,brand_label,stock_count,item_weight,product_status,color_option,size_variant,material_type
-"Artisan Coffee Mug Set",24.99,COFFEE-001,"Handcrafted ceramic mugs perfect for morning coffee","Home & Kitchen","Artisan Craft Co",150,0.8,"active","Midnight Blue","Large","Ceramic"
-"Wireless Bluetooth Headphones",89.95,AUDIO-WBH-001,"High-quality wireless headphones with noise cancellation","Electronics","SoundTech Pro",75,0.3,"active","Matte Black","One Size","Plastic/Metal"
-"Organic Cotton T-Shirt",19.99,APPAREL-OCT-001,"Soft organic cotton t-shirt in various colors","Clothing","EcoWear",200,0.2,"active","Forest Green","Medium","Organic Cotton"
-"Smart Home Light Bulb",12.50,SMART-BULB-001,"WiFi enabled LED bulb with color changing","Smart Home","LightSmart",300,0.1,"active","White","Standard","LED/Plastic"
-"Bamboo Cutting Board",34.99,KITCHEN-BCB-001,"Sustainable bamboo cutting board with groove","Kitchen","GreenKitchen",80,1.2,"active","Natural","Large","Bamboo"
-"Yoga Mat Premium",45.00,FITNESS-YMP-001,"Non-slip premium yoga mat for all skill levels","Fitness","ZenFit",120,2.1,"active","Purple","Standard","TPE Foam"
-"Stainless Steel Water Bottle",18.99,BOTTLE-SSW-001,"Insulated stainless steel water bottle 32oz","Outdoor","HydroGear",250,0.5,"active","Silver","32oz","Stainless Steel"
-"Desk Organizer Set",29.99,OFFICE-DOS-001,"Complete desk organization solution with compartments","Office","WorkSpace Pro",90,1.5,"active","Walnut","Multi","Wood/Metal"

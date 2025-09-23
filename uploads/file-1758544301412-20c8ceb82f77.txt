@@ -1,3 +1,0 @@
-This is not a CSV file.
-It's just plain text.
-Should cause an error.

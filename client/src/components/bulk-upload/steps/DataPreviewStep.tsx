@@ -1,29 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Input } from '@/components/ui/input';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  Download, 
-  Edit3, 
+import React, { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import {
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Download,
+  Edit3,
   AlertCircle,
   Eye,
   RefreshCw,
-  Filter
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { UploadSession, FieldMapping, ValidationError } from '../types';
+  Filter,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { UploadSession, FieldMapping, ValidationError } from "../types";
+import { ErrorRecoveryDialog } from "../components/ErrorRecoveryDialog";
 
 interface DataPreviewStepProps {
   sessionData: UploadSession | null;
@@ -40,7 +53,13 @@ const ValidationSummary: React.FC<{
   errorRecords: number;
   warningRecords: number;
   onExportErrors?: () => void;
-}> = ({ totalRecords, validRecords, errorRecords, warningRecords, onExportErrors }) => (
+}> = ({
+  totalRecords,
+  validRecords,
+  errorRecords,
+  warningRecords,
+  onExportErrors,
+}) => (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
       <div className="text-2xl font-bold text-blue-600">{totalRecords}</div>
@@ -80,7 +99,7 @@ const ErrorDisplay: React.FC<{
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="relative">
-          {error.severity === 'error' ? (
+          {error.severity === "error" ? (
             <XCircle className="h-4 w-4 text-red-500" />
           ) : (
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
@@ -92,14 +111,20 @@ const ErrorDisplay: React.FC<{
                 onChange={(e) => setEditValue(e.target.value)}
                 className="mb-2"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSave();
-                  if (e.key === 'Escape') setIsEditing(false);
+                  if (e.key === "Enter") handleSave();
+                  if (e.key === "Escape") setIsEditing(false);
                 }}
                 autoFocus
               />
               <div className="flex space-x-2">
-                <Button size="sm" onClick={handleSave}>Save</Button>
-                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                <Button size="sm" onClick={handleSave}>
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                >
                   Cancel
                 </Button>
               </div>
@@ -144,21 +169,26 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [showErrorRecovery, setShowErrorRecovery] = useState(false);
   const recordsPerPage = 20;
 
   // Fetch preview data
   const previewQuery = useQuery({
-    queryKey: ['dataPreview', sessionData?.id, fieldMappings],
+    queryKey: ["dataPreview", sessionData?.id, fieldMappings],
     queryFn: async () => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await apiRequest('GET', `/api/preview/${sessionData.id}`, {
-        params: {
-          mappings: JSON.stringify(fieldMappings),
-          limit: 100, // Get more data for comprehensive preview
+      if (!sessionData?.id) throw new Error("No session");
+
+      const response = await apiRequest(
+        "GET",
+        `/api/preview/${sessionData.id}`,
+        {
+          params: {
+            mappings: JSON.stringify(fieldMappings),
+            limit: 100, // Get more data for comprehensive preview
+          },
         },
-      });
-      
+      );
+
       return response;
     },
     enabled: !!sessionData?.id && fieldMappings.length > 0,
@@ -167,26 +197,30 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
   // Auto-fix errors mutation
   const autoFixMutation = useMutation({
     mutationFn: async (errors: ValidationError[]) => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await apiRequest('POST', `/api/recovery/${sessionData.id}/auto-fix`, {
-        errors: errors.filter(e => e.autoFix),
-      });
-      
+      if (!sessionData?.id) throw new Error("No session");
+
+      const response = await apiRequest(
+        "POST",
+        `/api/recovery/${sessionData.id}/auto-fix`,
+        {
+          errors: errors.filter((e) => e.autoFix),
+        },
+      );
+
       return response;
     },
     onSuccess: (data) => {
       setValidationErrors(data.remainingErrors || []);
       toast({
-        title: 'Auto-fix Applied',
+        title: "Auto-fix Applied",
         description: `Fixed ${data.fixedCount} errors automatically`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Auto-fix Failed',
-        description: error.message || 'Failed to apply auto-fixes',
-        variant: 'destructive',
+        title: "Auto-fix Failed",
+        description: error.message || "Failed to apply auto-fixes",
+        variant: "destructive",
       });
     },
   });
@@ -194,14 +228,16 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
   // Export errors mutation
   const exportErrorsMutation = useMutation({
     mutationFn: async () => {
-      if (!sessionData?.id) throw new Error('No session');
-      
-      const response = await fetch(`/api/import/${sessionData.id}/errors/export`);
-      if (!response.ok) throw new Error('Failed to export errors');
-      
+      if (!sessionData?.id) throw new Error("No session");
+
+      const response = await fetch(
+        `/api/import/${sessionData.id}/errors/export`,
+      );
+      if (!response.ok) throw new Error("Failed to export errors");
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `import-errors-${sessionData.id}.csv`;
       document.body.appendChild(a);
@@ -211,15 +247,15 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
     },
     onSuccess: () => {
       toast({
-        title: 'Errors Exported',
-        description: 'Error report has been downloaded',
+        title: "Errors Exported",
+        description: "Error report has been downloaded",
       });
     },
     onError: () => {
       toast({
-        title: 'Export Failed',
-        description: 'Failed to export error report',
-        variant: 'destructive',
+        title: "Export Failed",
+        description: "Failed to export error report",
+        variant: "destructive",
       });
     },
   });
@@ -234,24 +270,32 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
 
   // Get errors for a specific record and field
   const getFieldError = (recordIndex: number, field: string) => {
-    return validationErrors.find(e => 
-      e.recordIndex === recordIndex && e.field === field
+    return validationErrors.find(
+      (e) => e.recordIndex === recordIndex && e.field === field,
     );
   };
 
   // Get errors for a specific record
   const getRecordErrors = (recordIndex: number) => {
-    return validationErrors.filter(e => e.recordIndex === recordIndex);
+    return validationErrors.filter((e) => e.recordIndex === recordIndex);
   };
 
   // Calculate statistics
   const totalRecords = previewData.length;
-  const errorRecords = new Set(validationErrors.filter(e => e.severity === 'error').map(e => e.recordIndex)).size;
-  const warningRecords = new Set(validationErrors.filter(e => e.severity === 'warning').map(e => e.recordIndex)).size;
+  const errorRecords = new Set(
+    validationErrors
+      .filter((e) => e.severity === "error")
+      .map((e) => e.recordIndex),
+  ).size;
+  const warningRecords = new Set(
+    validationErrors
+      .filter((e) => e.severity === "warning")
+      .map((e) => e.recordIndex),
+  ).size;
   const validRecords = totalRecords - errorRecords;
 
   // Filter data for display
-  const filteredData = showErrorsOnly 
+  const filteredData = showErrorsOnly
     ? previewData.filter((_, index) => getRecordErrors(index).length > 0)
     : previewData;
 
@@ -262,10 +306,11 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
   const totalPages = Math.ceil(filteredData.length / recordsPerPage);
 
   // Check if we can proceed (no error-level validation issues)
-  const canProceed = validationErrors.filter(e => e.severity === 'error').length === 0;
+  const canProceed =
+    validationErrors.filter((e) => e.severity === "error").length === 0;
 
   // Auto-fixable errors
-  const autoFixableErrors = validationErrors.filter(e => e.autoFix);
+  const autoFixableErrors = validationErrors.filter((e) => e.autoFix);
 
   if (previewQuery.isLoading) {
     return (
@@ -294,7 +339,8 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Failed to generate data preview. Please check your field mappings and try again.
+          Failed to generate data preview. Please check your field mappings and
+          try again.
         </AlertDescription>
       </Alert>
     );
@@ -310,13 +356,14 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
               <div>
                 <CardTitle>Data Preview & Validation</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Review your data and resolve any validation errors before importing
+                  Review your data and resolve any validation errors before
+                  importing
                 </p>
               </div>
               <div className="flex items-center space-x-2">
                 {autoFixableErrors.length > 0 && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => autoFixMutation.mutate(autoFixableErrors)}
                     disabled={autoFixMutation.isPending}
@@ -326,28 +373,38 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                   </Button>
                 )}
                 {validationErrors.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => exportErrorsMutation.mutate()}
-                    disabled={exportErrorsMutation.isPending}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Errors
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowErrorRecovery(true)}
+                    >
+                      <Edit3 className="mr-2 h-4 w-4" />
+                      Fix Errors
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportErrorsMutation.mutate()}
+                      disabled={exportErrorsMutation.isPending}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Errors
+                    </Button>
+                  </>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setShowErrorsOnly(!showErrorsOnly)}
                 >
                   <Filter className="mr-2 h-4 w-4" />
-                  {showErrorsOnly ? 'Show All' : 'Errors Only'}
+                  {showErrorsOnly ? "Show All" : "Errors Only"}
                 </Button>
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <ValidationSummary
               totalRecords={totalRecords}
@@ -364,9 +421,21 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
           <Alert>
             <XCircle className="h-4 w-4" />
             <AlertTitle>Validation Errors Found</AlertTitle>
-            <AlertDescription>
-              {errorRecords} records have validation errors that must be resolved before importing.
-              Use the auto-fix feature or edit individual values to resolve issues.
+            <AlertDescription className="flex items-center justify-between">
+              <div>
+                {errorRecords} records have validation errors that must be
+                resolved before importing. Use the error recovery tool to fix
+                these issues efficiently.
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowErrorRecovery(true)}
+                className="ml-4"
+              >
+                <Edit3 className="mr-2 h-4 w-4" />
+                Fix All Errors
+              </Button>
             </AlertDescription>
           </Alert>
         )}
@@ -376,7 +445,8 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
             <CheckCircle className="h-4 w-4" />
             <AlertTitle>All Data Valid</AlertTitle>
             <AlertDescription>
-              Your data has passed all validation checks and is ready for import!
+              Your data has passed all validation checks and is ready for
+              import!
             </AlertDescription>
           </Alert>
         )}
@@ -386,7 +456,8 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Warnings Detected</AlertTitle>
             <AlertDescription>
-              {warningRecords} records have warnings. These won't prevent import but should be reviewed.
+              {warningRecords} records have warnings. These won't prevent import
+              but should be reviewed.
             </AlertDescription>
           </Alert>
         )}
@@ -404,11 +475,13 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                 )}
               </CardTitle>
               <div className="text-sm text-muted-foreground">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredData.length)} of {filteredData.length} records
+                Showing {startIndex + 1}-
+                {Math.min(endIndex, filteredData.length)} of{" "}
+                {filteredData.length} records
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <div className="border rounded-lg overflow-hidden">
               <ScrollArea className="h-96">
@@ -417,7 +490,10 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
                       {fieldMappings.map((mapping) => (
-                        <TableHead key={mapping.targetField} className="min-w-32">
+                        <TableHead
+                          key={mapping.targetField}
+                          className="min-w-32"
+                        >
                           {mapping.targetField}
                         </TableHead>
                       ))}
@@ -428,41 +504,60 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                     {paginatedData.map((row, index) => {
                       const recordIndex = startIndex + index;
                       const recordErrors = getRecordErrors(recordIndex);
-                      const hasErrors = recordErrors.some(e => e.severity === 'error');
-                      const hasWarnings = recordErrors.some(e => e.severity === 'warning');
-                      
+                      const hasErrors = recordErrors.some(
+                        (e) => e.severity === "error",
+                      );
+                      const hasWarnings = recordErrors.some(
+                        (e) => e.severity === "warning",
+                      );
+
                       return (
-                        <TableRow 
+                        <TableRow
                           key={recordIndex}
                           className={cn(
                             hasErrors && "bg-red-50 dark:bg-red-900/20",
-                            !hasErrors && hasWarnings && "bg-yellow-50 dark:bg-yellow-900/20"
+                            !hasErrors &&
+                              hasWarnings &&
+                              "bg-yellow-50 dark:bg-yellow-900/20",
                           )}
                         >
                           <TableCell className="font-mono text-sm">
                             {recordIndex + 1}
                           </TableCell>
-                          
+
                           {fieldMappings.map((mapping) => {
                             const value = row[mapping.sourceField];
-                            const error = getFieldError(recordIndex, mapping.targetField);
-                            
+                            const error = getFieldError(
+                              recordIndex,
+                              mapping.targetField,
+                            );
+
                             return (
-                              <TableCell key={mapping.targetField} className="relative">
+                              <TableCell
+                                key={mapping.targetField}
+                                className="relative"
+                              >
                                 <div className="flex items-center space-x-2">
-                                  <span className={cn(
-                                    "truncate max-w-32",
-                                    error && error.severity === 'error' && "line-through text-muted-foreground"
-                                  )}>
+                                  <span
+                                    className={cn(
+                                      "truncate max-w-32",
+                                      error &&
+                                        error.severity === "error" &&
+                                        "line-through text-muted-foreground",
+                                    )}
+                                  >
                                     {String(value)}
                                   </span>
                                   {error && (
-                                    <ErrorDisplay 
+                                    <ErrorDisplay
                                       error={error}
                                       onFix={(newValue) => {
-                                        // Update the value and re-validate
-                                        // This would trigger a re-validation API call
-                                        console.log('Fix value:', newValue);
+                                        // Quick inline fix - could trigger re-validation
+                                        // For complex fixes, user should use the ErrorRecoveryDialog
+                                        console.log(
+                                          "Inline fix value:",
+                                          newValue,
+                                        );
                                       }}
                                     />
                                   )}
@@ -470,12 +565,15 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                               </TableCell>
                             );
                           })}
-                          
+
                           <TableCell>
                             {hasErrors ? (
                               <Badge variant="destructive">Error</Badge>
                             ) : hasWarnings ? (
-                              <Badge variant="outline" className="border-yellow-500 text-yellow-600">
+                              <Badge
+                                variant="outline"
+                                className="border-yellow-500 text-yellow-600"
+                              >
                                 Warning
                               </Badge>
                             ) : (
@@ -496,20 +594,24 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(0, prev - 1))
+                  }
                   disabled={currentPage === 0}
                 >
                   Previous
                 </Button>
-                
+
                 <span className="text-sm text-muted-foreground">
                   Page {currentPage + 1} of {totalPages}
                 </span>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
+                  }
                   disabled={currentPage === totalPages - 1}
                 >
                   Next
@@ -529,11 +631,13 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
               <ScrollArea className="h-40">
                 <div className="space-y-2">
                   {validationErrors.slice(0, 50).map((error, index) => (
-                    <div 
+                    <div
                       key={index}
                       className={cn(
                         "p-3 rounded-lg text-sm",
-                        error.severity === 'error' ? "bg-red-50 dark:bg-red-900/20" : "bg-yellow-50 dark:bg-yellow-900/20"
+                        error.severity === "error"
+                          ? "bg-red-50 dark:bg-red-900/20"
+                          : "bg-yellow-50 dark:bg-yellow-900/20",
                       )}
                     >
                       <div className="flex items-start justify-between">
@@ -568,6 +672,41 @@ export const DataPreviewStep: React.FC<DataPreviewStepProps> = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Error Recovery Dialog */}
+        <ErrorRecoveryDialog
+          isOpen={showErrorRecovery}
+          onClose={() => setShowErrorRecovery(false)}
+          errors={validationErrors}
+          sessionId={sessionData?.id || ""}
+          onErrorsResolved={(resolvedErrors) => {
+            // Update validation errors by removing resolved ones
+            const resolvedErrorsSet = new Set(
+              resolvedErrors.map((e) => `${e.recordIndex}-${e.field}`),
+            );
+
+            const remainingErrors = validationErrors.filter(
+              (error) =>
+                !resolvedErrorsSet.has(`${error.recordIndex}-${error.field}`),
+            );
+
+            setValidationErrors(remainingErrors);
+
+            // Show success message
+            toast({
+              title: "Errors Resolved",
+              description: `${resolvedErrors.length} errors have been fixed`,
+            });
+
+            // Close dialog
+            setShowErrorRecovery(false);
+
+            // Refresh preview data if errors were resolved
+            if (resolvedErrors.length > 0) {
+              previewQuery.refetch();
+            }
+          }}
+        />
       </div>
     </TooltipProvider>
   );

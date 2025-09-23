@@ -1939,36 +1939,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const health = webSocketService.healthCheck();
 
       // Set HTTP status based on health status
-      const statusCode = health.status === 'healthy' ? 200 : 
-                        health.status === 'degraded' ? 200 : 503;
+      const statusCode =
+        health.status === "healthy"
+          ? 200
+          : health.status === "degraded"
+            ? 200
+            : 503;
 
       res.status(statusCode).json({
-        success: health.status !== 'error',
+        success: health.status !== "error",
         health,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
       console.error("Error getting WebSocket health:", error);
       res.status(503).json({
         success: false,
         health: {
-          status: 'error',
+          status: "error",
           details: {
             initialized: false,
             serverRunning: false,
             connectionsActive: 0,
             uptime: null,
-            lastCheck: new Date()
-          }
+            lastCheck: new Date(),
+          },
         },
         error: "Failed to get WebSocket health",
         message: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   });
 
-  // Error Recovery Routes
+  // Error Recovery Routes - Missing endpoints for ErrorRecoveryDialog
+
+  // Fix single error endpoint
+  app.post(
+    "/api/recovery/:sessionId/fix-single",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      const { errorRecoveryService } = await import(
+        "./services/error-recovery-service"
+      );
+      await errorRecoveryService.fixSingleError(req, res);
+    },
+  );
+
+  // Fix bulk errors endpoint
+  app.post(
+    "/api/recovery/:sessionId/fix-bulk",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      const { errorRecoveryService } = await import(
+        "./services/error-recovery-service"
+      );
+      await errorRecoveryService.fixBulkErrors(req, res);
+    },
+  );
+
+  // Get session status endpoint
+  app.get(
+    "/api/recovery/:sessionId/status",
+    isAuthenticated,
+    async (req: any, res) => {
+      const { errorRecoveryService } = await import(
+        "./services/error-recovery-service"
+      );
+      await errorRecoveryService.getSessionStatus(req, res);
+    },
+  );
 
   // Analyze import errors and suggest fixes
   app.post(

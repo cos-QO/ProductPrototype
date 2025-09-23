@@ -21,6 +21,7 @@ import {
   Play,
   Pause,
   Square,
+  Edit3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
@@ -29,6 +30,7 @@ import type {
   ImportResults,
   ValidationError,
 } from "../types";
+import { ErrorRecoveryDialog } from "../components/ErrorRecoveryDialog";
 
 // Validation helpers to prevent NaN and undefined values
 const validateSessionData = (
@@ -182,50 +184,84 @@ const ProgressTracker: React.FC<{
 // Real-time error feed component
 const ErrorFeed: React.FC<{
   errors: ValidationError[];
+  sessionId?: string;
   onExportReport?: () => void;
-}> = ({ errors, onExportReport }) => {
+  onErrorsResolved?: (resolvedErrors: ValidationError[]) => void;
+}> = ({ errors, sessionId, onExportReport, onErrorsResolved }) => {
+  const [showErrorRecovery, setShowErrorRecovery] = useState(false);
+
   if (errors.length === 0) return null;
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
-            Import Errors ({errors.length})
-          </CardTitle>
-          {onExportReport && (
-            <Button variant="outline" size="sm" onClick={onExportReport}>
-              <Download className="mr-2 h-4 w-4" />
-              Export Report
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-40">
-          {errors.slice(0, 20).map((error, index) => (
-            <div
-              key={index}
-              className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded"
-            >
-              <p className="text-sm font-medium">Row {error.recordIndex + 1}</p>
-              <p className="text-sm text-muted-foreground">{error.message}</p>
-              {error.suggestion && (
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  Suggestion: {error.suggestion}
-                </p>
+    <>
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
+              Import Errors ({errors.length})
+            </CardTitle>
+            <div className="flex items-center space-x-2">
+              {sessionId && onErrorsResolved && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowErrorRecovery(true)}
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Fix Errors
+                </Button>
+              )}
+              {onExportReport && (
+                <Button variant="outline" size="sm" onClick={onExportReport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Report
+                </Button>
               )}
             </div>
-          ))}
-          {errors.length > 20 && (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              And {errors.length - 20} more errors...
-            </p>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-40">
+            {errors.slice(0, 20).map((error, index) => (
+              <div
+                key={index}
+                className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded"
+              >
+                <p className="text-sm font-medium">
+                  Row {error.recordIndex + 1}
+                </p>
+                <p className="text-sm text-muted-foreground">{error.message}</p>
+                {error.suggestion && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    Suggestion: {error.suggestion}
+                  </p>
+                )}
+              </div>
+            ))}
+            {errors.length > 20 && (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                And {errors.length - 20} more errors...
+              </p>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      {/* Error Recovery Dialog */}
+      {sessionId && onErrorsResolved && (
+        <ErrorRecoveryDialog
+          isOpen={showErrorRecovery}
+          onClose={() => setShowErrorRecovery(false)}
+          errors={errors}
+          sessionId={sessionId}
+          onErrorsResolved={(resolvedErrors) => {
+            onErrorsResolved(resolvedErrors);
+            setShowErrorRecovery(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 
@@ -477,7 +513,26 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
         {hasErrors && (
           <ErrorFeed
             errors={importResults.errors}
+            sessionId={validatedSessionData?.id}
             onExportReport={exportErrorReport}
+            onErrorsResolved={(resolvedErrors) => {
+              // Update import results by removing resolved errors
+              const resolvedErrorsSet = new Set(
+                resolvedErrors.map((e) => `${e.recordIndex}-${e.field}`),
+              );
+
+              const updatedResults = {
+                ...importResults,
+                errors: importResults.errors.filter(
+                  (error) =>
+                    !resolvedErrorsSet.has(
+                      `${error.recordIndex}-${error.field}`,
+                    ),
+                ),
+              };
+
+              setImportResults(updatedResults);
+            }}
           />
         )}
       </div>
@@ -514,7 +569,24 @@ export const ImportExecutionStep: React.FC<ImportExecutionStepProps> = ({
         {/* Real-time error feed */}
         <ErrorFeed
           errors={validatedProgress.errors}
+          sessionId={validatedSessionData.id}
           onExportReport={exportErrorReport}
+          onErrorsResolved={(resolvedErrors) => {
+            // Update progress errors by removing resolved ones
+            const resolvedErrorsSet = new Set(
+              resolvedErrors.map((e) => `${e.recordIndex}-${e.field}`),
+            );
+
+            const updatedProgress = {
+              ...validatedProgress,
+              errors: validatedProgress.errors.filter(
+                (error) =>
+                  !resolvedErrorsSet.has(`${error.recordIndex}-${error.field}`),
+              ),
+            };
+
+            setImportProgress(updatedProgress);
+          }}
         />
       </div>
     );

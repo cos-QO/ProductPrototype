@@ -206,11 +206,22 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
   useEffect(() => {
     if (!sessionData?.id || !isOpen) return;
 
-    // Fix port detection issue - window.location.port returns empty string in development
-    const port =
-      window.location.port ||
-      (window.location.protocol === "https:" ? "443" : "5000");
-    const wsUrl = `ws://${window.location.hostname}:${port}/ws?sessionId=${sessionData.id}&userId=${sessionData.userId}`;
+    // Enhanced port detection with proper environment handling
+    let wsHost = window.location.hostname;
+    let wsPort = "5000"; // Default port for our application
+    
+    // In development, check if we're running on a different port
+    if (window.location.port) {
+      wsPort = window.location.port;
+    } else if (window.location.protocol === "https:") {
+      wsPort = "443";
+    }
+    
+    // Use same protocol as current page for WebSocket
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${wsProtocol}://${wsHost}:${wsPort}/ws?sessionId=${sessionData.id}&userId=${sessionData.userId}`;
+    
+    console.log("[WebSocket] Connecting to:", wsUrl);
     const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
