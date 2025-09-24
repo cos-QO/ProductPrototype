@@ -273,7 +273,9 @@ export const importBatches = pgTable("import_batches", {
 
 // Test execution tracking for automated edge case testing
 export const testExecutions = pgTable("test_executions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
   scenario: jsonb("scenario").notNull(),
   status: varchar("status", { length: 20 }).default("pending"),
@@ -284,122 +286,157 @@ export const testExecutions = pgTable("test_executions", {
 });
 
 // Core approval request tracking
-export const approvalRequests = pgTable("approval_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: varchar("type", { length: 50 }).notNull(),
-  riskLevel: varchar("risk_level", { length: 20 }).notNull(),
-  priority: varchar("priority", { length: 20 }).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description").notNull(),
-  context: jsonb("context").notNull(),
-  riskAssessment: jsonb("risk_assessment").notNull(),
-  
-  // Assignment and routing
-  assignedTo: varchar("assigned_to", { length: 100 }).array().notNull(),
-  currentApprover: varchar("current_approver", { length: 100 }),
-  escalationPath: varchar("escalation_path", { length: 100 }).array(),
-  
-  // Status and timing
-  status: varchar("status", { length: 20 }).default("pending"),
-  createdAt: timestamp("created_at").defaultNow(),
-  deadline: timestamp("deadline").notNull(),
-  approvedAt: timestamp("approved_at"),
-  approvedBy: varchar("approved_by", { length: 100 }),
-  
-  // Decision tracking
-  decision: jsonb("decision"),
-  decisionReasoning: text("decision_reasoning"),
-  
-  // Integration references
-  testExecutionId: varchar("test_execution_id").references(() => testExecutions.id),
-  importSessionId: varchar("import_session_id").references(() => importSessions.sessionId),
-  
-  // Metadata
-  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
-}, (table) => [
-  index("idx_approval_requests_status").on(table.status),
-  index("idx_approval_requests_assigned_to").on(table.assignedTo),
-  index("idx_approval_requests_created_at").on(table.createdAt),
-  index("idx_approval_requests_deadline").on(table.deadline),
-  index("idx_approval_requests_risk_level").on(table.riskLevel),
-  index("idx_approval_requests_type").on(table.type),
-]);
+export const approvalRequests = pgTable(
+  "approval_requests",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    type: varchar("type", { length: 50 }).notNull(),
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    priority: varchar("priority", { length: 20 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    context: jsonb("context").notNull(),
+    riskAssessment: jsonb("risk_assessment").notNull(),
+
+    // Assignment and routing
+    assignedTo: varchar("assigned_to", { length: 100 }).array().notNull(),
+    currentApprover: varchar("current_approver", { length: 100 }),
+    escalationPath: varchar("escalation_path", { length: 100 }).array(),
+
+    // Status and timing
+    status: varchar("status", { length: 20 }).default("pending"),
+    createdAt: timestamp("created_at").defaultNow(),
+    deadline: timestamp("deadline").notNull(),
+    approvedAt: timestamp("approved_at"),
+    approvedBy: varchar("approved_by", { length: 100 }),
+
+    // Decision tracking
+    decision: jsonb("decision"),
+    decisionReasoning: text("decision_reasoning"),
+
+    // Integration references
+    testExecutionId: varchar("test_execution_id").references(
+      () => testExecutions.id,
+    ),
+    importSessionId: varchar("import_session_id").references(
+      () => importSessions.sessionId,
+    ),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    index("idx_approval_requests_status").on(table.status),
+    index("idx_approval_requests_assigned_to").on(table.assignedTo),
+    index("idx_approval_requests_created_at").on(table.createdAt),
+    index("idx_approval_requests_deadline").on(table.deadline),
+    index("idx_approval_requests_risk_level").on(table.riskLevel),
+    index("idx_approval_requests_type").on(table.type),
+  ],
+);
 
 // Approval decision audit trail
-export const approvalDecisions = pgTable("approval_decisions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  approvalRequestId: varchar("approval_request_id").notNull().references(() => approvalRequests.id),
-  decision: varchar("decision", { length: 20 }).notNull(),
-  approver: varchar("approver", { length: 100 }).notNull(),
-  reasoning: text("reasoning"),
-  conditions: jsonb("conditions"),
-  timestamp: timestamp("timestamp").defaultNow(),
-  
-  // Decision context
-  contextAtDecision: jsonb("context_at_decision").notNull(),
-  systemRecommendation: varchar("system_recommendation", { length: 20 }),
-  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }),
-  
-  // Metadata
-  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
-}, (table) => [
-  index("idx_approval_decisions_approval_request_id").on(table.approvalRequestId),
-  index("idx_approval_decisions_approver").on(table.approver),
-  index("idx_approval_decisions_timestamp").on(table.timestamp),
-]);
+export const approvalDecisions = pgTable(
+  "approval_decisions",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    approvalRequestId: varchar("approval_request_id")
+      .notNull()
+      .references(() => approvalRequests.id),
+    decision: varchar("decision", { length: 20 }).notNull(),
+    approver: varchar("approver", { length: 100 }).notNull(),
+    reasoning: text("reasoning"),
+    conditions: jsonb("conditions"),
+    timestamp: timestamp("timestamp").defaultNow(),
+
+    // Decision context
+    contextAtDecision: jsonb("context_at_decision").notNull(),
+    systemRecommendation: varchar("system_recommendation", { length: 20 }),
+    confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    index("idx_approval_decisions_approval_request_id").on(
+      table.approvalRequestId,
+    ),
+    index("idx_approval_decisions_approver").on(table.approver),
+    index("idx_approval_decisions_timestamp").on(table.timestamp),
+  ],
+);
 
 // User approval preferences and learning
-export const approvalPreferences = pgTable("approval_preferences", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id", { length: 100 }).notNull(),
-  
-  // Automation preferences
-  autoApproveLowRisk: boolean("auto_approve_low_risk").default(false),
-  autoApproveConfidenceThreshold: decimal("auto_approve_confidence_threshold", { precision: 3, scale: 2 }).default(sql`0.85`),
-  preferredNotificationMethod: varchar("preferred_notification_method", { length: 20 }).default("in_app"),
-  
-  // Delegation settings
-  delegateTo: varchar("delegate_to", { length: 100 }),
-  delegationRules: jsonb("delegation_rules").default(sql`'{}'::jsonb`),
-  
-  // Learning data
-  decisionPatterns: jsonb("decision_patterns").default(sql`'{}'::jsonb`),
-  performanceMetrics: jsonb("performance_metrics").default(sql`'{}'::jsonb`),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_approval_preferences_user_id").on(table.userId),
-]);
+export const approvalPreferences = pgTable(
+  "approval_preferences",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id", { length: 100 }).notNull(),
+
+    // Automation preferences
+    autoApproveLowRisk: boolean("auto_approve_low_risk").default(false),
+    autoApproveConfidenceThreshold: decimal(
+      "auto_approve_confidence_threshold",
+      { precision: 3, scale: 2 },
+    ).default(sql`0.85`),
+    preferredNotificationMethod: varchar("preferred_notification_method", {
+      length: 20,
+    }).default("in_app"),
+
+    // Delegation settings
+    delegateTo: varchar("delegate_to", { length: 100 }),
+    delegationRules: jsonb("delegation_rules").default(sql`'{}'::jsonb`),
+
+    // Learning data
+    decisionPatterns: jsonb("decision_patterns").default(sql`'{}'::jsonb`),
+    performanceMetrics: jsonb("performance_metrics").default(sql`'{}'::jsonb`),
+
+    // Timestamps
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_approval_preferences_user_id").on(table.userId)],
+);
 
 // Approval performance metrics
-export const approvalMetrics = pgTable("approval_metrics", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: date("date").notNull(),
-  approver: varchar("approver", { length: 100 }),
-  
-  // Metrics
-  totalApprovals: integer("total_approvals").default(0),
-  automatedApprovals: integer("automated_approvals").default(0),
-  manualApprovals: integer("manual_approvals").default(0),
-  averageDecisionTime: interval("average_decision_time"),
-  
-  // Accuracy metrics
-  correctDecisions: integer("correct_decisions").default(0),
-  incorrectDecisions: integer("incorrect_decisions").default(0),
-  accuracyRate: decimal("accuracy_rate", { precision: 5, scale: 4 }),
-  
-  // Performance breakdown
-  approvalsByType: jsonb("approvals_by_type").default(sql`'{}'::jsonb`),
-  approvalsByRisk: jsonb("approvals_by_risk").default(sql`'{}'::jsonb`),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("idx_approval_metrics_date").on(table.date),
-  index("idx_approval_metrics_approver").on(table.approver),
-]);
+export const approvalMetrics = pgTable(
+  "approval_metrics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    date: date("date").notNull(),
+    approver: varchar("approver", { length: 100 }),
+
+    // Metrics
+    totalApprovals: integer("total_approvals").default(0),
+    automatedApprovals: integer("automated_approvals").default(0),
+    manualApprovals: integer("manual_approvals").default(0),
+    averageDecisionTime: interval("average_decision_time"),
+
+    // Accuracy metrics
+    correctDecisions: integer("correct_decisions").default(0),
+    incorrectDecisions: integer("incorrect_decisions").default(0),
+    accuracyRate: decimal("accuracy_rate", { precision: 5, scale: 4 }),
+
+    // Performance breakdown
+    approvalsByType: jsonb("approvals_by_type").default(sql`'{}'::jsonb`),
+    approvalsByRisk: jsonb("approvals_by_risk").default(sql`'{}'::jsonb`),
+
+    // Metadata
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_approval_metrics_date").on(table.date),
+    index("idx_approval_metrics_approver").on(table.approver),
+  ],
+);
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -586,28 +623,959 @@ export const importBatchesRelations = relations(importBatches, ({ one }) => ({
   }),
 }));
 
-export const testExecutionsRelations = relations(testExecutions, ({ many }) => ({
-  approvalRequests: many(approvalRequests),
-}));
+export const testExecutionsRelations = relations(
+  testExecutions,
+  ({ many }) => ({
+    approvalRequests: many(approvalRequests),
+  }),
+);
 
-export const approvalRequestsRelations = relations(approvalRequests, ({ one, many }) => ({
-  testExecution: one(testExecutions, {
-    fields: [approvalRequests.testExecutionId],
-    references: [testExecutions.id],
+export const approvalRequestsRelations = relations(
+  approvalRequests,
+  ({ one, many }) => ({
+    testExecution: one(testExecutions, {
+      fields: [approvalRequests.testExecutionId],
+      references: [testExecutions.id],
+    }),
+    importSession: one(importSessions, {
+      fields: [approvalRequests.importSessionId],
+      references: [importSessions.sessionId],
+    }),
+    decisions: many(approvalDecisions),
   }),
-  importSession: one(importSessions, {
-    fields: [approvalRequests.importSessionId],
-    references: [importSessions.sessionId],
-  }),
-  decisions: many(approvalDecisions),
-}));
+);
 
-export const approvalDecisionsRelations = relations(approvalDecisions, ({ one }) => ({
-  approvalRequest: one(approvalRequests, {
-    fields: [approvalDecisions.approvalRequestId],
-    references: [approvalRequests.id],
+export const approvalDecisionsRelations = relations(
+  approvalDecisions,
+  ({ one }) => ({
+    approvalRequest: one(approvalRequests, {
+      fields: [approvalDecisions.approvalRequestId],
+      references: [approvalRequests.id],
+    }),
   }),
-}));
+);
+
+// LLM Edge Case Detection Tables
+
+// Edge case detection results
+export const edgeCaseDetections = pgTable(
+  "edge_case_detections",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").notNull(),
+    pattern: varchar("pattern", { length: 500 }).notNull(),
+    category: varchar("category", { length: 100 }).notNull(),
+    confidence: integer("confidence").notNull(), // 0-100
+    severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+    description: text("description").notNull(),
+
+    // Detection context
+    errorCount: integer("error_count").notNull(),
+    dataContext: jsonb("data_context").notNull(),
+    riskAssessment: jsonb("risk_assessment").notNull(),
+    suggestedActions: jsonb("suggested_actions").notNull(),
+
+    // Automation recommendations
+    automationRecommendation: jsonb("automation_recommendation"),
+    testRecommendation: jsonb("test_recommendation"),
+
+    // Status and processing
+    status: varchar("status", { length: 50 }).default("detected"), // detected, processed, resolved, escalated
+    processingTime: integer("processing_time"), // milliseconds
+    llmCost: decimal("llm_cost", { precision: 8, scale: 6 }), // USD cost
+
+    // References
+    approvalRequestId: varchar("approval_request_id").references(
+      () => approvalRequests.id,
+    ),
+    importSessionId: varchar("import_session_id").references(
+      () => importSessions.sessionId,
+    ),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_edge_case_detections_session_id").on(table.sessionId),
+    index("idx_edge_case_detections_user_id").on(table.userId),
+    index("idx_edge_case_detections_pattern").on(table.pattern),
+    index("idx_edge_case_detections_category").on(table.category),
+    index("idx_edge_case_detections_severity").on(table.severity),
+    index("idx_edge_case_detections_created_at").on(table.createdAt),
+  ],
+);
+
+// Error pattern analysis and storage
+export const errorPatterns = pgTable(
+  "error_patterns",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    signature: varchar("signature", { length: 500 }).unique().notNull(),
+    category: varchar("category", { length: 100 }).notNull(),
+    description: text("description").notNull(),
+
+    // Pattern characteristics
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+    confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull(),
+    frequency: integer("frequency").default(1),
+    totalOccurrences: integer("total_occurrences").default(1),
+
+    // Performance metrics
+    successRate: decimal("success_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
+    averageResolutionTime: integer("average_resolution_time").default(0), // minutes
+
+    // Temporal tracking
+    firstSeen: timestamp("first_seen").defaultNow(),
+    lastSeen: timestamp("last_seen").defaultNow(),
+    trendDirection: varchar("trend_direction", { length: 20 }), // increasing, decreasing, stable, spike
+
+    // Resolution strategies
+    resolutionStrategies: jsonb("resolution_strategies"),
+    automationEligible: boolean("automation_eligible").default(false),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_error_patterns_signature").on(table.signature),
+    index("idx_error_patterns_category").on(table.category),
+    index("idx_error_patterns_risk_level").on(table.riskLevel),
+    index("idx_error_patterns_frequency").on(table.frequency),
+    index("idx_error_patterns_last_seen").on(table.lastSeen),
+  ],
+);
+
+// Error analytics and real-time tracking
+export const errorAnalytics = pgTable(
+  "error_analytics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    patternId: varchar("pattern_id")
+      .notNull()
+      .references(() => errorPatterns.id),
+    sessionId: varchar("session_id").notNull(),
+    patternSignature: varchar("pattern_signature", { length: 500 }).notNull(),
+
+    // Analytics data
+    errorCount: integer("error_count").notNull(),
+    confidence: integer("confidence").notNull(), // 0-100
+    riskLevel: varchar("risk_level", { length: 20 }).notNull(),
+
+    // Context
+    userContext: jsonb("user_context"),
+    dataContext: jsonb("data_context"),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    timestamp: timestamp("timestamp").defaultNow(),
+  },
+  (table) => [
+    index("idx_error_analytics_pattern_id").on(table.patternId),
+    index("idx_error_analytics_session_id").on(table.sessionId),
+    index("idx_error_analytics_timestamp").on(table.timestamp),
+  ],
+);
+
+// Generated test cases from dynamic test generator
+export const generatedTestCases = pgTable(
+  "generated_test_cases",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    suiteId: varchar("suite_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+
+    // Test configuration
+    type: varchar("type", { length: 50 }).notNull(), // unit, integration, e2e, performance
+    priority: varchar("priority", { length: 20 }).notNull(), // low, medium, high, critical
+    estimatedDuration: integer("estimated_duration"), // seconds
+
+    // Test data
+    testData: jsonb("test_data").notNull(),
+    expectedResults: jsonb("expected_results").notNull(),
+    validationRules: jsonb("validation_rules").notNull(),
+
+    // Generation context
+    edgeCasePattern: varchar("edge_case_pattern", { length: 500 }),
+    generatedBy: varchar("generated_by", { length: 50 }).notNull(), // llm, template, manual
+    generationConfidence: integer("generation_confidence"), // 0-100
+
+    // Execution tracking
+    executionCount: integer("execution_count").default(0),
+    successCount: integer("success_count").default(0),
+    lastExecutedAt: timestamp("last_executed_at"),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_generated_test_cases_suite_id").on(table.suiteId),
+    index("idx_generated_test_cases_type").on(table.type),
+    index("idx_generated_test_cases_priority").on(table.priority),
+    index("idx_generated_test_cases_pattern").on(table.edgeCasePattern),
+  ],
+);
+
+// Edge case specific test cases
+export const edgeCaseTestCases = pgTable(
+  "edge_case_test_cases",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    detectionId: varchar("detection_id")
+      .notNull()
+      .references(() => edgeCaseDetections.id),
+    testCaseId: varchar("test_case_id")
+      .notNull()
+      .references(() => generatedTestCases.id),
+
+    // Association metadata
+    relevanceScore: integer("relevance_score"), // 0-100
+    expectedOutcome: varchar("expected_outcome", { length: 100 }),
+
+    // Execution results
+    lastExecutionStatus: varchar("last_execution_status", { length: 50 }),
+    lastExecutionResults: jsonb("last_execution_results"),
+
+    // Metadata
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_edge_case_test_cases_detection_id").on(table.detectionId),
+    index("idx_edge_case_test_cases_test_case_id").on(table.testCaseId),
+  ],
+);
+
+// ML feedback and learning sessions
+export const mlFeedbackSessions = pgTable(
+  "ml_feedback_sessions",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    sessionType: varchar("session_type", { length: 50 }).notNull(), // decision_feedback, pattern_learning, performance_update
+
+    // Feedback data
+    feedbackData: jsonb("feedback_data").notNull(),
+    learningOutcomes: jsonb("learning_outcomes"),
+
+    // Performance metrics
+    accuracyImprovement: decimal("accuracy_improvement", {
+      precision: 5,
+      scale: 4,
+    }),
+    confidenceChange: decimal("confidence_change", { precision: 5, scale: 4 }),
+    processingTime: integer("processing_time"), // milliseconds
+
+    // References
+    approvalRequestId: varchar("approval_request_id").references(
+      () => approvalRequests.id,
+    ),
+    detectionId: varchar("detection_id").references(
+      () => edgeCaseDetections.id,
+    ),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_ml_feedback_sessions_user_id").on(table.userId),
+    index("idx_ml_feedback_sessions_type").on(table.sessionType),
+    index("idx_ml_feedback_sessions_created_at").on(table.createdAt),
+  ],
+);
+
+// ML learning patterns storage
+export const mlLearningPatterns = pgTable(
+  "ml_learning_patterns",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    patternType: varchar("pattern_type", { length: 50 }).notNull(),
+    patternData: jsonb("pattern_data").notNull(),
+
+    // Pattern characteristics
+    confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull(),
+    applicability: decimal("applicability", {
+      precision: 5,
+      scale: 4,
+    }).notNull(),
+    effectiveness: decimal("effectiveness", {
+      precision: 5,
+      scale: 4,
+    }).notNull(),
+
+    // Usage tracking
+    usageCount: integer("usage_count").default(0),
+    successRate: decimal("success_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
+
+    // Context
+    userContext: jsonb("user_context"),
+    domainContext: varchar("domain_context", { length: 100 }),
+
+    // Temporal tracking
+    lastUsedAt: timestamp("last_used_at"),
+    lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_ml_learning_patterns_type").on(table.patternType),
+    index("idx_ml_learning_patterns_confidence").on(table.confidence),
+    index("idx_ml_learning_patterns_effectiveness").on(table.effectiveness),
+    index("idx_ml_learning_patterns_last_used").on(table.lastUsedAt),
+  ],
+);
+
+// User behavior profiles for ML learning
+export const userBehaviorProfiles = pgTable(
+  "user_behavior_profiles",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").unique().notNull(),
+
+    // Experience and preferences
+    experienceLevel: varchar("experience_level", { length: 20 }).default(
+      "intermediate",
+    ), // novice, intermediate, expert
+    riskTolerance: varchar("risk_tolerance", { length: 20 }).default(
+      "balanced",
+    ), // conservative, balanced, aggressive
+    automationPreference: decimal("automation_preference", {
+      precision: 3,
+      scale: 2,
+    }).default(sql`0.6`), // 0-1
+
+    // Decision patterns
+    decisionPatterns: jsonb("decision_patterns").default(sql`'{}'::jsonb`),
+    performanceHistory: jsonb("performance_history").default(sql`'{}'::jsonb`),
+
+    // Learning metrics
+    learningVelocity: decimal("learning_velocity", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0.5`),
+    adaptabilityScore: decimal("adaptability_score", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0.5`),
+
+    // Interaction preferences
+    preferredNotificationMethod: varchar("preferred_notification_method", {
+      length: 20,
+    }).default("in_app"),
+    explanationDepth: varchar("explanation_depth", { length: 20 }).default(
+      "standard",
+    ), // minimal, standard, detailed
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_user_behavior_profiles_user_id").on(table.userId),
+    index("idx_user_behavior_profiles_experience").on(table.experienceLevel),
+    index("idx_user_behavior_profiles_learning_velocity").on(
+      table.learningVelocity,
+    ),
+  ],
+);
+
+// Automation confidence tracking
+export const automationConfidence = pgTable(
+  "automation_confidence",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    category: varchar("category", { length: 100 }).notNull(),
+    context: varchar("context", { length: 200 }),
+
+    // Confidence metrics
+    currentConfidence: decimal("current_confidence", {
+      precision: 5,
+      scale: 4,
+    }).notNull(),
+    previousConfidence: decimal("previous_confidence", {
+      precision: 5,
+      scale: 4,
+    }),
+    confidenceChange: decimal("confidence_change", { precision: 5, scale: 4 }),
+
+    // Evidence and validation
+    evidenceCount: integer("evidence_count").default(0),
+    validationCount: integer("validation_count").default(0),
+    successCount: integer("success_count").default(0),
+
+    // Temporal tracking
+    lastValidatedAt: timestamp("last_validated_at"),
+    confidenceDecay: decimal("confidence_decay", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0.01`), // Daily decay rate
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_automation_confidence_category").on(table.category),
+    index("idx_automation_confidence_current").on(table.currentConfidence),
+    index("idx_automation_confidence_updated").on(table.updatedAt),
+  ],
+);
+
+// Edge case integration workflow sessions
+export const edgeCaseIntegrationSessions = pgTable(
+  "edge_case_integration_sessions",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    workflowId: varchar("workflow_id").unique().notNull(),
+    sessionId: varchar("session_id").notNull(),
+    userId: varchar("user_id").notNull(),
+
+    // Workflow status
+    status: varchar("status", { length: 50 }).default("initializing"), // initializing, analyzing, detecting, generating, routing, completed, failed
+    progress: integer("progress").default(0), // 0-100
+    currentStep: varchar("current_step", { length: 100 }),
+
+    // Configuration
+    options: jsonb("options").notNull(),
+    costLimit: decimal("cost_limit", { precision: 8, scale: 6 }),
+    timeLimit: integer("time_limit"), // seconds
+
+    // Results
+    detectionResults: jsonb("detection_results"),
+    testResults: jsonb("test_results"),
+    approvalResults: jsonb("approval_results"),
+
+    // Performance metrics
+    processingTime: integer("processing_time"), // milliseconds
+    totalCost: decimal("total_cost", { precision: 8, scale: 6 }),
+    resourceUsage: jsonb("resource_usage"),
+
+    // Timestamps
+    startTime: timestamp("start_time").defaultNow(),
+    endTime: timestamp("end_time"),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_edge_case_integration_workflow_id").on(table.workflowId),
+    index("idx_edge_case_integration_session_id").on(table.sessionId),
+    index("idx_edge_case_integration_user_id").on(table.userId),
+    index("idx_edge_case_integration_status").on(table.status),
+    index("idx_edge_case_integration_created_at").on(table.createdAt),
+  ],
+);
+
+// Comprehensive Automation Analytics Tables
+
+// Automation execution metrics
+export const automationMetrics = pgTable(
+  "automation_metrics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    date: date("date").notNull(),
+    hourly: boolean("hourly").default(false), // Track hourly granularity
+    userId: varchar("user_id"),
+
+    // Core automation metrics
+    totalTests: integer("total_tests").default(0),
+    automatedTests: integer("automated_tests").default(0),
+    manualInterventions: integer("manual_interventions").default(0),
+    automationRate: decimal("automation_rate", { precision: 5, scale: 4 }).default(sql`0`), // 80/20 target
+
+    // Performance metrics
+    averageExecutionTime: integer("average_execution_time").default(0), // milliseconds
+    totalProcessingTime: integer("total_processing_time").default(0), // milliseconds
+    passRate: decimal("pass_rate", { precision: 5, scale: 4 }).default(sql`0`), // Test pass rate
+    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(sql`0`), // Error rate
+
+    // Edge case detection effectiveness
+    edgeCasesDetected: integer("edge_cases_detected").default(0),
+    truePositives: integer("true_positives").default(0),
+    falsePositives: integer("false_positives").default(0),
+    falseNegatives: integer("false_negatives").default(0),
+    detectionAccuracy: decimal("detection_accuracy", { precision: 5, scale: 4 }).default(sql`0`),
+
+    // Cost and resource optimization
+    llmCosts: decimal("llm_costs", { precision: 10, scale: 6 }).default(sql`0`), // USD
+    tokensUsed: integer("tokens_used").default(0),
+    costPerTest: decimal("cost_per_test", { precision: 8, scale: 6 }).default(sql`0`),
+    resourceUtilization: decimal("resource_utilization", { precision: 5, scale: 4 }).default(sql`0`),
+
+    // User decision patterns
+    approvalRequests: integer("approval_requests").default(0),
+    approvalRate: decimal("approval_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    averageApprovalTime: integer("average_approval_time").default(0), // minutes
+    escalations: integer("escalations").default(0),
+
+    // Performance regression detection
+    performanceRegressions: integer("performance_regressions").default(0),
+    regressionSeverity: varchar("regression_severity", { length: 20 }),
+    alertsTriggered: integer("alerts_triggered").default(0),
+
+    // ROI metrics
+    timeSaved: integer("time_saved").default(0), // minutes
+    manualEffortReduction: decimal("manual_effort_reduction", { precision: 5, scale: 4 }).default(sql`0`),
+    costSavings: decimal("cost_savings", { precision: 10, scale: 2 }).default(sql`0`),
+
+    // Metadata and tracking
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_automation_metrics_date").on(table.date),
+    index("idx_automation_metrics_user_id").on(table.userId),
+    index("idx_automation_metrics_hourly").on(table.hourly),
+    index("idx_automation_metrics_automation_rate").on(table.automationRate),
+    index("idx_automation_metrics_created_at").on(table.createdAt),
+  ],
+);
+
+// Real-time system performance tracking
+export const systemPerformanceMetrics = pgTable(
+  "system_performance_metrics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    timestamp: timestamp("timestamp").defaultNow(),
+    metricType: varchar("metric_type", { length: 50 }).notNull(), // cpu, memory, database, api_response
+
+    // Performance data
+    value: decimal("value", { precision: 10, scale: 4 }).notNull(),
+    unit: varchar("unit", { length: 20 }).notNull(), // percent, milliseconds, bytes, requests_per_sec
+    threshold: decimal("threshold", { precision: 10, scale: 4 }),
+    isAlert: boolean("is_alert").default(false),
+
+    // Context
+    component: varchar("component", { length: 100 }), // test_generator, llm_detector, approval_service
+    operationId: varchar("operation_id"), // Reference to specific operation
+    sessionId: varchar("session_id"), // Reference to session
+
+    // Performance breakdown
+    details: jsonb("details").default(sql`'{}'::jsonb`),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    index("idx_system_performance_timestamp").on(table.timestamp),
+    index("idx_system_performance_type").on(table.metricType),
+    index("idx_system_performance_component").on(table.component),
+    index("idx_system_performance_alert").on(table.isAlert),
+    index("idx_system_performance_session").on(table.sessionId),
+  ],
+);
+
+// Test execution analytics with detailed tracking
+export const testExecutionAnalytics = pgTable(
+  "test_execution_analytics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    testExecutionId: varchar("test_execution_id")
+      .notNull()
+      .references(() => testExecutions.id),
+    
+    // Execution details
+    testType: varchar("test_type", { length: 50 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull(),
+    executionTime: integer("execution_time").notNull(), // milliseconds
+    setupTime: integer("setup_time").default(0),
+    teardownTime: integer("teardown_time").default(0),
+
+    // Resource utilization
+    cpuUsage: decimal("cpu_usage", { precision: 5, scale: 2 }),
+    memoryUsage: integer("memory_usage"), // bytes
+    networkLatency: integer("network_latency"), // milliseconds
+    databaseQueries: integer("database_queries").default(0),
+
+    // Quality metrics
+    codeCoverage: decimal("code_coverage", { precision: 5, scale: 2 }),
+    assertionsPassed: integer("assertions_passed").default(0),
+    assertionsFailed: integer("assertions_failed").default(0),
+    warningsGenerated: integer("warnings_generated").default(0),
+
+    // Edge case specific metrics
+    edgeCasesTriggered: integer("edge_cases_triggered").default(0),
+    edgeCasesSolved: integer("edge_cases_solved").default(0),
+    llmInteractions: integer("llm_interactions").default(0),
+    llmCost: decimal("llm_cost", { precision: 8, scale: 6 }).default(sql`0`),
+
+    // Error analysis
+    errorDetails: jsonb("error_details"),
+    errorCategory: varchar("error_category", { length: 100 }),
+    errorResolution: varchar("error_resolution", { length: 50 }), // automated, manual, escalated
+
+    // Context and metadata
+    environment: varchar("environment", { length: 50 }), // dev, staging, production
+    browserInfo: jsonb("browser_info"),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_test_execution_analytics_test_id").on(table.testExecutionId),
+    index("idx_test_execution_analytics_type").on(table.testType),
+    index("idx_test_execution_analytics_status").on(table.status),
+    index("idx_test_execution_analytics_execution_time").on(table.executionTime),
+    index("idx_test_execution_analytics_created_at").on(table.createdAt),
+  ],
+);
+
+// Cost optimization and LLM usage tracking
+export const costOptimizationMetrics = pgTable(
+  "cost_optimization_metrics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    date: date("date").notNull(),
+    service: varchar("service", { length: 50 }).notNull(), // openai, anthropic, local_llm
+    operation: varchar("operation", { length: 100 }).notNull(), // edge_detection, test_generation, analysis
+
+    // Usage metrics
+    requestCount: integer("request_count").default(0),
+    tokenCount: integer("token_count").default(0),
+    inputTokens: integer("input_tokens").default(0),
+    outputTokens: integer("output_tokens").default(0),
+
+    // Cost tracking
+    totalCost: decimal("total_cost", { precision: 10, scale: 6 }).default(sql`0`),
+    costPerRequest: decimal("cost_per_request", { precision: 8, scale: 6 }).default(sql`0`),
+    costPerToken: decimal("cost_per_token", { precision: 10, scale: 8 }).default(sql`0`),
+
+    // Performance tracking
+    averageLatency: integer("average_latency").default(0), // milliseconds
+    successRate: decimal("success_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(sql`0`),
+
+    // Optimization insights
+    cacheHitRate: decimal("cache_hit_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    redundantRequests: integer("redundant_requests").default(0),
+    optimizationOpportunities: jsonb("optimization_opportunities"),
+
+    // Budget tracking
+    budgetUsed: decimal("budget_used", { precision: 5, scale: 4 }).default(sql`0`), // percentage
+    budgetRemaining: decimal("budget_remaining", { precision: 10, scale: 2 }),
+    projectedSpend: decimal("projected_spend", { precision: 10, scale: 2 }),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_cost_optimization_date").on(table.date),
+    index("idx_cost_optimization_service").on(table.service),
+    index("idx_cost_optimization_operation").on(table.operation),
+    index("idx_cost_optimization_total_cost").on(table.totalCost),
+    index("idx_cost_optimization_created_at").on(table.createdAt),
+  ],
+);
+
+// Trend analysis and historical performance
+export const performanceTrends = pgTable(
+  "performance_trends",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    metric: varchar("metric", { length: 100 }).notNull(),
+    timeframe: varchar("timeframe", { length: 20 }).notNull(), // hourly, daily, weekly, monthly
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+
+    // Trend calculations
+    currentValue: decimal("current_value", { precision: 10, scale: 4 }).notNull(),
+    previousValue: decimal("previous_value", { precision: 10, scale: 4 }),
+    trendDirection: varchar("trend_direction", { length: 20 }), // increasing, decreasing, stable, volatile
+    changePercentage: decimal("change_percentage", { precision: 6, scale: 3 }),
+    
+    // Statistical analysis
+    average: decimal("average", { precision: 10, scale: 4 }),
+    median: decimal("median", { precision: 10, scale: 4 }),
+    standardDeviation: decimal("standard_deviation", { precision: 10, scale: 4 }),
+    min: decimal("min", { precision: 10, scale: 4 }),
+    max: decimal("max", { precision: 10, scale: 4 }),
+
+    // Prediction and forecasting
+    predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
+    confidenceInterval: decimal("confidence_interval", { precision: 5, scale: 4 }),
+    seasonalityFactor: decimal("seasonality_factor", { precision: 5, scale: 4 }),
+
+    // Anomaly detection
+    isAnomaly: boolean("is_anomaly").default(false),
+    anomalyScore: decimal("anomaly_score", { precision: 5, scale: 4 }),
+    anomalyThreshold: decimal("anomaly_threshold", { precision: 5, scale: 4 }),
+
+    // Data quality
+    dataPoints: integer("data_points").notNull(),
+    dataQuality: decimal("data_quality", { precision: 3, scale: 2 }), // 0-1 quality score
+    missingDataPercentage: decimal("missing_data_percentage", { precision: 5, scale: 2 }),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    calculatedAt: timestamp("calculated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_performance_trends_metric").on(table.metric),
+    index("idx_performance_trends_timeframe").on(table.timeframe),
+    index("idx_performance_trends_start_date").on(table.startDate),
+    index("idx_performance_trends_trend_direction").on(table.trendDirection),
+    index("idx_performance_trends_anomaly").on(table.isAnomaly),
+  ],
+);
+
+// Alert and notification system
+export const automationAlerts = pgTable(
+  "automation_alerts",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    alertType: varchar("alert_type", { length: 50 }).notNull(), // performance, cost, error, anomaly
+    severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+    status: varchar("status", { length: 20 }).default("active"), // active, acknowledged, resolved, ignored
+
+    // Alert details
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    metric: varchar("metric", { length: 100 }).notNull(),
+    currentValue: decimal("current_value", { precision: 10, scale: 4 }).notNull(),
+    threshold: decimal("threshold", { precision: 10, scale: 4 }).notNull(),
+    deviationPercentage: decimal("deviation_percentage", { precision: 6, scale: 3 }),
+
+    // Context and references
+    component: varchar("component", { length: 100 }),
+    sessionId: varchar("session_id"),
+    testExecutionId: varchar("test_execution_id").references(() => testExecutions.id),
+    userId: varchar("user_id"),
+
+    // Resolution tracking
+    acknowledgedBy: varchar("acknowledged_by"),
+    acknowledgedAt: timestamp("acknowledged_at"),
+    resolvedBy: varchar("resolved_by"),
+    resolvedAt: timestamp("resolved_at"),
+    resolution: text("resolution"),
+
+    // Escalation
+    escalationLevel: integer("escalation_level").default(0),
+    escalatedAt: timestamp("escalated_at"),
+    escalatedTo: varchar("escalated_to"),
+
+    // Notification tracking
+    notificationsSent: integer("notifications_sent").default(0),
+    lastNotificationAt: timestamp("last_notification_at"),
+    notificationChannels: varchar("notification_channels").array(),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_automation_alerts_type").on(table.alertType),
+    index("idx_automation_alerts_severity").on(table.severity),
+    index("idx_automation_alerts_status").on(table.status),
+    index("idx_automation_alerts_metric").on(table.metric),
+    index("idx_automation_alerts_created_at").on(table.createdAt),
+    index("idx_automation_alerts_user_id").on(table.userId),
+  ],
+);
+
+// ROI calculation and business impact tracking
+export const roiMetrics = pgTable(
+  "roi_metrics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    period: varchar("period", { length: 20 }).notNull(), // daily, weekly, monthly, quarterly
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+
+    // Investment costs
+    automationInvestment: decimal("automation_investment", { precision: 12, scale: 2 }).default(sql`0`),
+    developmentCosts: decimal("development_costs", { precision: 12, scale: 2 }).default(sql`0`),
+    maintenanceCosts: decimal("maintenance_costs", { precision: 12, scale: 2 }).default(sql`0`),
+    llmCosts: decimal("llm_costs", { precision: 12, scale: 2 }).default(sql`0`),
+    infrastructureCosts: decimal("infrastructure_costs", { precision: 12, scale: 2 }).default(sql`0`),
+    totalInvestment: decimal("total_investment", { precision: 12, scale: 2 }).default(sql`0`),
+
+    // Return/savings
+    manualTestingCostSaved: decimal("manual_testing_cost_saved", { precision: 12, scale: 2 }).default(sql`0`),
+    timeSaved: integer("time_saved").default(0), // hours
+    defectsPrevented: integer("defects_prevented").default(0),
+    defectCostSaved: decimal("defect_cost_saved", { precision: 12, scale: 2 }).default(sql`0`),
+    qualityImprovement: decimal("quality_improvement", { precision: 5, scale: 2 }), // percentage
+    totalSavings: decimal("total_savings", { precision: 12, scale: 2 }).default(sql`0`),
+
+    // ROI calculations
+    roi: decimal("roi", { precision: 6, scale: 3 }), // Return on Investment percentage
+    paybackPeriod: integer("payback_period"), // months
+    netPresentValue: decimal("net_present_value", { precision: 12, scale: 2 }),
+    breakEvenPoint: date("break_even_point"),
+
+    // Business impact metrics
+    testCoverageImprovement: decimal("test_coverage_improvement", { precision: 5, scale: 2 }),
+    releaseVelocityImprovement: decimal("release_velocity_improvement", { precision: 5, scale: 2 }),
+    customerSatisfactionImpact: decimal("customer_satisfaction_impact", { precision: 5, scale: 2 }),
+    teamProductivityGain: decimal("team_productivity_gain", { precision: 5, scale: 2 }),
+
+    // Risk reduction
+    securityRiskReduction: decimal("security_risk_reduction", { precision: 5, scale: 2 }),
+    complianceRiskReduction: decimal("compliance_risk_reduction", { precision: 5, scale: 2 }),
+    operationalRiskReduction: decimal("operational_risk_reduction", { precision: 5, scale: 2 }),
+
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    calculatedAt: timestamp("calculated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_roi_metrics_period").on(table.period),
+    index("idx_roi_metrics_start_date").on(table.startDate),
+    index("idx_roi_metrics_roi").on(table.roi),
+    index("idx_roi_metrics_calculated_at").on(table.calculatedAt),
+  ],
+);
+
+// User behavior and decision analysis
+export const userDecisionAnalytics = pgTable(
+  "user_decision_analytics",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    sessionId: varchar("session_id"),
+    
+    // Decision context
+    decisionType: varchar("decision_type", { length: 50 }).notNull(), // approval, configuration, override
+    decisionCategory: varchar("decision_category", { length: 100 }),
+    riskLevel: varchar("risk_level", { length: 20 }),
+    
+    // Decision details
+    decision: varchar("decision", { length: 50 }).notNull(), // approve, reject, escalate, delegate
+    decisionTime: integer("decision_time").notNull(), // milliseconds from presentation to decision
+    confidenceLevel: decimal("confidence_level", { precision: 3, scale: 2 }),
+    
+    // Context factors
+    systemRecommendation: varchar("system_recommendation", { length: 50 }),
+    agreedWithSystem: boolean("agreed_with_system"),
+    reasoningProvided: boolean("reasoning_provided"),
+    
+    // Outcome tracking
+    outcomeCorrect: boolean("outcome_correct"),
+    businessImpact: varchar("business_impact", { length: 50 }), // positive, negative, neutral
+    learningPoints: jsonb("learning_points"),
+    
+    // Performance patterns
+    timeOfDay: integer("time_of_day"), // hour 0-23
+    dayOfWeek: integer("day_of_week"), // 0-6
+    workload: varchar("workload", { length: 20 }), // low, medium, high
+    
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_user_decision_analytics_user_id").on(table.userId),
+    index("idx_user_decision_analytics_decision_type").on(table.decisionType),
+    index("idx_user_decision_analytics_decision_time").on(table.decisionTime),
+    index("idx_user_decision_analytics_agreed_with_system").on(table.agreedWithSystem),
+    index("idx_user_decision_analytics_created_at").on(table.createdAt),
+  ],
+);
+
+// Report generation and export tracking
+export const reportGenerations = pgTable(
+  "report_generations",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    reportType: varchar("report_type", { length: 50 }).notNull(), // automation_summary, cost_analysis, trend_report
+    format: varchar("format", { length: 20 }).notNull(), // pdf, excel, json, csv
+    status: varchar("status", { length: 20 }).default("generating"), // generating, completed, failed
+    
+    // Report parameters
+    dateRange: jsonb("date_range").notNull(),
+    filters: jsonb("filters"),
+    includeCharts: boolean("include_charts").default(true),
+    includeDetails: boolean("include_details").default(true),
+    
+    // Generation details
+    requestedBy: varchar("requested_by").notNull(),
+    generationTime: integer("generation_time"), // milliseconds
+    fileSize: integer("file_size"), // bytes
+    filePath: varchar("file_path", { length: 500 }),
+    downloadCount: integer("download_count").default(0),
+    
+    // Content summary
+    recordCount: integer("record_count"),
+    chartCount: integer("chart_count"),
+    pageCount: integer("page_count"),
+    
+    // Error handling
+    errorMessage: text("error_message"),
+    retryCount: integer("retry_count").default(0),
+    
+    // Expiration
+    expiresAt: timestamp("expires_at"),
+    lastAccessedAt: timestamp("last_accessed_at"),
+    
+    // Metadata
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => [
+    index("idx_report_generations_type").on(table.reportType),
+    index("idx_report_generations_status").on(table.status),
+    index("idx_report_generations_requested_by").on(table.requestedBy),
+    index("idx_report_generations_created_at").on(table.createdAt),
+    index("idx_report_generations_expires_at").on(table.expiresAt),
+  ],
+);
 
 // Insert schemas
 export const insertBrandSchema = createInsertSchema(brands).omit({
@@ -692,28 +1660,182 @@ export const insertImportBatchSchema = createInsertSchema(importBatches).omit({
   createdAt: true,
 });
 
-export const insertTestExecutionSchema = createInsertSchema(testExecutions).omit({
+export const insertTestExecutionSchema = createInsertSchema(
+  testExecutions,
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertApprovalRequestSchema = createInsertSchema(approvalRequests).omit({
+export const insertApprovalRequestSchema = createInsertSchema(
+  approvalRequests,
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertApprovalDecisionSchema = createInsertSchema(approvalDecisions).omit({
+export const insertApprovalDecisionSchema = createInsertSchema(
+  approvalDecisions,
+).omit({
   id: true,
   timestamp: true,
 });
 
-export const insertApprovalPreferencesSchema = createInsertSchema(approvalPreferences).omit({
+export const insertApprovalPreferencesSchema = createInsertSchema(
+  approvalPreferences,
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertApprovalMetricsSchema = createInsertSchema(approvalMetrics).omit({
+export const insertApprovalMetricsSchema = createInsertSchema(
+  approvalMetrics,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Edge case detection insert schemas
+export const insertEdgeCaseDetectionSchema = createInsertSchema(
+  edgeCaseDetections,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertErrorPatternSchema = createInsertSchema(errorPatterns).omit({
+  id: true,
+  firstSeen: true,
+  lastSeen: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertErrorAnalyticsSchema = createInsertSchema(
+  errorAnalytics,
+).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertGeneratedTestCaseSchema = createInsertSchema(
+  generatedTestCases,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEdgeCaseTestCaseSchema = createInsertSchema(
+  edgeCaseTestCases,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMLFeedbackSessionSchema = createInsertSchema(
+  mlFeedbackSessions,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMLLearningPatternSchema = createInsertSchema(
+  mlLearningPatterns,
+).omit({
+  id: true,
+  lastUpdatedAt: true,
+  createdAt: true,
+});
+
+export const insertUserBehaviorProfileSchema = createInsertSchema(
+  userBehaviorProfiles,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAutomationConfidenceSchema = createInsertSchema(
+  automationConfidence,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEdgeCaseIntegrationSessionSchema = createInsertSchema(
+  edgeCaseIntegrationSessions,
+).omit({
+  id: true,
+  startTime: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Analytics insert schemas
+export const insertAutomationMetricsSchema = createInsertSchema(
+  automationMetrics,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSystemPerformanceMetricsSchema = createInsertSchema(
+  systemPerformanceMetrics,
+).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertTestExecutionAnalyticsSchema = createInsertSchema(
+  testExecutionAnalytics,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCostOptimizationMetricsSchema = createInsertSchema(
+  costOptimizationMetrics,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPerformanceTrendsSchema = createInsertSchema(
+  performanceTrends,
+).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export const insertAutomationAlertsSchema = createInsertSchema(
+  automationAlerts,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoiMetricsSchema = createInsertSchema(
+  roiMetrics,
+).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export const insertUserDecisionAnalyticsSchema = createInsertSchema(
+  userDecisionAnalytics,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReportGenerationsSchema = createInsertSchema(
+  reportGenerations,
+).omit({
   id: true,
   createdAt: true,
 });
@@ -760,13 +1882,91 @@ export type InsertTestExecution = z.infer<typeof insertTestExecutionSchema>;
 export type ApprovalRequest = typeof approvalRequests.$inferSelect;
 export type InsertApprovalRequest = z.infer<typeof insertApprovalRequestSchema>;
 export type ApprovalDecision = typeof approvalDecisions.$inferSelect;
-export type InsertApprovalDecision = z.infer<typeof insertApprovalDecisionSchema>;
+export type InsertApprovalDecision = z.infer<
+  typeof insertApprovalDecisionSchema
+>;
 export type ApprovalPreferences = typeof approvalPreferences.$inferSelect;
-export type InsertApprovalPreferences = z.infer<typeof insertApprovalPreferencesSchema>;
+export type InsertApprovalPreferences = z.infer<
+  typeof insertApprovalPreferencesSchema
+>;
 export type ApprovalMetrics = typeof approvalMetrics.$inferSelect;
 export type InsertApprovalMetrics = z.infer<typeof insertApprovalMetricsSchema>;
 
-// Workflow automation types  
+// Edge case detection types
+export type EdgeCaseDetection = typeof edgeCaseDetections.$inferSelect;
+export type InsertEdgeCaseDetection = z.infer<
+  typeof insertEdgeCaseDetectionSchema
+>;
+export type ErrorPattern = typeof errorPatterns.$inferSelect;
+export type InsertErrorPattern = z.infer<typeof insertErrorPatternSchema>;
+export type ErrorAnalytics = typeof errorAnalytics.$inferSelect;
+export type InsertErrorAnalytics = z.infer<typeof insertErrorAnalyticsSchema>;
+export type GeneratedTestCase = typeof generatedTestCases.$inferSelect;
+export type InsertGeneratedTestCase = z.infer<
+  typeof insertGeneratedTestCaseSchema
+>;
+export type EdgeCaseTestCase = typeof edgeCaseTestCases.$inferSelect;
+export type InsertEdgeCaseTestCase = z.infer<
+  typeof insertEdgeCaseTestCaseSchema
+>;
+export type MLFeedbackSession = typeof mlFeedbackSessions.$inferSelect;
+export type InsertMLFeedbackSession = z.infer<
+  typeof insertMLFeedbackSessionSchema
+>;
+export type MLLearningPattern = typeof mlLearningPatterns.$inferSelect;
+export type InsertMLLearningPattern = z.infer<
+  typeof insertMLLearningPatternSchema
+>;
+export type UserBehaviorProfile = typeof userBehaviorProfiles.$inferSelect;
+export type InsertUserBehaviorProfile = z.infer<
+  typeof insertUserBehaviorProfileSchema
+>;
+export type AutomationConfidence = typeof automationConfidence.$inferSelect;
+export type InsertAutomationConfidence = z.infer<
+  typeof insertAutomationConfidenceSchema
+>;
+export type EdgeCaseIntegrationSession =
+  typeof edgeCaseIntegrationSessions.$inferSelect;
+export type InsertEdgeCaseIntegrationSession = z.infer<
+  typeof insertEdgeCaseIntegrationSessionSchema
+>;
+
+// Analytics types
+export type AutomationMetrics = typeof automationMetrics.$inferSelect;
+export type InsertAutomationMetrics = z.infer<typeof insertAutomationMetricsSchema>;
+export type SystemPerformanceMetrics = typeof systemPerformanceMetrics.$inferSelect;
+export type InsertSystemPerformanceMetrics = z.infer<typeof insertSystemPerformanceMetricsSchema>;
+export type TestExecutionAnalytics = typeof testExecutionAnalytics.$inferSelect;
+export type InsertTestExecutionAnalytics = z.infer<typeof insertTestExecutionAnalyticsSchema>;
+export type CostOptimizationMetrics = typeof costOptimizationMetrics.$inferSelect;
+export type InsertCostOptimizationMetrics = z.infer<typeof insertCostOptimizationMetricsSchema>;
+export type PerformanceTrends = typeof performanceTrends.$inferSelect;
+export type InsertPerformanceTrends = z.infer<typeof insertPerformanceTrendsSchema>;
+export type AutomationAlerts = typeof automationAlerts.$inferSelect;
+export type InsertAutomationAlerts = z.infer<typeof insertAutomationAlertsSchema>;
+export type RoiMetrics = typeof roiMetrics.$inferSelect;
+export type InsertRoiMetrics = z.infer<typeof insertRoiMetricsSchema>;
+export type UserDecisionAnalytics = typeof userDecisionAnalytics.$inferSelect;
+export type InsertUserDecisionAnalytics = z.infer<typeof insertUserDecisionAnalyticsSchema>;
+export type ReportGenerations = typeof reportGenerations.$inferSelect;
+export type InsertReportGenerations = z.infer<typeof insertReportGenerationsSchema>;
+
+// Additional types for LLM edge case detection
+export type TestStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+export type TestType =
+  | "unit"
+  | "integration"
+  | "e2e"
+  | "performance"
+  | "stress"
+  | "edge_case";
+
+// Workflow automation types
 export interface FieldMapping {
   sourceField: string;
   targetField: string;
@@ -800,10 +2000,20 @@ export interface ValidationError {
 }
 
 // Approval system types
-export type ApprovalType = 'data_integrity' | 'performance_impact' | 'security_risk' | 'business_logic' | 'large_dataset';
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'escalated' | 'timeout';
-export type DecisionType = 'approve' | 'reject' | 'escalate' | 'delegate';
+export type ApprovalType =
+  | "data_integrity"
+  | "performance_impact"
+  | "security_risk"
+  | "business_logic"
+  | "large_dataset";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type ApprovalStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "escalated"
+  | "timeout";
+export type DecisionType = "approve" | "reject" | "escalate" | "delegate";
 
 export interface ApprovalContext {
   scenario?: any;
@@ -829,7 +2039,7 @@ export interface ApprovalWorkflow {
   request: ApprovalRequest;
   currentStep: string;
   nextSteps: string[];
-  timeoutBehavior: 'escalate' | 'auto_approve' | 'auto_reject' | 'hold';
+  timeoutBehavior: "escalate" | "auto_approve" | "auto_reject" | "hold";
   escalationTriggers: string[];
 }
 
@@ -843,8 +2053,8 @@ export interface RiskAssessment {
 }
 
 export interface RoutingDecision {
-  route: 'automated' | 'approval_required' | 'escalation';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  route: "automated" | "approval_required" | "escalation";
+  priority: "low" | "medium" | "high" | "critical";
   assignedApprovers: string[];
   timeoutDuration: number; // minutes
   escalationPath: string[];

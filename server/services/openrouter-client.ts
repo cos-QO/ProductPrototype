@@ -62,12 +62,19 @@ export class OpenRouterClient {
   private httpReferer: string;
   private appTitle: string;
   private stats: TokenUsageStats;
-  private readonly MODEL = "openai/gpt-4o-mini";
+  private readonly MODEL_4O_MINI = "openai/gpt-4o-mini";
+  private readonly MODEL_4O = "openai/gpt-4o";
 
-  // Pricing for GPT-4o-mini (per 1M tokens)
+  // Pricing for different models (per 1M tokens)
   private readonly PRICING = {
-    input: 0.15, // $0.150 per 1M input tokens
-    output: 0.6, // $0.600 per 1M output tokens
+    "openai/gpt-4o-mini": {
+      input: 0.15, // $0.150 per 1M input tokens
+      output: 0.6, // $0.600 per 1M output tokens
+    },
+    "openai/gpt-4o": {
+      input: 2.5, // $2.50 per 1M input tokens
+      output: 10.0, // $10.00 per 1M output tokens
+    },
   };
 
   private constructor() {
@@ -174,6 +181,7 @@ export class OpenRouterClient {
     const estimatedCost = this.calculateCost(
       estimatedInputTokens,
       estimatedOutputTokens,
+      request.model,
     );
 
     if (estimatedCost > costLimit) {
@@ -198,7 +206,7 @@ export class OpenRouterClient {
           },
           body: JSON.stringify({
             ...request,
-            model: this.MODEL,
+            model: request.model || this.MODEL_4O_MINI, // Use provided model or default to 4o-mini
           }),
           signal: controller.signal as any,
         });
@@ -231,6 +239,7 @@ export class OpenRouterClient {
             cost: this.calculateCost(
               data.usage.prompt_tokens,
               data.usage.completion_tokens,
+              data.model,
             ),
             responseTime,
           },
@@ -476,11 +485,20 @@ Response Format (JSON only):
   }
 
   /**
-   * Calculate cost based on token usage
+   * Calculate cost based on token usage and model
    */
-  private calculateCost(inputTokens: number, outputTokens: number): number {
-    const inputCost = (inputTokens / 1000000) * this.PRICING.input;
-    const outputCost = (outputTokens / 1000000) * this.PRICING.output;
+  private calculateCost(
+    inputTokens: number,
+    outputTokens: number,
+    model?: string,
+  ): number {
+    const modelToUse = model || this.MODEL_4O_MINI;
+    const pricing =
+      this.PRICING[modelToUse as keyof typeof this.PRICING] ||
+      this.PRICING["openai/gpt-4o-mini"];
+
+    const inputCost = (inputTokens / 1000000) * pricing.input;
+    const outputCost = (outputTokens / 1000000) * pricing.output;
     return inputCost + outputCost;
   }
 

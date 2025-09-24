@@ -2536,6 +2536,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
   }
 
+  // LLM EDGE CASE DETECTION ROUTES - Intelligent Edge Case Analysis System
+  try {
+    const { EdgeCaseIntegrationService } = await import(
+      "./services/edge-case-integration"
+    );
+    const edgeCaseService = EdgeCaseIntegrationService.getInstance();
+
+    // Main edge case analysis endpoint
+    app.post(
+      "/api/edge-cases/analyze",
+      isAuthenticated,
+      csrfProtection,
+      edgeCaseService.analyzeEdgeCases.bind(edgeCaseService),
+    );
+
+    // Get workflow status
+    app.get(
+      "/api/edge-cases/status/:workflowId",
+      isAuthenticated,
+      edgeCaseService.getWorkflowStatusHandler.bind(edgeCaseService),
+    );
+
+    // Submit approval feedback
+    app.post(
+      "/api/edge-cases/feedback/:approvalId",
+      isAuthenticated,
+      csrfProtection,
+      edgeCaseService.submitApprovalFeedbackHandler.bind(edgeCaseService),
+    );
+
+    // Get performance dashboard
+    app.get(
+      "/api/edge-cases/dashboard",
+      isAuthenticated,
+      edgeCaseService.getDashboardHandler.bind(edgeCaseService),
+    );
+
+    console.log(
+      "[ROUTES] LLM Edge Case Detection routes registered at /api/edge-cases/*",
+    );
+  } catch (error) {
+    console.warn(
+      "[ROUTES] LLM Edge Case Detection routes could not be loaded:",
+      error,
+    );
+  }
+
+  // AUTOMATION ANALYTICS ROUTES - Comprehensive Analytics and Reporting System
+  try {
+    const AutomationAnalyticsService = await import("./services/automation-analytics");
+    const ReportGenerator = await import("./services/report-generator");
+    const { webSocketService } = await import("./websocket-service");
+
+    const analyticsService = new AutomationAnalyticsService.default(webSocketService);
+    const reportGenerator = new ReportGenerator.default(analyticsService, webSocketService);
+
+    // Get automation metrics
+    app.get("/api/automation/metrics", isAuthenticated, async (req: any, res) => {
+      try {
+        const timeRange = req.query.timeRange as '1h' | '24h' | '7d' | '30d' || '24h';
+        const metrics = await analyticsService.getAutomationMetrics(timeRange);
+        res.json(metrics);
+      } catch (error: any) {
+        console.error("Error fetching automation metrics:", error);
+        res.status(500).json({ error: "Failed to fetch automation metrics", message: error.message });
+      }
+    });
+
+    // Get business impact analysis
+    app.get("/api/automation/business-impact", isAuthenticated, async (req: any, res) => {
+      try {
+        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
+        const businessImpact = await analyticsService.getBusinessImpact(timeRange);
+        res.json(businessImpact);
+      } catch (error: any) {
+        console.error("Error fetching business impact:", error);
+        res.status(500).json({ error: "Failed to fetch business impact", message: error.message });
+      }
+    });
+
+    // Get performance trends
+    app.get("/api/automation/trends", isAuthenticated, async (req: any, res) => {
+      try {
+        const days = parseInt(req.query.days as string) || 30;
+        const trends = await analyticsService.getTrendData(days);
+        res.json(trends);
+      } catch (error: any) {
+        console.error("Error fetching trends:", error);
+        res.status(500).json({ error: "Failed to fetch trends", message: error.message });
+      }
+    });
+
+    // Get cost breakdown
+    app.get("/api/automation/cost-breakdown", isAuthenticated, async (req: any, res) => {
+      try {
+        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
+        const costBreakdown = await analyticsService.getCostBreakdown(timeRange);
+        res.json(costBreakdown);
+      } catch (error: any) {
+        console.error("Error fetching cost breakdown:", error);
+        res.status(500).json({ error: "Failed to fetch cost breakdown", message: error.message });
+      }
+    });
+
+    // Get optimization recommendations
+    app.get("/api/automation/recommendations", isAuthenticated, async (req: any, res) => {
+      try {
+        const recommendations = await analyticsService.getOptimizationRecommendations();
+        res.json(recommendations);
+      } catch (error: any) {
+        console.error("Error fetching recommendations:", error);
+        res.status(500).json({ error: "Failed to fetch recommendations", message: error.message });
+      }
+    });
+
+    // Get executive summary
+    app.get("/api/automation/executive-summary", isAuthenticated, async (req: any, res) => {
+      try {
+        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
+        const summary = await analyticsService.generateExecutiveSummary(timeRange);
+        res.json(summary);
+      } catch (error: any) {
+        console.error("Error fetching executive summary:", error);
+        res.status(500).json({ error: "Failed to fetch executive summary", message: error.message });
+      }
+    });
+
+    // Generate report
+    app.post("/api/automation/reports/generate", isAuthenticated, csrfProtection, async (req: any, res) => {
+      try {
+        const { type, timeRange, format, customOptions } = req.body;
+        
+        if (!type || !['executive', 'technical', 'operational', 'cost'].includes(type)) {
+          return res.status(400).json({ error: "Invalid report type" });
+        }
+
+        const report = await reportGenerator.generateReport(type, timeRange, format, customOptions);
+        res.json({
+          success: true,
+          reportId: report.id,
+          filePath: report.filePath,
+          size: report.size,
+          status: report.status
+        });
+      } catch (error: any) {
+        console.error("Error generating report:", error);
+        res.status(500).json({ error: "Failed to generate report", message: error.message });
+      }
+    });
+
+    // Schedule report
+    app.post("/api/automation/reports/schedule", isAuthenticated, csrfProtection, async (req: any, res) => {
+      try {
+        const { name, config, nextRun, enabled, createdBy } = req.body;
+        
+        if (!name || !config || !nextRun) {
+          return res.status(400).json({ error: "Name, config, and nextRun are required" });
+        }
+
+        const scheduleId = reportGenerator.scheduleReport({
+          name,
+          config,
+          nextRun: new Date(nextRun),
+          enabled: enabled !== false,
+          createdBy: createdBy || req.user.claims.sub
+        });
+
+        res.json({ success: true, scheduleId });
+      } catch (error: any) {
+        console.error("Error scheduling report:", error);
+        res.status(500).json({ error: "Failed to schedule report", message: error.message });
+      }
+    });
+
+    // Get scheduled reports
+    app.get("/api/automation/reports/schedules", isAuthenticated, async (req: any, res) => {
+      try {
+        const schedules = reportGenerator.getSchedules();
+        res.json(schedules);
+      } catch (error: any) {
+        console.error("Error fetching schedules:", error);
+        res.status(500).json({ error: "Failed to fetch schedules", message: error.message });
+      }
+    });
+
+    // Remove scheduled report
+    app.delete("/api/automation/reports/schedules/:id", isAuthenticated, csrfProtection, async (req: any, res) => {
+      try {
+        const success = reportGenerator.removeSchedule(req.params.id);
+        res.json({ success });
+      } catch (error: any) {
+        console.error("Error removing schedule:", error);
+        res.status(500).json({ error: "Failed to remove schedule", message: error.message });
+      }
+    });
+
+    console.log("[ROUTES] Automation Analytics routes registered at /api/automation/*");
+  } catch (error) {
+    console.warn("[ROUTES] Automation Analytics routes could not be loaded:", error);
+  }
+
   // Serve uploaded files with security
   app.use("/uploads", secureFileServing("uploads"));
   app.use("/uploads", express.static("uploads"));

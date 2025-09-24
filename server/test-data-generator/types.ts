@@ -6,18 +6,18 @@
 export interface TestScenario {
   id: string;
   type: EdgeCaseType;
-  complexity: 'low' | 'medium' | 'high';
+  complexity: "low" | "medium" | "high";
   description: string;
-  
+
   // Test data specification
   testData: {
     recordCount: number;
     fileName: string;
-    format: 'csv' | 'json' | 'xlsx';
+    format: "csv" | "json" | "xlsx";
     content: string;
     errorPatterns: ErrorPattern[];
   };
-  
+
   // Expected outcomes
   expectations: {
     shouldSucceed: boolean;
@@ -25,7 +25,7 @@ export interface TestScenario {
     performanceTargets: PerformanceTarget[];
     userInteractionRequired: boolean;
   };
-  
+
   // Execution configuration
   execution: {
     priority: number;
@@ -34,10 +34,10 @@ export interface TestScenario {
     requiresApproval: boolean;
     approvalType?: ApprovalType;
   };
-  
+
   // Metadata
   metadata: {
-    generatedBy: 'llm' | 'manual';
+    generatedBy: "llm" | "manual";
     confidence: number;
     riskLevel: RiskLevel;
     tags: string[];
@@ -46,64 +46,58 @@ export interface TestScenario {
 }
 
 export enum EdgeCaseType {
-  VALIDATION_ERRORS = 'validation_errors',
-  LARGE_DATASETS = 'large_datasets', 
-  CORRUPTED_FILES = 'corrupted_files',
-  SPECIAL_CHARACTERS = 'special_characters',
-  NETWORK_ISSUES = 'network_issues',
-  PERFORMANCE_LIMITS = 'performance_limits',
-  SECURITY_EDGE_CASES = 'security_edge_cases',
-  FIELD_MAPPING_COMPLEXITY = 'field_mapping_complexity',
-  DUPLICATE_DATA = 'duplicate_data',
-  MIXED_FORMATS = 'mixed_formats'
+  VALIDATION_ERRORS = "validation_errors",
+  LARGE_DATASETS = "large_datasets",
+  CORRUPTED_FILES = "corrupted_files",
+  SPECIAL_CHARACTERS = "special_characters",
+  NETWORK_ISSUES = "network_issues",
+  PERFORMANCE_LIMITS = "performance_limits",
+  SECURITY_EDGE_CASES = "security_edge_cases",
+  FIELD_MAPPING_COMPLEXITY = "field_mapping_complexity",
+  DUPLICATE_DATA = "duplicate_data",
+  MIXED_FORMATS = "mixed_formats",
 }
 
 export interface ErrorPattern {
   type: ErrorPatternType;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   affectedFields: string[];
   injectionRate: number; // 0.0 to 1.0 (percentage of records affected)
   description: string;
   autoFixable: boolean;
-  businessImpact: 'none' | 'low' | 'medium' | 'high';
+  businessImpact: "none" | "low" | "medium" | "high";
   examples?: any[];
 }
 
 export enum ErrorPatternType {
   // Validation errors
-  MISSING_REQUIRED_FIELDS = 'missing_required_fields',
-  INVALID_DATA_TYPES = 'invalid_data_types',
-  CONSTRAINT_VIOLATIONS = 'constraint_violations',
-  BUSINESS_RULE_VIOLATIONS = 'business_rule_violations',
-  
+  MISSING_REQUIRED_FIELDS = "missing_required_fields",
+  INVALID_DATA_TYPES = "invalid_data_types",
+  CONSTRAINT_VIOLATIONS = "constraint_violations",
+  BUSINESS_RULE_VIOLATIONS = "business_rule_violations",
+
   // Format errors
-  ENCODING_ISSUES = 'encoding_issues',
-  MALFORMED_CSV = 'malformed_csv',
-  TRUNCATED_DATA = 'truncated_data',
-  MIXED_LINE_ENDINGS = 'mixed_line_endings',
-  
+  ENCODING_ISSUES = "encoding_issues",
+  MALFORMED_CSV = "malformed_csv",
+  TRUNCATED_DATA = "truncated_data",
+  MIXED_LINE_ENDINGS = "mixed_line_endings",
+
   // Content errors
-  SPECIAL_CHARACTERS = 'special_characters',
-  SQL_INJECTION_PATTERNS = 'sql_injection_patterns',
-  XSS_PATTERNS = 'xss_patterns',
-  UNICODE_EDGE_CASES = 'unicode_edge_cases',
-  
-  // Format errors (missing from original)
-  TRUNCATED_DATA = 'truncated_data',
-  MALFORMED_CSV = 'malformed_csv',
-  MIXED_LINE_ENDINGS = 'mixed_line_endings',
-  ENCODING_ISSUES = 'encoding_issues',
-  
+  SPECIAL_CHARACTERS = "special_characters",
+  SQL_INJECTION_PATTERNS = "sql_injection_patterns",
+  XSS_PATTERNS = "xss_patterns",
+  UNICODE_EDGE_CASES = "unicode_edge_cases",
+
   // Business logic errors
-  DUPLICATE_SKUS = 'duplicate_skus',
-  INVALID_PRICING = 'invalid_pricing',
-  INCONSISTENT_INVENTORY = 'inconsistent_inventory',
-  INVALID_RELATIONSHIPS = 'invalid_relationships',
-  
+  DUPLICATE_SKUS = "duplicate_skus",
+  INVALID_PRICING = "invalid_pricing",
+  INCONSISTENT_INVENTORY = "inconsistent_inventory",
+  INVALID_RELATIONSHIPS = "invalid_relationships",
+
   // Performance patterns
-  EXTREMELY_LONG_TEXT = 'extremely_long_text',
-  HIGH_CARDINALITY_DATA = 'high_cardinality_data',
-  DEEPLY_NESTED_JSON = 'deeply_nested_json'
+  EXTREMELY_LONG_TEXT = "extremely_long_text",
+  HIGH_CARDINALITY_DATA = "high_cardinality_data",
+  DEEPLY_NESTED_JSON = "deeply_nested_json",
 }
 
 export interface ValidationError {
@@ -111,7 +105,7 @@ export interface ValidationError {
   field: string;
   value: any;
   rule: string;
-  severity: 'error' | 'warning';
+  severity: "error" | "warning";
   message: string;
   suggestion?: string;
   autoFix?: {
@@ -122,20 +116,20 @@ export interface ValidationError {
 }
 
 export interface PerformanceTarget {
-  metric: 'execution_time' | 'memory_usage' | 'cpu_usage' | 'response_time';
+  metric: "execution_time" | "memory_usage" | "cpu_usage" | "response_time";
   target: number;
   unit: string;
   tolerance: number; // percentage
 }
 
-export type ApprovalType = 
-  | 'data_integrity_risk'
-  | 'performance_degradation'
-  | 'security_concerns'
-  | 'field_mapping_complexity'
-  | 'business_rule_exception';
+export type ApprovalType =
+  | "data_integrity_risk"
+  | "performance_degradation"
+  | "security_concerns"
+  | "field_mapping_complexity"
+  | "business_rule_exception";
 
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 export interface TestDataGenerationRequest {
   scenario: Partial<TestScenario>;
@@ -146,7 +140,7 @@ export interface TestDataGenerationRequest {
     targetFields: string[];
     businessContext?: string;
   };
-  outputFormat: 'csv' | 'json' | 'xlsx';
+  outputFormat: "csv" | "json" | "xlsx";
   options?: {
     includeHeaders: boolean;
     encoding: string;
@@ -184,7 +178,7 @@ export interface GeneratedTestData {
 export interface TestExecution {
   id: string;
   scenarioId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+  status: "pending" | "running" | "completed" | "failed" | "aborted";
   startTime: Date;
   endTime?: Date;
   progress: number; // 0-100
@@ -223,7 +217,7 @@ export interface TestSession {
   id: string;
   name: string;
   description: string;
-  status: 'active' | 'completed' | 'failed' | 'aborted';
+  status: "active" | "completed" | "failed" | "aborted";
   config: TestSessionConfig;
   executions: TestExecution[];
   createdAt: Date;
@@ -233,7 +227,7 @@ export interface TestSession {
 
 export interface TestSessionConfig {
   scenarios: TestScenario[];
-  executionOrder: 'sequential' | 'parallel' | 'priority';
+  executionOrder: "sequential" | "parallel" | "priority";
   maxConcurrentTests: number;
   abortOnFirstFailure: boolean;
   approvalRequired: boolean;
@@ -251,65 +245,100 @@ export interface TestSessionConfig {
 
 // Product schema fields for field mapping and data generation
 export const PRODUCT_SCHEMA_FIELDS = [
-  'name',
-  'slug', 
-  'sku',
-  'gtin',
-  'shortDescription',
-  'longDescription', 
-  'story',
-  'price',
-  'compareAtPrice',
-  'inventoryQuantity',
-  'trackInventory',
-  'isActive',
-  'tags',
-  'metaTitle',
-  'metaDescription',
-  'weight',
-  'weightUnit',
-  'hsCode',
-  'countryOfOrigin',
-  'material',
-  'color',
-  'size',
-  'gender',
-  'ageGroup',
-  'season',
-  'brand',
-  'vendor',
-  'productType',
-  'collection'
+  "name",
+  "slug",
+  "sku",
+  "gtin",
+  "shortDescription",
+  "longDescription",
+  "story",
+  "price",
+  "compareAtPrice",
+  "inventoryQuantity",
+  "trackInventory",
+  "isActive",
+  "tags",
+  "metaTitle",
+  "metaDescription",
+  "weight",
+  "weightUnit",
+  "hsCode",
+  "countryOfOrigin",
+  "material",
+  "color",
+  "size",
+  "gender",
+  "ageGroup",
+  "season",
+  "brand",
+  "vendor",
+  "productType",
+  "collection",
 ] as const;
 
-export type ProductSchemaField = typeof PRODUCT_SCHEMA_FIELDS[number];
+export type ProductSchemaField = (typeof PRODUCT_SCHEMA_FIELDS)[number];
 
 // Common business contexts for realistic data generation
 export const BUSINESS_CONTEXTS = {
   ELECTRONICS: {
-    categories: ['smartphones', 'laptops', 'tablets', 'accessories'],
-    brands: ['TechFlow', 'InnovateX', 'DigitalPro'],
-    priceRanges: [[99, 299], [300, 799], [800, 1999], [2000, 4999]],
-    commonAttributes: ['warranty', 'connectivity', 'battery_life', 'screen_size']
+    categories: ["smartphones", "laptops", "tablets", "accessories"],
+    brands: ["TechFlow", "InnovateX", "DigitalPro"],
+    priceRanges: [
+      [99, 299],
+      [300, 799],
+      [800, 1999],
+      [2000, 4999],
+    ],
+    commonAttributes: [
+      "warranty",
+      "connectivity",
+      "battery_life",
+      "screen_size",
+    ],
   },
   FASHION: {
-    categories: ['clothing', 'shoes', 'accessories', 'jewelry'],
-    brands: ['StyleCo', 'FashionFirst', 'TrendSetters'],
-    priceRanges: [[29, 99], [100, 299], [300, 799], [800, 1999]],
-    commonAttributes: ['size', 'color', 'material', 'care_instructions']
+    categories: ["clothing", "shoes", "accessories", "jewelry"],
+    brands: ["StyleCo", "FashionFirst", "TrendSetters"],
+    priceRanges: [
+      [29, 99],
+      [100, 299],
+      [300, 799],
+      [800, 1999],
+    ],
+    commonAttributes: ["size", "color", "material", "care_instructions"],
   },
   HOME_GARDEN: {
-    categories: ['furniture', 'decor', 'kitchen', 'outdoor'],
-    brands: ['HomeStyle', 'GardenPro', 'ComfortLiving'],
-    priceRanges: [[19, 99], [100, 499], [500, 1499], [1500, 4999]],
-    commonAttributes: ['dimensions', 'material', 'assembly_required', 'room_type']
+    categories: ["furniture", "decor", "kitchen", "outdoor"],
+    brands: ["HomeStyle", "GardenPro", "ComfortLiving"],
+    priceRanges: [
+      [19, 99],
+      [100, 499],
+      [500, 1499],
+      [1500, 4999],
+    ],
+    commonAttributes: [
+      "dimensions",
+      "material",
+      "assembly_required",
+      "room_type",
+    ],
   },
   COSMETICS: {
-    categories: ['skincare', 'makeup', 'haircare', 'fragrance'],
-    brands: ['Aurora Cosmetics', 'BeautyEssentials', 'GlowUp'],
-    priceRanges: [[9, 49], [50, 149], [150, 399], [400, 999]],
-    commonAttributes: ['skin_type', 'ingredients', 'application_method', 'size']
-  }
+    categories: ["skincare", "makeup", "haircare", "fragrance"],
+    brands: ["Aurora Cosmetics", "BeautyEssentials", "GlowUp"],
+    priceRanges: [
+      [9, 49],
+      [50, 149],
+      [150, 399],
+      [400, 999],
+    ],
+    commonAttributes: [
+      "skin_type",
+      "ingredients",
+      "application_method",
+      "size",
+    ],
+  },
 } as const;
 
 export type BusinessContext = keyof typeof BUSINESS_CONTEXTS;

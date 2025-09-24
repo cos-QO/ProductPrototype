@@ -43,6 +43,13 @@
       "when": 1758542521183,
       "tag": "0005_flaky_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758712651428,
+      "tag": "0006_chilly_roughhouse",
+      "breakpoints": true
     }
   ]
 }

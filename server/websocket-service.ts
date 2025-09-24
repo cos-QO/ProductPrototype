@@ -1,12 +1,12 @@
-import { WebSocketServer, WebSocket } from 'ws';
-import { Server } from 'http';
-import { parse } from 'url';
-import { batchProcessor } from './batch-processor';
-import type { WorkflowEvent } from './services/workflow-orchestrator';
+import { WebSocketServer, WebSocket } from "ws";
+import { Server } from "http";
+import { parse } from "url";
+import { batchProcessor } from "./batch-processor";
+import type { WorkflowEvent } from "./services/workflow-orchestrator";
 
 // Types for WebSocket messages
 interface ProgressMessage {
-  type: 'progress';
+  type: "progress";
   sessionId: string;
   data: {
     totalRecords: number;
@@ -22,7 +22,7 @@ interface ProgressMessage {
 }
 
 interface BatchCompletedMessage {
-  type: 'batch_completed';
+  type: "batch_completed";
   sessionId: string;
   data: {
     batchNumber: number;
@@ -35,7 +35,7 @@ interface BatchCompletedMessage {
 }
 
 interface ErrorMessage {
-  type: 'error';
+  type: "error";
   sessionId: string;
   data: {
     error: string;
@@ -44,22 +44,28 @@ interface ErrorMessage {
 }
 
 interface CompletedMessage {
-  type: 'completed';
+  type: "completed";
   sessionId: string;
   data: {
     totalRecords: number;
     successfulRecords: number;
     failedRecords: number;
     processingTime: number;
-    status: 'completed' | 'completed_with_errors' | 'failed';
+    status: "completed" | "completed_with_errors" | "failed";
   };
 }
 
 // Workflow-specific message types
 interface WorkflowMessage {
-  type: 'analysis_complete' | 'preview_generation_started' | 'preview_ready' | 
-        'approval_required' | 'workflow_advanced' | 'execution_started' |
-        'workflow_error' | 'mapping_suggestions';
+  type:
+    | "analysis_complete"
+    | "preview_generation_started"
+    | "preview_ready"
+    | "approval_required"
+    | "workflow_advanced"
+    | "execution_started"
+    | "workflow_error"
+    | "mapping_suggestions";
   sessionId: string;
   data: any;
   metadata?: {
@@ -72,7 +78,113 @@ interface WorkflowMessage {
   timestamp: string;
 }
 
-type WebSocketMessage = ProgressMessage | BatchCompletedMessage | ErrorMessage | CompletedMessage | WorkflowMessage;
+// Edge Case Detection message types
+interface EdgeCaseDetectedMessage {
+  type: "edge_case_detected";
+  sessionId: string;
+  data: {
+    workflowId: string;
+    errorPattern: {
+      id: string;
+      type: string;
+      description: string;
+      confidence: number;
+      severity: "low" | "medium" | "high" | "critical";
+    };
+    affectedRecords: number;
+    suggestedActions: string[];
+    requiresApproval: boolean;
+    autoFixAvailable: boolean;
+  };
+  timestamp: string;
+}
+
+interface EdgeCaseAnalysisProgressMessage {
+  type: "edge_case_analysis_progress";
+  sessionId: string;
+  data: {
+    workflowId: string;
+    stage:
+      | "pattern_analysis"
+      | "llm_analysis"
+      | "test_generation"
+      | "solution_proposal"
+      | "complete";
+    progress: number; // 0-100
+    currentAction: string;
+    estimatedTimeRemaining: number; // seconds
+    tokensUsed: number;
+    cost: number; // USD
+  };
+  timestamp: string;
+}
+
+interface EdgeCaseResolutionMessage {
+  type: "edge_case_resolution";
+  sessionId: string;
+  data: {
+    workflowId: string;
+    resolutionType:
+      | "auto_fixed"
+      | "user_approved"
+      | "user_rejected"
+      | "escalated";
+    originalError: string;
+    solution: string;
+    affectedRecords: number;
+    success: boolean;
+    details?: any;
+  };
+  timestamp: string;
+}
+
+interface EdgeCaseTestGeneratedMessage {
+  type: "edge_case_test_generated";
+  sessionId: string;
+  data: {
+    workflowId: string;
+    testSuite: {
+      id: string;
+      name: string;
+      testCases: number;
+      estimatedDuration: number;
+    };
+    generatedData: {
+      csvRows: number;
+      scenarios: string[];
+    };
+    autoExecute: boolean;
+  };
+  timestamp: string;
+}
+
+interface MLFeedbackMessage {
+  type: "ml_feedback_processed";
+  sessionId: string;
+  data: {
+    feedbackType: "approval_decision" | "user_behavior" | "resolution_outcome";
+    confidence: number;
+    learningUpdate: string;
+    automationRecommendation?: {
+      action: string;
+      confidence: number;
+      reasoning: string;
+    };
+  };
+  timestamp: string;
+}
+
+type WebSocketMessage =
+  | ProgressMessage
+  | BatchCompletedMessage
+  | ErrorMessage
+  | CompletedMessage
+  | WorkflowMessage
+  | EdgeCaseDetectedMessage
+  | EdgeCaseAnalysisProgressMessage
+  | EdgeCaseResolutionMessage
+  | EdgeCaseTestGeneratedMessage
+  | MLFeedbackMessage;
 
 interface ClientConnection {
   ws: WebSocket;
@@ -102,47 +214,52 @@ export class WebSocketService {
     if (this.isInitialized) {
       const warningMessage = `⚠️  WebSocket service already initialized at ${this.initializationTimestamp}. Skipping duplicate initialization.`;
       console.warn(warningMessage);
-      console.warn('  This indicates a potential singleton pattern violation.');
-      console.warn('  Stack trace:', new Error('Duplicate initialization').stack);
+      console.warn("  This indicates a potential singleton pattern violation.");
+      console.warn(
+        "  Stack trace:",
+        new Error("Duplicate initialization").stack,
+      );
       return;
     }
 
     // Track initialization attempts
     this.initializationCount++;
-    
+
     try {
-      this.wss = new WebSocketServer({ 
+      this.wss = new WebSocketServer({
         server: httpServer,
-        path: '/ws'
+        path: "/ws",
       });
 
-    this.wss.on('connection', (ws: WebSocket, request) => {
-      this.handleConnection(ws, request);
-    });
+      this.wss.on("connection", (ws: WebSocket, request) => {
+        this.handleConnection(ws, request);
+      });
 
-    // Add error handling for the WebSocket server
-    this.wss.on('error', (error) => {
-      console.error('WebSocketServer error:', error);
-    });
+      // Add error handling for the WebSocket server
+      this.wss.on("error", (error) => {
+        console.error("WebSocketServer error:", error);
+      });
 
-    // Log WebSocket upgrade requests
-    httpServer.on('upgrade', (request, socket, head) => {
-      console.log('WebSocket upgrade request:', request.url, request.headers);
-    });
+      // Log WebSocket upgrade requests
+      httpServer.on("upgrade", (request, socket, head) => {
+        console.log("WebSocket upgrade request:", request.url, request.headers);
+      });
 
-    // Setup heartbeat to keep connections alive
-    this.heartbeatInterval = setInterval(() => {
-      this.sendHeartbeat();
-    }, 30000); // 30 seconds
+      // Setup heartbeat to keep connections alive
+      this.heartbeatInterval = setInterval(() => {
+        this.sendHeartbeat();
+      }, 30000); // 30 seconds
 
-    // Mark as successfully initialized
-    this.isInitialized = true;
-    this.initializationTimestamp = new Date();
+      // Mark as successfully initialized
+      this.isInitialized = true;
+      this.initializationTimestamp = new Date();
 
-    console.log(`✅ WebSocket server initialized successfully on /ws at ${this.initializationTimestamp}`);
-    console.log(`   Initialization count: ${this.initializationCount}`);
+      console.log(
+        `✅ WebSocket server initialized successfully on /ws at ${this.initializationTimestamp}`,
+      );
+      console.log(`   Initialization count: ${this.initializationCount}`);
     } catch (error) {
-      console.error('❌ WebSocket server initialization failed:', error);
+      console.error("❌ WebSocket server initialization failed:", error);
       this.isInitialized = false;
       this.initializationTimestamp = null;
       throw error;
@@ -153,16 +270,19 @@ export class WebSocketService {
    * Handle new WebSocket connection
    */
   private handleConnection(ws: WebSocket, request: any): void {
-    console.log('WebSocket connection attempt:', request.url);
+    console.log("WebSocket connection attempt:", request.url);
     const parsedUrl = parse(request.url, true);
-    console.log('Parsed URL query:', parsedUrl.query);
-    
+    console.log("Parsed URL query:", parsedUrl.query);
+
     const sessionId = parsedUrl.query.sessionId as string;
     const userId = parsedUrl.query.userId as string;
 
     if (!sessionId || !userId) {
-      console.log('WebSocket connection rejected: missing sessionId or userId', { sessionId, userId });
-      ws.close(1008, 'Missing sessionId or userId');
+      console.log(
+        "WebSocket connection rejected: missing sessionId or userId",
+        { sessionId, userId },
+      );
+      ws.close(1008, "Missing sessionId or userId");
       return;
     }
 
@@ -171,7 +291,7 @@ export class WebSocketService {
       ws,
       sessionId,
       userId,
-      connectedAt: new Date()
+      connectedAt: new Date(),
     };
 
     if (!this.clients.has(sessionId)) {
@@ -179,35 +299,39 @@ export class WebSocketService {
     }
     this.clients.get(sessionId)!.push(client);
 
-    console.log(`WebSocket client connected: sessionId=${sessionId}, userId=${userId}`);
+    console.log(
+      `WebSocket client connected: sessionId=${sessionId}, userId=${userId}`,
+    );
 
     // Handle client messages
-    ws.on('message', (data: Buffer) => {
+    ws.on("message", (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
         this.handleClientMessage(client, message);
       } catch (error) {
-        console.error('Invalid WebSocket message:', error);
+        console.error("Invalid WebSocket message:", error);
       }
     });
 
     // Handle client disconnect
-    ws.on('close', () => {
+    ws.on("close", () => {
       this.removeClient(client);
-      console.log(`WebSocket client disconnected: sessionId=${sessionId}, userId=${userId}`);
+      console.log(
+        `WebSocket client disconnected: sessionId=${sessionId}, userId=${userId}`,
+      );
     });
 
     // Handle WebSocket errors
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    ws.on("error", (error) => {
+      console.error("WebSocket error:", error);
       this.removeClient(client);
     });
 
     // Send initial connection confirmation
     this.sendToClient(client, {
-      type: 'connected',
+      type: "connected",
       sessionId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -216,11 +340,14 @@ export class WebSocketService {
    */
   private handleClientMessage(client: ClientConnection, message: any): void {
     switch (message.type) {
-      case 'ping':
-        this.sendToClient(client, { type: 'pong', timestamp: new Date().toISOString() });
+      case "ping":
+        this.sendToClient(client, {
+          type: "pong",
+          timestamp: new Date().toISOString(),
+        });
         break;
-      
-      case 'subscribe':
+
+      case "subscribe":
         // Client wants to subscribe to a specific session
         const { sessionId } = message;
         if (sessionId && sessionId !== client.sessionId) {
@@ -229,9 +356,9 @@ export class WebSocketService {
           this.moveClientToSession(client, sessionId);
         }
         break;
-      
+
       default:
-        console.log('Unknown WebSocket message type:', message.type);
+        console.log("Unknown WebSocket message type:", message.type);
     }
   }
 
@@ -240,99 +367,117 @@ export class WebSocketService {
    */
   private setupBatchProcessorListeners(): void {
     // Progress updates
-    batchProcessor.on('progress', (data: { sessionId: string, metrics: any }) => {
-      const message: ProgressMessage = {
-        type: 'progress',
-        sessionId: data.sessionId,
-        data: {
-          totalRecords: data.metrics.totalRecords,
-          processedRecords: data.metrics.processedRecords,
-          successfulRecords: data.metrics.successfulRecords,
-          failedRecords: data.metrics.failedRecords,
-          currentBatch: Math.ceil(data.metrics.processedRecords / 100), // Assuming batch size of 100
-          totalBatches: Math.ceil(data.metrics.totalRecords / 100),
-          processingRate: data.metrics.throughput,
-          estimatedTimeRemaining: data.metrics.estimatedCompletion 
-            ? Math.round((data.metrics.estimatedCompletion.getTime() - Date.now()) / 1000)
-            : 0,
-          status: 'processing'
-        }
-      };
-      
-      this.legacyBroadcastToSession(data.sessionId, message);
-    });
+    batchProcessor.on(
+      "progress",
+      (data: { sessionId: string; metrics: any }) => {
+        const message: ProgressMessage = {
+          type: "progress",
+          sessionId: data.sessionId,
+          data: {
+            totalRecords: data.metrics.totalRecords,
+            processedRecords: data.metrics.processedRecords,
+            successfulRecords: data.metrics.successfulRecords,
+            failedRecords: data.metrics.failedRecords,
+            currentBatch: Math.ceil(data.metrics.processedRecords / 100), // Assuming batch size of 100
+            totalBatches: Math.ceil(data.metrics.totalRecords / 100),
+            processingRate: data.metrics.throughput,
+            estimatedTimeRemaining: data.metrics.estimatedCompletion
+              ? Math.round(
+                  (data.metrics.estimatedCompletion.getTime() - Date.now()) /
+                    1000,
+                )
+              : 0,
+            status: "processing",
+          },
+        };
+
+        this.legacyBroadcastToSession(data.sessionId, message);
+      },
+    );
 
     // Batch completed
-    batchProcessor.on('batchCompleted', (data: { sessionId: string, result: any }) => {
-      const message: BatchCompletedMessage = {
-        type: 'batch_completed',
-        sessionId: data.sessionId,
-        data: {
-          batchNumber: data.result.batchNumber,
-          success: data.result.success,
-          processedCount: data.result.processedCount,
-          successCount: data.result.successCount,
-          failureCount: data.result.failureCount,
-          processingTime: data.result.processingTime
-        }
-      };
-      
-      this.legacyBroadcastToSession(data.sessionId, message);
-    });
+    batchProcessor.on(
+      "batchCompleted",
+      (data: { sessionId: string; result: any }) => {
+        const message: BatchCompletedMessage = {
+          type: "batch_completed",
+          sessionId: data.sessionId,
+          data: {
+            batchNumber: data.result.batchNumber,
+            success: data.result.success,
+            processedCount: data.result.processedCount,
+            successCount: data.result.successCount,
+            failureCount: data.result.failureCount,
+            processingTime: data.result.processingTime,
+          },
+        };
+
+        this.legacyBroadcastToSession(data.sessionId, message);
+      },
+    );
 
     // Import completed
-    batchProcessor.on('completed', (data: { sessionId: string, metrics: any }) => {
-      const message: CompletedMessage = {
-        type: 'completed',
-        sessionId: data.sessionId,
-        data: {
-          totalRecords: data.metrics.totalRecords,
-          successfulRecords: data.metrics.successfulRecords,
-          failedRecords: data.metrics.failedRecords,
-          processingTime: Date.now() - data.metrics.startTime.getTime(),
-          status: data.metrics.failedRecords === 0 ? 'completed' : 'completed_with_errors'
-        }
-      };
-      
-      this.legacyBroadcastToSession(data.sessionId, message);
-    });
+    batchProcessor.on(
+      "completed",
+      (data: { sessionId: string; metrics: any }) => {
+        const message: CompletedMessage = {
+          type: "completed",
+          sessionId: data.sessionId,
+          data: {
+            totalRecords: data.metrics.totalRecords,
+            successfulRecords: data.metrics.successfulRecords,
+            failedRecords: data.metrics.failedRecords,
+            processingTime: Date.now() - data.metrics.startTime.getTime(),
+            status:
+              data.metrics.failedRecords === 0
+                ? "completed"
+                : "completed_with_errors",
+          },
+        };
+
+        this.legacyBroadcastToSession(data.sessionId, message);
+      },
+    );
 
     // Import errors
-    batchProcessor.on('error', (data: { sessionId: string, error: any }) => {
+    batchProcessor.on("error", (data: { sessionId: string; error: any }) => {
       const message: ErrorMessage = {
-        type: 'error',
+        type: "error",
         sessionId: data.sessionId,
         data: {
-          error: data.error.message || 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
+          error: data.error.message || "Unknown error",
+          timestamp: new Date().toISOString(),
+        },
       };
-      
+
       this.legacyBroadcastToSession(data.sessionId, message);
     });
 
     // Batch failed
-    batchProcessor.on('batchFailed', (data: { sessionId: string, batchNumber: number, error: any }) => {
-      const message: ErrorMessage = {
-        type: 'error',
-        sessionId: data.sessionId,
-        data: {
-          error: `Batch ${data.batchNumber} failed: ${data.error.message}`,
-          timestamp: new Date().toISOString()
-        }
-      };
-      
-      this.legacyBroadcastToSession(data.sessionId, message);
-    });
+    batchProcessor.on(
+      "batchFailed",
+      (data: { sessionId: string; batchNumber: number; error: any }) => {
+        const message: ErrorMessage = {
+          type: "error",
+          sessionId: data.sessionId,
+          data: {
+            error: `Batch ${data.batchNumber} failed: ${data.error.message}`,
+            timestamp: new Date().toISOString(),
+          },
+        };
+
+        this.legacyBroadcastToSession(data.sessionId, message);
+      },
+    );
 
     // Import cancelled
-    batchProcessor.on('cancelled', (data: { sessionId: string }) => {
+    batchProcessor.on("cancelled", (data: { sessionId: string }) => {
       const message = {
-        type: 'cancelled',
+        type: "cancelled",
         sessionId: data.sessionId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       this.legacyBroadcastToSession(data.sessionId, message);
     });
   }
@@ -348,13 +493,13 @@ export class WebSocketService {
     }
 
     const messageStr = JSON.stringify(message);
-    
-    clients.forEach(client => {
+
+    clients.forEach((client) => {
       if (client.ws.readyState === WebSocket.OPEN) {
         try {
           client.ws.send(messageStr);
         } catch (error) {
-          console.error('Error sending WebSocket message:', error);
+          console.error("Error sending WebSocket message:", error);
           this.removeClient(client);
         }
       }
@@ -369,7 +514,7 @@ export class WebSocketService {
       try {
         client.ws.send(JSON.stringify(message));
       } catch (error) {
-        console.error('Error sending WebSocket message to client:', error);
+        console.error("Error sending WebSocket message to client:", error);
         this.removeClient(client);
       }
     }
@@ -383,7 +528,7 @@ export class WebSocketService {
       const index = clients.indexOf(client);
       if (index > -1) {
         clients.splice(index, 1);
-        
+
         // Clean up empty sessions
         if (clients.length === 0) {
           this.clients.delete(sessionId);
@@ -396,10 +541,13 @@ export class WebSocketService {
   /**
    * Move client to a different session
    */
-  private moveClientToSession(client: ClientConnection, newSessionId: string): void {
+  private moveClientToSession(
+    client: ClientConnection,
+    newSessionId: string,
+  ): void {
     // Remove from current session
     this.removeClient(client);
-    
+
     // Add to new session
     client.sessionId = newSessionId;
     if (!this.clients.has(newSessionId)) {
@@ -413,18 +561,18 @@ export class WebSocketService {
    */
   private sendHeartbeat(): void {
     const heartbeatMessage = {
-      type: 'heartbeat',
+      type: "heartbeat",
       timestamp: new Date().toISOString(),
-      connections: this.getTotalConnections()
+      connections: this.getTotalConnections(),
     };
 
     for (const [sessionId, clients] of this.clients.entries()) {
-      clients.forEach(client => {
+      clients.forEach((client) => {
         if (client.ws.readyState === WebSocket.OPEN) {
           try {
             client.ws.ping();
           } catch (error) {
-            console.error('Error sending WebSocket ping:', error);
+            console.error("Error sending WebSocket ping:", error);
             this.removeClient(client);
           }
         } else {
@@ -448,39 +596,42 @@ export class WebSocketService {
   /**
    * Get connection statistics with initialization info
    */
-  getStats(): { 
-    totalConnections: number, 
-    activeSessions: number,
-    sessionDetails: Array<{ sessionId: string, clients: number }>,
+  getStats(): {
+    totalConnections: number;
+    activeSessions: number;
+    sessionDetails: Array<{ sessionId: string; clients: number }>;
     initialization: {
-      isInitialized: boolean,
-      timestamp: Date | null,
-      count: number,
-      uptime: number | null
-    },
+      isInitialized: boolean;
+      timestamp: Date | null;
+      count: number;
+      uptime: number | null;
+    };
     health: {
-      status: 'healthy' | 'degraded' | 'error',
-      lastHeartbeat: Date | null,
-      serverStatus: string
-    }
+      status: "healthy" | "degraded" | "error";
+      lastHeartbeat: Date | null;
+      serverStatus: string;
+    };
   } {
-    const sessionDetails = Array.from(this.clients.entries()).map(([sessionId, clients]) => ({
-      sessionId,
-      clients: clients.length
-    }));
+    const sessionDetails = Array.from(this.clients.entries()).map(
+      ([sessionId, clients]) => ({
+        sessionId,
+        clients: clients.length,
+      }),
+    );
 
-    const uptime = this.initializationTimestamp 
+    const uptime = this.initializationTimestamp
       ? Date.now() - this.initializationTimestamp.getTime()
       : null;
 
-    const serverStatus = this.wss 
-      ? 'running'
-      : 'not_initialized';
+    const serverStatus = this.wss ? "running" : "not_initialized";
 
     const health = {
-      status: this.isInitialized && this.wss ? 'healthy' as const : 'error' as const,
+      status:
+        this.isInitialized && this.wss
+          ? ("healthy" as const)
+          : ("error" as const),
       lastHeartbeat: new Date(),
-      serverStatus
+      serverStatus,
     };
 
     return {
@@ -491,48 +642,57 @@ export class WebSocketService {
         isInitialized: this.isInitialized,
         timestamp: this.initializationTimestamp,
         count: this.initializationCount,
-        uptime
+        uptime,
       },
-      health
+      health,
     };
   }
 
   /**
    * NEW: Emit workflow-specific events for automation
    */
-  async emitWorkflowEvent(sessionId: string, event: WorkflowEvent): Promise<void> {
+  async emitWorkflowEvent(
+    sessionId: string,
+    event: WorkflowEvent,
+  ): Promise<void> {
     try {
       const message: WorkflowMessage = {
         type: event.type,
         sessionId,
         data: event.payload,
         metadata: event.metadata,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       this.broadcastToSession(sessionId, message);
-      
+
       // Log workflow progression for debugging
-      console.log(`[WEBSOCKET] Workflow event emitted: ${event.type} for session ${sessionId}`, {
-        confidence: event.metadata?.confidence,
-        autoAdvance: event.metadata?.autoAdvance,
-        expectedNextStep: event.metadata?.expectedNextStep
-      });
+      console.log(
+        `[WEBSOCKET] Workflow event emitted: ${event.type} for session ${sessionId}`,
+        {
+          confidence: event.metadata?.confidence,
+          autoAdvance: event.metadata?.autoAdvance,
+          expectedNextStep: event.metadata?.expectedNextStep,
+        },
+      );
     } catch (error) {
-      console.error('[WEBSOCKET] Error emitting workflow event:', error);
+      console.error("[WEBSOCKET] Error emitting workflow event:", error);
     }
   }
 
   /**
    * Emit analysis complete event
    */
-  async emitAnalysisComplete(sessionId: string, analysisResult: any): Promise<void> {
+  async emitAnalysisComplete(
+    sessionId: string,
+    analysisResult: any,
+  ): Promise<void> {
     await this.emitWorkflowEvent(sessionId, {
-      type: 'analysis_complete',
+      type: "analysis_complete",
       sessionId,
       payload: analysisResult,
       timestamp: new Date(),
-      metadata: { autoAdvance: true }
+      metadata: { autoAdvance: true },
     });
   }
 
@@ -541,11 +701,11 @@ export class WebSocketService {
    */
   async emitPreviewReady(sessionId: string, previewData: any): Promise<void> {
     await this.emitWorkflowEvent(sessionId, {
-      type: 'preview_ready',
-      sessionId, 
+      type: "preview_ready",
+      sessionId,
       payload: previewData,
       timestamp: new Date(),
-      metadata: { autoAdvance: true }
+      metadata: { autoAdvance: true },
     });
   }
 
@@ -554,15 +714,15 @@ export class WebSocketService {
    */
   async emitWorkflowError(sessionId: string, error: any): Promise<void> {
     await this.emitWorkflowEvent(sessionId, {
-      type: 'workflow_error',
+      type: "workflow_error",
       sessionId,
       payload: {
-        error: error.message || 'Unknown workflow error',
+        error: error.message || "Unknown workflow error",
         recoverable: true,
-        fallbackAction: 'manual_intervention_required'
+        fallbackAction: "manual_intervention_required",
       },
       timestamp: new Date(),
-      metadata: { autoAdvance: false, userAction: true }
+      metadata: { autoAdvance: false, userAction: true },
     });
   }
 
@@ -579,14 +739,14 @@ export class WebSocketService {
     const messageStr = JSON.stringify(message);
     let successCount = 0;
     let failureCount = 0;
-    
-    clients.forEach(client => {
+
+    clients.forEach((client) => {
       if (client.ws.readyState === WebSocket.OPEN) {
         try {
           client.ws.send(messageStr);
           successCount++;
         } catch (error) {
-          console.error('[WEBSOCKET] Error sending message to client:', error);
+          console.error("[WEBSOCKET] Error sending message to client:", error);
           this.removeClient(client);
           failureCount++;
         }
@@ -596,15 +756,20 @@ export class WebSocketService {
       }
     });
 
-    console.log(`[WEBSOCKET] Message broadcast to session ${sessionId}: ${successCount} sent, ${failureCount} failed`);
+    console.log(
+      `[WEBSOCKET] Message broadcast to session ${sessionId}: ${successCount} sent, ${failureCount} failed`,
+    );
   }
 
   /**
    * Manually send progress update (for testing)
    */
-  sendManualProgress(sessionId: string, progress: Partial<ProgressMessage['data']>): void {
+  sendManualProgress(
+    sessionId: string,
+    progress: Partial<ProgressMessage["data"]>,
+  ): void {
     const message: ProgressMessage = {
-      type: 'progress',
+      type: "progress",
       sessionId,
       data: {
         totalRecords: 0,
@@ -615,9 +780,9 @@ export class WebSocketService {
         totalBatches: 0,
         processingRate: 0,
         estimatedTimeRemaining: 0,
-        status: 'processing',
-        ...progress
-      }
+        status: "processing",
+        ...progress,
+      },
     };
 
     this.broadcastToSession(sessionId, message);
@@ -627,8 +792,8 @@ export class WebSocketService {
    * Close all connections and cleanup
    */
   shutdown(): void {
-    console.log('🔄 WebSocket service shutdown initiated...');
-    
+    console.log("🔄 WebSocket service shutdown initiated...");
+
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
@@ -639,7 +804,7 @@ export class WebSocketService {
     for (const clients of Array.from(this.clients.values())) {
       clients.forEach((client: ClientConnection) => {
         if (client.ws.readyState === WebSocket.OPEN) {
-          client.ws.close(1001, 'Server shutting down');
+          client.ws.close(1001, "Server shutting down");
           closedConnections++;
         }
       });
@@ -655,40 +820,351 @@ export class WebSocketService {
     // Reset initialization state
     this.isInitialized = false;
     this.initializationTimestamp = null;
-    
-    console.log(`✅ WebSocket service shutdown complete. Closed ${closedConnections} connections.`);
+
+    console.log(
+      `✅ WebSocket service shutdown complete. Closed ${closedConnections} connections.`,
+    );
+  }
+
+  /**
+   * EDGE CASE DETECTION WEBSOCKET METHODS
+   */
+
+  /**
+   * Emit edge case detected event
+   */
+  async emitEdgeCaseDetected(
+    sessionId: string,
+    workflowId: string,
+    errorPattern: {
+      id: string;
+      type: string;
+      description: string;
+      confidence: number;
+      severity: "low" | "medium" | "high" | "critical";
+    },
+    affectedRecords: number,
+    suggestedActions: string[],
+    requiresApproval: boolean,
+    autoFixAvailable: boolean,
+  ): Promise<void> {
+    try {
+      const message: EdgeCaseDetectedMessage = {
+        type: "edge_case_detected",
+        sessionId,
+        data: {
+          workflowId,
+          errorPattern,
+          affectedRecords,
+          suggestedActions,
+          requiresApproval,
+          autoFixAvailable,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] Edge case detected: ${errorPattern.type} (${errorPattern.severity}) for session ${sessionId}`,
+        {
+          workflowId,
+          confidence: errorPattern.confidence,
+          affectedRecords,
+          requiresApproval,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "[WEBSOCKET] Error emitting edge case detected event:",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Emit edge case analysis progress
+   */
+  async emitEdgeCaseAnalysisProgress(
+    sessionId: string,
+    workflowId: string,
+    stage:
+      | "pattern_analysis"
+      | "llm_analysis"
+      | "test_generation"
+      | "solution_proposal"
+      | "complete",
+    progress: number,
+    currentAction: string,
+    estimatedTimeRemaining: number,
+    tokensUsed: number,
+    cost: number,
+  ): Promise<void> {
+    try {
+      const message: EdgeCaseAnalysisProgressMessage = {
+        type: "edge_case_analysis_progress",
+        sessionId,
+        data: {
+          workflowId,
+          stage,
+          progress,
+          currentAction,
+          estimatedTimeRemaining,
+          tokensUsed,
+          cost,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] Edge case analysis progress: ${stage} (${progress}%) for session ${sessionId}`,
+        {
+          workflowId,
+          currentAction,
+          tokensUsed,
+          cost,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "[WEBSOCKET] Error emitting edge case analysis progress:",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Emit edge case resolution
+   */
+  async emitEdgeCaseResolution(
+    sessionId: string,
+    workflowId: string,
+    resolutionType:
+      | "auto_fixed"
+      | "user_approved"
+      | "user_rejected"
+      | "escalated",
+    originalError: string,
+    solution: string,
+    affectedRecords: number,
+    success: boolean,
+    details?: any,
+  ): Promise<void> {
+    try {
+      const message: EdgeCaseResolutionMessage = {
+        type: "edge_case_resolution",
+        sessionId,
+        data: {
+          workflowId,
+          resolutionType,
+          originalError,
+          solution,
+          affectedRecords,
+          success,
+          details,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] Edge case resolution: ${resolutionType} (${success ? "success" : "failed"}) for session ${sessionId}`,
+        {
+          workflowId,
+          affectedRecords,
+          solution: solution.substring(0, 100) + "...",
+        },
+      );
+    } catch (error) {
+      console.error("[WEBSOCKET] Error emitting edge case resolution:", error);
+    }
+  }
+
+  /**
+   * Emit edge case test generated
+   */
+  async emitEdgeCaseTestGenerated(
+    sessionId: string,
+    workflowId: string,
+    testSuite: {
+      id: string;
+      name: string;
+      testCases: number;
+      estimatedDuration: number;
+    },
+    generatedData: {
+      csvRows: number;
+      scenarios: string[];
+    },
+    autoExecute: boolean,
+  ): Promise<void> {
+    try {
+      const message: EdgeCaseTestGeneratedMessage = {
+        type: "edge_case_test_generated",
+        sessionId,
+        data: {
+          workflowId,
+          testSuite,
+          generatedData,
+          autoExecute,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] Edge case test generated: ${testSuite.name} (${testSuite.testCases} cases) for session ${sessionId}`,
+        {
+          workflowId,
+          csvRows: generatedData.csvRows,
+          scenarios: generatedData.scenarios,
+          autoExecute,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "[WEBSOCKET] Error emitting edge case test generated:",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Emit ML feedback processed
+   */
+  async emitMLFeedbackProcessed(
+    sessionId: string,
+    feedbackType: "approval_decision" | "user_behavior" | "resolution_outcome",
+    confidence: number,
+    learningUpdate: string,
+    automationRecommendation?: {
+      action: string;
+      confidence: number;
+      reasoning: string;
+    },
+  ): Promise<void> {
+    try {
+      const message: MLFeedbackMessage = {
+        type: "ml_feedback_processed",
+        sessionId,
+        data: {
+          feedbackType,
+          confidence,
+          learningUpdate,
+          automationRecommendation,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] ML feedback processed: ${feedbackType} (confidence: ${confidence}%) for session ${sessionId}`,
+        {
+          learningUpdate,
+          automationRecommendation,
+        },
+      );
+    } catch (error) {
+      console.error("[WEBSOCKET] Error emitting ML feedback processed:", error);
+    }
+  }
+
+  /**
+   * Emit bulk edge case workflow status
+   */
+  async emitEdgeCaseWorkflowStatus(
+    sessionId: string,
+    workflowId: string,
+    status:
+      | "initiated"
+      | "analyzing"
+      | "awaiting_approval"
+      | "executing_fix"
+      | "completed"
+      | "failed",
+    totalEdgeCases: number,
+    resolvedCases: number,
+    pendingCases: number,
+    failedCases: number,
+    totalCost: number,
+    processingTime: number,
+  ): Promise<void> {
+    try {
+      const message = {
+        type: "edge_case_workflow_status",
+        sessionId,
+        data: {
+          workflowId,
+          status,
+          metrics: {
+            totalEdgeCases,
+            resolvedCases,
+            pendingCases,
+            failedCases,
+            totalCost,
+            processingTime,
+          },
+          progress:
+            totalEdgeCases > 0
+              ? Math.round((resolvedCases / totalEdgeCases) * 100)
+              : 0,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.broadcastToSession(sessionId, message);
+
+      console.log(
+        `[WEBSOCKET] Edge case workflow status: ${status} for session ${sessionId}`,
+        {
+          workflowId,
+          progress: `${resolvedCases}/${totalEdgeCases}`,
+          totalCost,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "[WEBSOCKET] Error emitting edge case workflow status:",
+        error,
+      );
+    }
   }
 
   /**
    * Health check method for monitoring
    */
   healthCheck(): {
-    status: 'healthy' | 'degraded' | 'error',
+    status: "healthy" | "degraded" | "error";
     details: {
-      initialized: boolean,
-      serverRunning: boolean,
-      connectionsActive: number,
-      uptime: number | null,
-      lastCheck: Date
-    }
+      initialized: boolean;
+      serverRunning: boolean;
+      connectionsActive: number;
+      uptime: number | null;
+      lastCheck: Date;
+    };
   } {
-    const uptime = this.initializationTimestamp 
+    const uptime = this.initializationTimestamp
       ? Date.now() - this.initializationTimestamp.getTime()
       : null;
-    
+
     const serverRunning = this.wss !== null;
     const connectionsActive = this.getTotalConnections();
-    
-    let status: 'healthy' | 'degraded' | 'error';
-    
+
+    let status: "healthy" | "degraded" | "error";
+
     if (!this.isInitialized || !serverRunning) {
-      status = 'error';
+      status = "error";
     } else if (connectionsActive === 0) {
-      status = 'degraded';
+      status = "degraded";
     } else {
-      status = 'healthy';
+      status = "healthy";
     }
-    
+
     return {
       status,
       details: {
@@ -696,8 +1172,8 @@ export class WebSocketService {
         serverRunning,
         connectionsActive,
         uptime,
-        lastCheck: new Date()
-      }
+        lastCheck: new Date(),
+      },
     };
   }
 }
@@ -710,21 +1186,23 @@ export const webSocketService = new WebSocketService();
 
 // Override initialize to add global tracking
 const originalInitialize = webSocketService.initialize.bind(webSocketService);
-webSocketService.initialize = function(httpServer: any) {
+webSocketService.initialize = function (httpServer: any) {
   if ((global as any).__webSocketServiceInitialized) {
-    console.error('🚨 CRITICAL: WebSocket service global initialization check failed!');
-    console.error('   Another service instance may have been initialized.');
-    console.error('   This indicates a serious singleton pattern violation.');
+    console.error(
+      "🚨 CRITICAL: WebSocket service global initialization check failed!",
+    );
+    console.error("   Another service instance may have been initialized.");
+    console.error("   This indicates a serious singleton pattern violation.");
     return;
   }
-  
+
   (global as any).__webSocketServiceInitialized = true;
   return originalInitialize(httpServer);
 };
 
 // Override shutdown to reset global tracking
 const originalShutdown = webSocketService.shutdown.bind(webSocketService);
-webSocketService.shutdown = function() {
+webSocketService.shutdown = function () {
   (global as any).__webSocketServiceInitialized = false;
   return originalShutdown();
 };

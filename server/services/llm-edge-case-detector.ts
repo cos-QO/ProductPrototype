@@ -6,15 +6,17 @@
 
 import OpenRouterClient from "./openrouter-client";
 import { ApprovalService } from "./approval-service";
-import { ErrorRecoveryService, ValidationError } from "./error-recovery-service";
+import {
+  ErrorRecoveryService,
+  ValidationError,
+} from "./error-recovery-service";
+import { webSocketService } from "../websocket-service";
 import { db } from "../db";
 import {
   edgeCaseDetections,
-  edgeCasePatterns,
   edgeCaseTestCases,
   importSessions,
   type InsertEdgeCaseDetection,
-  type InsertEdgeCasePattern,
   type InsertEdgeCaseTestCase,
   type RiskLevel,
   type ApprovalType,
@@ -37,7 +39,7 @@ interface EdgeCaseAnalysisRequest {
   historicalPatterns?: EdgeCasePattern[];
   userContext?: {
     userId: string;
-    experience: 'novice' | 'intermediate' | 'expert';
+    experience: "novice" | "intermediate" | "expert";
     previousPatterns: string[];
   };
 }
@@ -48,7 +50,7 @@ interface EdgeCaseDetectionResult {
   category: EdgeCaseCategory;
   pattern: string;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   suggestedActions: EdgeCaseAction[];
   testCaseGeneration: TestCaseRecommendation;
   automationRecommendation: AutomationRecommendation;
@@ -68,7 +70,12 @@ interface EdgeCasePattern {
 }
 
 interface EdgeCaseAction {
-  type: 'autofix' | 'manual_review' | 'approve_pattern' | 'create_test' | 'escalate';
+  type:
+    | "autofix"
+    | "manual_review"
+    | "approve_pattern"
+    | "create_test"
+    | "escalate";
   description: string;
   confidence: number;
   parameters?: Record<string, any>;
@@ -77,8 +84,8 @@ interface EdgeCaseAction {
 
 interface TestCaseRecommendation {
   shouldGenerate: boolean;
-  testType: 'unit' | 'integration' | 'e2e' | 'performance';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  testType: "unit" | "integration" | "e2e" | "performance";
+  priority: "low" | "medium" | "high" | "critical";
   scenarios: string[];
   dataRequirements: string[];
 }
@@ -91,15 +98,15 @@ interface AutomationRecommendation {
   fallbackStrategy: string;
 }
 
-type EdgeCaseCategory = 
-  | 'data_format_anomaly'
-  | 'business_rule_violation'
-  | 'performance_concern'
-  | 'security_risk'
-  | 'integration_failure'
-  | 'user_input_unexpected'
-  | 'system_limitation'
-  | 'edge_data_scenario';
+type EdgeCaseCategory =
+  | "data_format_anomaly"
+  | "business_rule_violation"
+  | "performance_concern"
+  | "security_risk"
+  | "integration_failure"
+  | "user_input_unexpected"
+  | "system_limitation"
+  | "edge_data_scenario";
 
 export class LLMEdgeCaseDetector {
   private static instance: LLMEdgeCaseDetector;
@@ -123,7 +130,7 @@ export class LLMEdgeCaseDetector {
     this.openRouterClient = OpenRouterClient.getInstance();
     this.approvalService = ApprovalService.getInstance();
     this.errorRecoveryService = ErrorRecoveryService.getInstance();
-    
+
     // Initialize pattern cache
     this.loadKnownPatterns();
   }
@@ -138,12 +145,16 @@ export class LLMEdgeCaseDetector {
   /**
    * Main entry point - analyze errors for edge case patterns
    */
-  async analyzeForEdgeCases(request: EdgeCaseAnalysisRequest): Promise<EdgeCaseDetectionResult> {
-    console.log(`[EDGE CASE DETECTOR] Starting analysis for ${request.errors.length} errors`);
-    
+  async analyzeForEdgeCases(
+    request: EdgeCaseAnalysisRequest,
+  ): Promise<EdgeCaseDetectionResult> {
+    console.log(
+      `[EDGE CASE DETECTOR] Starting analysis for ${request.errors.length} errors`,
+    );
+
     const startTime = Date.now();
     const cacheKey = this.generateCacheKey(request);
-    
+
     // Check cache first
     if (this.analysisCache.has(cacheKey)) {
       console.log("[EDGE CASE DETECTOR] Using cached analysis");
@@ -158,78 +169,104 @@ export class LLMEdgeCaseDetector {
       }
 
       // Step 2: Check against known patterns
-      const knownPatternMatch = await this.checkKnownPatterns(filteredErrors, request.dataContext);
+      const knownPatternMatch = await this.checkKnownPatterns(
+        filteredErrors,
+        request.dataContext,
+      );
       if (knownPatternMatch.confidence > 0.85) {
-        console.log("[EDGE CASE DETECTOR] High confidence match with known pattern");
+        console.log(
+          "[EDGE CASE DETECTOR] High confidence match with known pattern",
+        );
         return this.enhanceKnownPatternResult(knownPatternMatch, request);
       }
 
       // Step 3: LLM Analysis for unknown patterns
-      const llmAnalysis = await this.performLLMAnalysis(filteredErrors, request);
-      
+      const llmAnalysis = await this.performLLMAnalysis(
+        filteredErrors,
+        request,
+      );
+
       // Step 4: Post-process and validate results
       const finalResult = await this.postProcessAnalysis(llmAnalysis, request);
-      
+
       // Step 5: Cache and store results
       this.analysisCache.set(cacheKey, finalResult);
       await this.storeDetectionResult(finalResult, request);
-      
+
       // Step 6: Update statistics
       this.updateStats(finalResult, Date.now() - startTime);
-      
-      console.log(`[EDGE CASE DETECTOR] Analysis complete - Edge case: ${finalResult.isEdgeCase}, Confidence: ${finalResult.confidence}`);
+
+      console.log(
+        `[EDGE CASE DETECTOR] Analysis complete - Edge case: ${finalResult.isEdgeCase}, Confidence: ${finalResult.confidence}`,
+      );
       return finalResult;
-      
     } catch (error) {
       console.error("[EDGE CASE DETECTOR] Analysis failed:", error);
-      return this.createErrorResult(error instanceof Error ? error.message : "Unknown error");
+      return this.createErrorResult(
+        error instanceof Error ? error.message : "Unknown error",
+      );
     }
   }
 
   /**
    * Generate dynamic test cases for detected edge cases
    */
-  async generateTestCases(detection: EdgeCaseDetectionResult, dataContext: any): Promise<{
+  async generateTestCases(
+    detection: EdgeCaseDetectionResult,
+    dataContext: any,
+  ): Promise<{
     success: boolean;
     testCases: any[];
     metadata: Record<string, any>;
   }> {
     if (!detection.testCaseGeneration.shouldGenerate) {
-      return { success: false, testCases: [], metadata: { reason: "Test generation not recommended" } };
+      return {
+        success: false,
+        testCases: [],
+        metadata: { reason: "Test generation not recommended" },
+      };
     }
 
-    console.log(`[EDGE CASE DETECTOR] Generating test cases for pattern: ${detection.pattern}`);
+    console.log(
+      `[EDGE CASE DETECTOR] Generating test cases for pattern: ${detection.pattern}`,
+    );
 
     try {
       const prompt = this.buildTestGenerationPrompt(detection, dataContext);
-      
-      const result = await this.openRouterClient.createCompletion({
-        model: this.MODEL_GPT4O,
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert test case generator for edge case scenarios in data processing systems."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3,
-      }, {
-        costLimit: 0.02, // Higher limit for test generation
-      });
+
+      const result = await this.openRouterClient.createCompletion(
+        {
+          model: this.MODEL_GPT4O,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert test case generator for edge case scenarios in data processing systems.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+          temperature: 0.3,
+        },
+        {
+          costLimit: 0.02, // Higher limit for test generation
+        },
+      );
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
-      const testCases = this.parseTestCaseResponse(result.data!.choices[0].message.content);
-      
+      const testCases = this.parseTestCaseResponse(
+        result.data!.choices[0].message.content,
+      );
+
       // Store generated test cases
       await this.storeGeneratedTestCases(detection, testCases, dataContext);
-      
+
       return {
         success: true,
         testCases,
@@ -240,15 +277,16 @@ export class LLMEdgeCaseDetector {
           generatedAt: new Date().toISOString(),
           tokensUsed: result.usage?.tokens,
           cost: result.usage?.cost,
-        }
+        },
       };
-      
     } catch (error) {
       console.error("[EDGE CASE DETECTOR] Test case generation failed:", error);
       return {
         success: false,
         testCases: [],
-        metadata: { error: error instanceof Error ? error.message : "Unknown error" }
+        metadata: {
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
       };
     }
   }
@@ -256,24 +294,35 @@ export class LLMEdgeCaseDetector {
   /**
    * Route complex scenarios to approval system
    */
-  async routeToApproval(detection: EdgeCaseDetectionResult, request: EdgeCaseAnalysisRequest): Promise<{
+  async routeToApproval(
+    detection: EdgeCaseDetectionResult,
+    request: EdgeCaseAnalysisRequest,
+  ): Promise<{
     approvalId: string;
     estimatedDecisionTime: number;
   }> {
-    console.log(`[EDGE CASE DETECTOR] Routing edge case to approval system: ${detection.pattern}`);
+    console.log(
+      `[EDGE CASE DETECTOR] Routing edge case to approval system: ${detection.pattern}`,
+    );
 
-    const approvalType: ApprovalType = this.mapCategoryToApprovalType(detection.category);
-    const riskLevel: RiskLevel = this.mapSeverityToRiskLevel(detection.severity);
+    const approvalType: ApprovalType = this.mapCategoryToApprovalType(
+      detection.category,
+    );
+    const riskLevel: RiskLevel = this.mapSeverityToRiskLevel(
+      detection.severity,
+    );
 
     const approvalContext: ApprovalContext = {
-      source: 'edge_case_detection',
+      source: "edge_case_detection",
       edgeCasePattern: detection.pattern,
       category: detection.category,
       confidence: detection.confidence,
       affectedRecords: request.errors.length,
       dataSize: request.dataContext.recordCount,
-      userExperience: request.userContext?.experience || 'intermediate',
-      historicalSimilarity: await this.calculateHistoricalSimilarity(detection.pattern),
+      userExperience: request.userContext?.experience || "intermediate",
+      historicalSimilarity: await this.calculateHistoricalSimilarity(
+        detection.pattern,
+      ),
     };
 
     const riskAssessment: RiskAssessment = {
@@ -284,7 +333,9 @@ export class LLMEdgeCaseDetector {
         `Affected records: ${request.errors.length}`,
         `Pattern frequency: ${await this.getPatternFrequency(detection.pattern)}`,
       ],
-      mitigation: detection.suggestedActions.map(action => action.description),
+      mitigation: detection.suggestedActions.map(
+        (action) => action.description,
+      ),
       impact: this.assessBusinessImpact(detection, request),
     };
 
@@ -295,8 +346,12 @@ export class LLMEdgeCaseDetector {
       context: approvalContext,
       riskAssessment,
       assignedTo: this.getApproversForCategory(detection.category),
-      priority: detection.severity === 'critical' ? 'critical' : 
-               detection.severity === 'high' ? 'high' : 'medium',
+      priority:
+        detection.severity === "critical"
+          ? "critical"
+          : detection.severity === "high"
+            ? "high"
+            : "medium",
       timeoutMinutes: this.getTimeoutForCategory(detection.category, riskLevel),
       importSessionId: request.dataContext.importSessionId,
       metadata: {
@@ -308,7 +363,10 @@ export class LLMEdgeCaseDetector {
 
     return {
       approvalId: approval.id,
-      estimatedDecisionTime: this.estimateDecisionTime(approval.assignedTo, riskLevel),
+      estimatedDecisionTime: this.estimateDecisionTime(
+        approval.assignedTo,
+        riskLevel,
+      ),
     };
   }
 
@@ -316,62 +374,155 @@ export class LLMEdgeCaseDetector {
    * Learn from approval decisions to improve future automation
    */
   async learnFromDecision(
-    detectionId: string, 
-    approvalDecision: 'approve' | 'reject' | 'escalate',
+    detectionId: string,
+    approvalDecision: "approve" | "reject" | "escalate",
     feedback: {
       reasoning?: string;
-      correctness: 'correct' | 'incorrect' | 'partially_correct';
-      userExperience: 'positive' | 'neutral' | 'negative';
+      correctness: "correct" | "incorrect" | "partially_correct";
+      userExperience: "positive" | "neutral" | "negative";
       suggestionQuality: number; // 1-10 scale
-    }
+    },
   ): Promise<void> {
-    console.log(`[EDGE CASE DETECTOR] Learning from decision for detection: ${detectionId}`);
+    console.log(
+      `[EDGE CASE DETECTOR] Learning from decision for detection: ${detectionId}`,
+    );
 
     try {
       // Update pattern success rates
-      await this.updatePatternSuccessRate(detectionId, approvalDecision, feedback);
-      
+      await this.updatePatternSuccessRate(
+        detectionId,
+        approvalDecision,
+        feedback,
+      );
+
       // Adjust automation confidence thresholds
       await this.adjustAutomationThresholds(detectionId, feedback);
-      
+
       // Update user preference learning
       await this.updateUserPreferenceLearning(detectionId, feedback);
-      
+
       // Store feedback for future reference
       await this.storeLearningFeedback(detectionId, approvalDecision, feedback);
-      
     } catch (error) {
-      console.error("[EDGE CASE DETECTOR] Learning from decision failed:", error);
+      console.error(
+        "[EDGE CASE DETECTOR] Learning from decision failed:",
+        error,
+      );
     }
   }
 
   // Private helper methods for LLM analysis
 
   private async performLLMAnalysis(
-    errors: ValidationError[], 
-    request: EdgeCaseAnalysisRequest
+    errors: ValidationError[],
+    request: EdgeCaseAnalysisRequest,
   ): Promise<EdgeCaseDetectionResult> {
-    const systemPrompt = this.buildEdgeCaseAnalysisSystemPrompt();
-    const userPrompt = this.buildEdgeCaseAnalysisUserPrompt(errors, request);
+    // Generate workflow ID for tracking progress
+    const workflowId = request.dataContext.importSessionId || uuidv4();
+    const sessionId = request.userContext?.userId || "unknown-session";
 
-    const result = await this.openRouterClient.createCompletion({
-      model: this.MODEL_GPT4O,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_tokens: 1500,
-      temperature: 0.2, // Low temperature for consistency
-      top_p: 0.9,
-    }, {
-      costLimit: 0.015, // Higher limit for GPT-4o analysis
-    });
+    try {
+      // Emit progress: Starting LLM analysis
+      await webSocketService.emitEdgeCaseAnalysisProgress(
+        sessionId,
+        workflowId,
+        "llm_analysis",
+        10,
+        "Preparing LLM analysis request",
+        300, // Estimated 5 minutes
+        0,
+        0,
+      );
 
-    if (!result.success) {
-      throw new Error(result.error);
+      const systemPrompt = this.buildEdgeCaseAnalysisSystemPrompt();
+      const userPrompt = this.buildEdgeCaseAnalysisUserPrompt(errors, request);
+
+      // Emit progress: Sending request to LLM
+      await webSocketService.emitEdgeCaseAnalysisProgress(
+        sessionId,
+        workflowId,
+        "llm_analysis",
+        30,
+        "Sending analysis request to GPT-4o",
+        240, // Estimated 4 minutes remaining
+        0,
+        0,
+      );
+
+      const result = await this.openRouterClient.createCompletion(
+        {
+          model: this.MODEL_GPT4O,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: 1500,
+          temperature: 0.2, // Low temperature for consistency
+          top_p: 0.9,
+        },
+        {
+          costLimit: 0.015, // Higher limit for GPT-4o analysis
+        },
+      );
+
+      if (!result.success) {
+        // Emit error progress
+        await webSocketService.emitEdgeCaseAnalysisProgress(
+          sessionId,
+          workflowId,
+          "llm_analysis",
+          100,
+          `LLM analysis failed: ${result.error}`,
+          0,
+          0,
+          0,
+        );
+        throw new Error(result.error);
+      }
+
+      // Emit progress: Processing LLM response
+      await webSocketService.emitEdgeCaseAnalysisProgress(
+        sessionId,
+        workflowId,
+        "llm_analysis",
+        80,
+        "Processing GPT-4o response",
+        30,
+        result.usage?.tokens || 0,
+        result.usage?.cost || 0,
+      );
+
+      const analysisResult = this.parseEdgeCaseAnalysisResponse(
+        result.data!.choices[0].message.content,
+      );
+
+      // Emit progress: Analysis complete
+      await webSocketService.emitEdgeCaseAnalysisProgress(
+        sessionId,
+        workflowId,
+        "complete",
+        100,
+        `Edge case analysis complete - ${analysisResult.isEdgeCase ? "Edge case detected" : "No edge case found"}`,
+        0,
+        result.usage?.tokens || 0,
+        result.usage?.cost || 0,
+      );
+
+      return analysisResult;
+    } catch (error) {
+      // Emit error progress
+      await webSocketService.emitEdgeCaseAnalysisProgress(
+        sessionId,
+        workflowId,
+        "complete",
+        100,
+        `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        0,
+        0,
+        0,
+      );
+      throw error;
     }
-
-    return this.parseEdgeCaseAnalysisResponse(result.data!.choices[0].message.content);
   }
 
   private buildEdgeCaseAnalysisSystemPrompt(): string {
@@ -437,8 +588,8 @@ Response Format (JSON only):
   }
 
   private buildEdgeCaseAnalysisUserPrompt(
-    errors: ValidationError[], 
-    request: EdgeCaseAnalysisRequest
+    errors: ValidationError[],
+    request: EdgeCaseAnalysisRequest,
   ): string {
     let prompt = `Analyze the following validation errors for edge case patterns:\n\n`;
 
@@ -467,7 +618,7 @@ Response Format (JSON only):
     if (request.userContext) {
       prompt += `\nUser Context:\n`;
       prompt += `- Experience Level: ${request.userContext.experience}\n`;
-      prompt += `- Previous Patterns: ${request.userContext.previousPatterns.join(', ')}\n`;
+      prompt += `- Previous Patterns: ${request.userContext.previousPatterns.join(", ")}\n`;
     }
 
     if (request.historicalPatterns && request.historicalPatterns.length > 0) {
@@ -484,7 +635,9 @@ Response Format (JSON only):
     return prompt;
   }
 
-  private parseEdgeCaseAnalysisResponse(content: string): EdgeCaseDetectionResult {
+  private parseEdgeCaseAnalysisResponse(
+    content: string,
+  ): EdgeCaseDetectionResult {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("No JSON found in LLM response");
@@ -502,12 +655,20 @@ Response Format (JSON only):
         description: String(parsed.description || "No description provided"),
         severity: this.validateSeverity(parsed.severity),
         suggestedActions: this.validateActions(parsed.suggestedActions || []),
-        testCaseGeneration: this.validateTestCaseRecommendation(parsed.testCaseGeneration || {}),
-        automationRecommendation: this.validateAutomationRecommendation(parsed.automationRecommendation || {}),
-        riskAssessment: this.validateRiskAssessment(parsed.riskAssessment || {}),
+        testCaseGeneration: this.validateTestCaseRecommendation(
+          parsed.testCaseGeneration || {},
+        ),
+        automationRecommendation: this.validateAutomationRecommendation(
+          parsed.automationRecommendation || {},
+        ),
+        riskAssessment: this.validateRiskAssessment(
+          parsed.riskAssessment || {},
+        ),
       };
     } catch (error) {
-      throw new Error(`Failed to parse LLM response: ${error instanceof Error ? error.message : "Unknown error"}`);
+      throw new Error(
+        `Failed to parse LLM response: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -517,10 +678,10 @@ Response Format (JSON only):
     try {
       const patterns = await db
         .select()
-        .from(edgeCasePatterns)
-        .orderBy(desc(edgeCasePatterns.frequency));
+        .from(edgeCaseDetections)
+        .orderBy(desc(edgeCaseDetections.confidence));
 
-      patterns.forEach(pattern => {
+      patterns.forEach((pattern) => {
         this.patternCache.set(pattern.pattern, {
           id: pattern.id,
           category: pattern.category as EdgeCaseCategory,
@@ -534,25 +695,34 @@ Response Format (JSON only):
         });
       });
 
-      console.log(`[EDGE CASE DETECTOR] Loaded ${patterns.length} known patterns`);
+      console.log(
+        `[EDGE CASE DETECTOR] Loaded ${patterns.length} known patterns`,
+      );
     } catch (error) {
-      console.error("[EDGE CASE DETECTOR] Failed to load known patterns:", error);
+      console.error(
+        "[EDGE CASE DETECTOR] Failed to load known patterns:",
+        error,
+      );
     }
   }
 
   private async checkKnownPatterns(
-    errors: ValidationError[], 
-    dataContext: any
+    errors: ValidationError[],
+    dataContext: any,
   ): Promise<EdgeCaseDetectionResult> {
     // Simple pattern matching against known patterns
     // This could be enhanced with more sophisticated similarity matching
-    
+
     const errorSignature = this.generateErrorSignature(errors);
-    
+
     for (const [patternKey, pattern] of this.patternCache) {
-      const similarity = this.calculatePatternSimilarity(errorSignature, pattern.pattern);
-      
-      if (similarity > 0.75) { // High similarity threshold
+      const similarity = this.calculatePatternSimilarity(
+        errorSignature,
+        pattern.pattern,
+      );
+
+      if (similarity > 0.75) {
+        // High similarity threshold
         return {
           isEdgeCase: true,
           confidence: similarity * 100,
@@ -562,7 +732,8 @@ Response Format (JSON only):
           severity: this.inferSeverityFromPattern(pattern),
           suggestedActions: await this.getKnownActions(pattern),
           testCaseGeneration: await this.getKnownTestRecommendation(pattern),
-          automationRecommendation: await this.getKnownAutomationRecommendation(pattern),
+          automationRecommendation:
+            await this.getKnownAutomationRecommendation(pattern),
           riskAssessment: await this.getKnownRiskAssessment(pattern),
         };
       }
@@ -581,60 +752,70 @@ Response Format (JSON only):
 
   private generateErrorSignature(errors: ValidationError[]): string {
     const signature = errors
-      .map(e => `${e.field}:${e.rule}`)
+      .map((e) => `${e.field}:${e.rule}`)
       .sort()
-      .join(',');
+      .join(",");
     return signature.substring(0, 100); // Limit length
   }
 
   private filterRelevantErrors(errors: ValidationError[]): ValidationError[] {
     // Filter out common/expected errors to focus on unusual patterns
-    const commonRules = ['Required field missing', 'Invalid email format'];
-    return errors.filter(error => !commonRules.includes(error.rule));
+    const commonRules = ["Required field missing", "Invalid email format"];
+    return errors.filter((error) => !commonRules.includes(error.rule));
   }
 
   private validateCategory(category: any): EdgeCaseCategory {
     const validCategories: EdgeCaseCategory[] = [
-      'data_format_anomaly', 'business_rule_violation', 'performance_concern',
-      'security_risk', 'integration_failure', 'user_input_unexpected',
-      'system_limitation', 'edge_data_scenario'
+      "data_format_anomaly",
+      "business_rule_violation",
+      "performance_concern",
+      "security_risk",
+      "integration_failure",
+      "user_input_unexpected",
+      "system_limitation",
+      "edge_data_scenario",
     ];
-    return validCategories.includes(category) ? category : 'data_format_anomaly';
+    return validCategories.includes(category)
+      ? category
+      : "data_format_anomaly";
   }
 
-  private validateSeverity(severity: any): 'low' | 'medium' | 'high' | 'critical' {
-    const validSeverities = ['low', 'medium', 'high', 'critical'];
-    return validSeverities.includes(severity) ? severity : 'medium';
+  private validateSeverity(
+    severity: any,
+  ): "low" | "medium" | "high" | "critical" {
+    const validSeverities = ["low", "medium", "high", "critical"];
+    return validSeverities.includes(severity) ? severity : "medium";
   }
 
   private createNoEdgeCaseResult(): EdgeCaseDetectionResult {
     return {
       isEdgeCase: false,
       confidence: 0,
-      category: 'data_format_anomaly',
-      pattern: 'No edge case detected',
-      description: 'Standard validation errors - no edge case pattern identified',
-      severity: 'low',
+      category: "data_format_anomaly",
+      pattern: "No edge case detected",
+      description:
+        "Standard validation errors - no edge case pattern identified",
+      severity: "low",
       suggestedActions: [],
       testCaseGeneration: {
         shouldGenerate: false,
-        testType: 'unit',
-        priority: 'low',
+        testType: "unit",
+        priority: "low",
         scenarios: [],
         dataRequirements: [],
       },
       automationRecommendation: {
         canAutomate: true,
         confidence: 95,
-        conditions: ['Standard validation rules apply'],
+        conditions: ["Standard validation rules apply"],
         requiredApprovals: [],
-        fallbackStrategy: 'Apply standard error handling',
+        fallbackStrategy: "Apply standard error handling",
       },
       riskAssessment: {
-        level: 'low',
-        factors: ['No edge case detected'],
-        mitigation: ['Standard validation'],
-        impact: 'Minimal impact - standard processing',
+        level: "low",
+        factors: ["No edge case detected"],
+        mitigation: ["Standard validation"],
+        impact: "Minimal impact - standard processing",
       },
     };
   }
@@ -643,35 +824,37 @@ Response Format (JSON only):
     return {
       isEdgeCase: false,
       confidence: 0,
-      category: 'system_limitation',
-      pattern: 'Analysis failed',
+      category: "system_limitation",
+      pattern: "Analysis failed",
       description: `Edge case analysis failed: ${error}`,
-      severity: 'medium',
-      suggestedActions: [{
-        type: 'manual_review',
-        description: 'Manual review required due to analysis failure',
-        confidence: 0,
-        estimatedTime: 30,
-      }],
+      severity: "medium",
+      suggestedActions: [
+        {
+          type: "manual_review",
+          description: "Manual review required due to analysis failure",
+          confidence: 0,
+          estimatedTime: 30,
+        },
+      ],
       testCaseGeneration: {
         shouldGenerate: false,
-        testType: 'unit',
-        priority: 'low',
+        testType: "unit",
+        priority: "low",
         scenarios: [],
         dataRequirements: [],
       },
       automationRecommendation: {
         canAutomate: false,
         confidence: 0,
-        conditions: ['Analysis failed'],
-        requiredApprovals: ['manual_review' as ApprovalType],
-        fallbackStrategy: 'Manual processing required',
+        conditions: ["Analysis failed"],
+        requiredApprovals: ["manual_review" as ApprovalType],
+        fallbackStrategy: "Manual processing required",
       },
       riskAssessment: {
-        level: 'medium',
-        factors: ['Analysis system failure'],
-        mitigation: ['Manual review', 'System diagnostics'],
-        impact: 'Unknown risk due to analysis failure',
+        level: "medium",
+        factors: ["Analysis system failure"],
+        mitigation: ["Manual review", "System diagnostics"],
+        impact: "Unknown risk due to analysis failure",
       },
     };
   }
@@ -679,35 +862,144 @@ Response Format (JSON only):
   // Additional helper methods would be implemented here...
   // For brevity, including key method signatures:
 
-  private validateActions(actions: any[]): EdgeCaseAction[] { /* Implementation */ return []; }
-  private validateTestCaseRecommendation(rec: any): TestCaseRecommendation { /* Implementation */ return {} as any; }
-  private validateAutomationRecommendation(rec: any): AutomationRecommendation { /* Implementation */ return {} as any; }
-  private validateRiskAssessment(assessment: any): RiskAssessment { /* Implementation */ return {} as any; }
-  private calculatePatternSimilarity(sig1: string, sig2: string): number { /* Implementation */ return 0; }
-  private inferSeverityFromPattern(pattern: EdgeCasePattern): 'low' | 'medium' | 'high' | 'critical' { /* Implementation */ return 'medium'; }
-  private async getKnownActions(pattern: EdgeCasePattern): Promise<EdgeCaseAction[]> { /* Implementation */ return []; }
-  private async getKnownTestRecommendation(pattern: EdgeCasePattern): Promise<TestCaseRecommendation> { /* Implementation */ return {} as any; }
-  private async getKnownAutomationRecommendation(pattern: EdgeCasePattern): Promise<AutomationRecommendation> { /* Implementation */ return {} as any; }
-  private async getKnownRiskAssessment(pattern: EdgeCasePattern): Promise<RiskAssessment> { /* Implementation */ return {} as any; }
-  private mapCategoryToApprovalType(category: EdgeCaseCategory): ApprovalType { /* Implementation */ return 'data_integrity'; }
-  private mapSeverityToRiskLevel(severity: string): RiskLevel { /* Implementation */ return 'medium'; }
-  private getApproversForCategory(category: EdgeCaseCategory): string[] { /* Implementation */ return ['edge_case_specialist']; }
-  private getTimeoutForCategory(category: EdgeCaseCategory, risk: RiskLevel): number { /* Implementation */ return 60; }
-  private estimateDecisionTime(approvers: string[], risk: RiskLevel): number { /* Implementation */ return 30; }
-  private async calculateHistoricalSimilarity(pattern: string): Promise<number> { /* Implementation */ return 0; }
-  private async getPatternFrequency(pattern: string): Promise<number> { /* Implementation */ return 0; }
-  private assessBusinessImpact(detection: EdgeCaseDetectionResult, request: EdgeCaseAnalysisRequest): string { /* Implementation */ return 'Low impact'; }
-  private buildTestGenerationPrompt(detection: EdgeCaseDetectionResult, dataContext: any): string { /* Implementation */ return ''; }
-  private parseTestCaseResponse(content: string): any[] { /* Implementation */ return []; }
-  private async storeDetectionResult(result: EdgeCaseDetectionResult, request: EdgeCaseAnalysisRequest): Promise<void> { /* Implementation */ }
-  private async storeGeneratedTestCases(detection: EdgeCaseDetectionResult, testCases: any[], dataContext: any): Promise<void> { /* Implementation */ }
-  private updateStats(result: EdgeCaseDetectionResult, analysisTime: number): void { /* Implementation */ }
-  private async enhanceKnownPatternResult(match: EdgeCaseDetectionResult, request: EdgeCaseAnalysisRequest): Promise<EdgeCaseDetectionResult> { /* Implementation */ return match; }
-  private async postProcessAnalysis(analysis: EdgeCaseDetectionResult, request: EdgeCaseAnalysisRequest): Promise<EdgeCaseDetectionResult> { /* Implementation */ return analysis; }
-  private async updatePatternSuccessRate(detectionId: string, decision: string, feedback: any): Promise<void> { /* Implementation */ }
-  private async adjustAutomationThresholds(detectionId: string, feedback: any): Promise<void> { /* Implementation */ }
-  private async updateUserPreferenceLearning(detectionId: string, feedback: any): Promise<void> { /* Implementation */ }
-  private async storeLearningFeedback(detectionId: string, decision: string, feedback: any): Promise<void> { /* Implementation */ }
+  private validateActions(actions: any[]): EdgeCaseAction[] {
+    /* Implementation */ return [];
+  }
+  private validateTestCaseRecommendation(rec: any): TestCaseRecommendation {
+    /* Implementation */ return {} as any;
+  }
+  private validateAutomationRecommendation(rec: any): AutomationRecommendation {
+    /* Implementation */ return {} as any;
+  }
+  private validateRiskAssessment(assessment: any): RiskAssessment {
+    /* Implementation */ return {} as any;
+  }
+  private calculatePatternSimilarity(sig1: string, sig2: string): number {
+    /* Implementation */ return 0;
+  }
+  private inferSeverityFromPattern(
+    pattern: EdgeCasePattern,
+  ): "low" | "medium" | "high" | "critical" {
+    /* Implementation */ return "medium";
+  }
+  private async getKnownActions(
+    pattern: EdgeCasePattern,
+  ): Promise<EdgeCaseAction[]> {
+    /* Implementation */ return [];
+  }
+  private async getKnownTestRecommendation(
+    pattern: EdgeCasePattern,
+  ): Promise<TestCaseRecommendation> {
+    /* Implementation */ return {} as any;
+  }
+  private async getKnownAutomationRecommendation(
+    pattern: EdgeCasePattern,
+  ): Promise<AutomationRecommendation> {
+    /* Implementation */ return {} as any;
+  }
+  private async getKnownRiskAssessment(
+    pattern: EdgeCasePattern,
+  ): Promise<RiskAssessment> {
+    /* Implementation */ return {} as any;
+  }
+  private mapCategoryToApprovalType(category: EdgeCaseCategory): ApprovalType {
+    /* Implementation */ return "data_integrity";
+  }
+  private mapSeverityToRiskLevel(severity: string): RiskLevel {
+    /* Implementation */ return "medium";
+  }
+  private getApproversForCategory(category: EdgeCaseCategory): string[] {
+    /* Implementation */ return ["edge_case_specialist"];
+  }
+  private getTimeoutForCategory(
+    category: EdgeCaseCategory,
+    risk: RiskLevel,
+  ): number {
+    /* Implementation */ return 60;
+  }
+  private estimateDecisionTime(approvers: string[], risk: RiskLevel): number {
+    /* Implementation */ return 30;
+  }
+  private async calculateHistoricalSimilarity(
+    pattern: string,
+  ): Promise<number> {
+    /* Implementation */ return 0;
+  }
+  private async getPatternFrequency(pattern: string): Promise<number> {
+    /* Implementation */ return 0;
+  }
+  private assessBusinessImpact(
+    detection: EdgeCaseDetectionResult,
+    request: EdgeCaseAnalysisRequest,
+  ): string {
+    /* Implementation */ return "Low impact";
+  }
+  private buildTestGenerationPrompt(
+    detection: EdgeCaseDetectionResult,
+    dataContext: any,
+  ): string {
+    /* Implementation */ return "";
+  }
+  private parseTestCaseResponse(content: string): any[] {
+    /* Implementation */ return [];
+  }
+  private async storeDetectionResult(
+    result: EdgeCaseDetectionResult,
+    request: EdgeCaseAnalysisRequest,
+  ): Promise<void> {
+    /* Implementation */
+  }
+  private async storeGeneratedTestCases(
+    detection: EdgeCaseDetectionResult,
+    testCases: any[],
+    dataContext: any,
+  ): Promise<void> {
+    /* Implementation */
+  }
+  private updateStats(
+    result: EdgeCaseDetectionResult,
+    analysisTime: number,
+  ): void {
+    /* Implementation */
+  }
+  private async enhanceKnownPatternResult(
+    match: EdgeCaseDetectionResult,
+    request: EdgeCaseAnalysisRequest,
+  ): Promise<EdgeCaseDetectionResult> {
+    /* Implementation */ return match;
+  }
+  private async postProcessAnalysis(
+    analysis: EdgeCaseDetectionResult,
+    request: EdgeCaseAnalysisRequest,
+  ): Promise<EdgeCaseDetectionResult> {
+    /* Implementation */ return analysis;
+  }
+  private async updatePatternSuccessRate(
+    detectionId: string,
+    decision: string,
+    feedback: any,
+  ): Promise<void> {
+    /* Implementation */
+  }
+  private async adjustAutomationThresholds(
+    detectionId: string,
+    feedback: any,
+  ): Promise<void> {
+    /* Implementation */
+  }
+  private async updateUserPreferenceLearning(
+    detectionId: string,
+    feedback: any,
+  ): Promise<void> {
+    /* Implementation */
+  }
+  private async storeLearningFeedback(
+    detectionId: string,
+    decision: string,
+    feedback: any,
+  ): Promise<void> {
+    /* Implementation */
+  }
 
   /**
    * Get current system statistics
