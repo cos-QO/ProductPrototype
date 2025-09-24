@@ -63,6 +63,7 @@ import {
   File,
   Plus,
   Loader2,
+  Brain,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -957,28 +958,28 @@ export default function ProductEdit() {
                     <span className="hidden sm:inline">Attributes</span>
                   </TabsTrigger>
                   <TabsTrigger
-                    value="media"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-media"
-                  >
-                    <Image className="h-4 w-4" />
-                    <span className="hidden sm:inline">Media</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="seo"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-seo"
-                  >
-                    <Search className="h-4 w-4" />
-                    <span className="hidden sm:inline">SEO</span>
-                  </TabsTrigger>
-                  <TabsTrigger
                     value="variants"
                     className="flex items-center space-x-2"
                     data-testid="tab-variants"
                   >
                     <Package className="h-4 w-4" />
                     <span className="hidden sm:inline">Variants</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="frames"
+                    className="flex items-center space-x-2"
+                    data-testid="tab-frames"
+                  >
+                    <Image className="h-4 w-4" />
+                    <span className="hidden sm:inline">Frames</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="geo"
+                    className="flex items-center space-x-2"
+                    data-testid="tab-geo"
+                  >
+                    <Brain className="h-4 w-4" />
+                    <span className="hidden sm:inline">GEO</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="channels"
@@ -1534,14 +1535,32 @@ export default function ProductEdit() {
                   </Card>
                 </TabsContent>
 
-                {/* Media Tab */}
-                <TabsContent value="media" className="space-y-6">
+                {/* Variants Tab */}
+                <TabsContent value="variants" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Product Variants</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Package className="h-12 w-12 mx-auto mb-4" />
+                        <p>Variant management coming soon</p>
+                        <p className="text-sm">
+                          Manage color, size, and other product variations
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Frames Tab */}
+                <TabsContent value="frames" className="space-y-6">
                   {/* Upload Zone */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Upload className="h-5 w-5" />
-                        Upload Media
+                        Upload Frames
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1601,7 +1620,7 @@ export default function ProductEdit() {
                       <CardTitle className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <FileImage className="h-5 w-5" />
-                          Media Assets
+                          Frame Assets
                         </div>
                         <Badge variant="secondary">
                           {mediaAssets.length}{" "}
@@ -1613,7 +1632,7 @@ export default function ProductEdit() {
                       {mediaAssets.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <FileImage className="h-12 w-12 mx-auto mb-4" />
-                          <p>No media uploaded yet</p>
+                          <p>No frames uploaded yet</p>
                           <p className="text-sm">
                             Upload some images, videos, or documents to get
                             started
@@ -1819,8 +1838,8 @@ export default function ProductEdit() {
                   </Card>
                 </TabsContent>
 
-                {/* SEO Tab - Phase 3.4 Enhanced Implementation */}
-                <TabsContent value="seo" className="space-y-6">
+                {/* GEO Tab - Phase 3.4 Enhanced Implementation */}
+                <TabsContent value="geo" className="space-y-6">
                   {(() => {
                     const watchedValues = form.watch();
                     const seoScore = calculateSeoScore(watchedValues);
@@ -1837,8 +1856,8 @@ export default function ProductEdit() {
                           <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <Search className="h-5 w-5" />
-                                SEO Optimization
+                                <Brain className="h-5 w-5" />
+                                GEO Optimization
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-muted-foreground">
@@ -1932,7 +1951,7 @@ export default function ProductEdit() {
                             {/* Basic SEO Fields */}
                             <Card>
                               <CardHeader>
-                                <CardTitle>Basic SEO</CardTitle>
+                                <CardTitle>Basic GEO</CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 <div>
@@ -2296,7 +2315,7 @@ export default function ProductEdit() {
                             {/* SEO Recommendations */}
                             <Card>
                               <CardHeader>
-                                <CardTitle>SEO Recommendations</CardTitle>
+                                <CardTitle>GEO Recommendations</CardTitle>
                               </CardHeader>
                               <CardContent>
                                 {recommendations.length === 0 ? (
@@ -2310,7 +2329,7 @@ export default function ProductEdit() {
                                       </span>
                                     </div>
                                     <p className="text-sm text-muted-foreground">
-                                      Your SEO setup looks good
+                                      Your GEO setup looks good
                                     </p>
                                   </div>
                                 ) : (
@@ -2369,24 +2388,6 @@ export default function ProductEdit() {
                       </>
                     );
                   })()}
-                </TabsContent>
-
-                {/* Variants Tab */}
-                <TabsContent value="variants" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Product Variants</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Package className="h-12 w-12 mx-auto mb-4" />
-                        <p>Variant management coming soon</p>
-                        <p className="text-sm">
-                          Manage color, size, and other product variations
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </TabsContent>
 
                 {/* Channels Tab */}
