@@ -14,6 +14,7 @@ import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
 import express from "express";
+import { extractMetadata } from "./media-metadata";
 import {
   registerUser,
   loginUser,
@@ -773,6 +774,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               assetType = "document";
             }
 
+            // Extract metadata from the uploaded file
+            let metadata = null;
+            try {
+              metadata = await extractMetadata(filePath, file.mimetype);
+              console.log(
+                `[METADATA] Extracted metadata for ${fileName}:`,
+                metadata,
+              );
+            } catch (error) {
+              console.warn(
+                `[METADATA] Failed to extract metadata for ${fileName}:`,
+                error.message,
+              );
+            }
+
             const mediaAsset = await storage.createMediaAsset({
               fileName,
               originalName: file.originalname,
@@ -780,6 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fileSize: file.size,
               url: `/uploads/${fileName}`,
               assetType,
+              metadata, // Include extracted metadata
               productId: productId,
               uploadedBy: userId,
             });

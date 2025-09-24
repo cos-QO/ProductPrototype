@@ -27,6 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -166,6 +167,10 @@ export default function ProductEdit() {
   }>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const [editingMedia, setEditingMedia] = useState<any>(null);
+  const [editForm, setEditForm] = useState<{
+    assetType: string;
+    altText: string;
+  }>({ assetType: "", altText: "" });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -429,9 +434,39 @@ export default function ProductEdit() {
       });
     },
     onError: (error: any) => {
+      console.error("Media upload error:", error);
+
+      // Provide specific error messages based on error type
+      let title = "Upload Failed";
+      let description = "Unknown error occurred";
+
+      if (error?.response?.status === 413) {
+        title = "Files Too Large";
+        description =
+          "One or more files exceed the server's size limit. Please reduce file sizes and try again.";
+      } else if (error?.response?.status === 415) {
+        title = "Unsupported File Type";
+        description =
+          "One or more files are not supported. Please use JPEG, PNG, GIF, WebP, MP4, WebM, or PDF files.";
+      } else if (error?.response?.status === 429) {
+        title = "Too Many Uploads";
+        description =
+          "You're uploading too quickly. Please wait a moment and try again.";
+      } else if (error?.response?.status === 507) {
+        title = "Storage Full";
+        description =
+          "Server storage is full. Please contact support or try again later.";
+      } else if (error?.response?.status >= 500) {
+        title = "Server Error";
+        description =
+          "The server encountered an error while processing your upload. Please try again.";
+      } else if (error?.message) {
+        description = error.message;
+      }
+
       toast({
-        title: "Error",
-        description: error?.message || "Failed to upload media",
+        title,
+        description,
         variant: "destructive",
       });
     },
@@ -465,9 +500,28 @@ export default function ProductEdit() {
       });
     },
     onError: (error: any) => {
+      console.error("Media update error:", error);
+
+      let title = "Update Failed";
+      let description = "Failed to update media properties";
+
+      if (error?.response?.status === 404) {
+        title = "Media Not Found";
+        description =
+          "The media file you're trying to update no longer exists.";
+      } else if (error?.response?.status === 403) {
+        title = "Permission Denied";
+        description = "You don't have permission to update this media file.";
+      } else if (error?.response?.status >= 500) {
+        title = "Server Error";
+        description = "The server encountered an error. Please try again.";
+      } else if (error?.message) {
+        description = error.message;
+      }
+
       toast({
-        title: "Error",
-        description: error?.message || "Failed to update media",
+        title,
+        description,
         variant: "destructive",
       });
     },
@@ -490,9 +544,33 @@ export default function ProductEdit() {
       });
     },
     onError: (error: any) => {
+      console.error("Media delete error:", error);
+
+      let title = "Delete Failed";
+      let description = "Failed to delete media file";
+
+      if (error?.response?.status === 404) {
+        title = "Media Not Found";
+        description =
+          "The media file you're trying to delete no longer exists.";
+      } else if (error?.response?.status === 403) {
+        title = "Permission Denied";
+        description = "You don't have permission to delete this media file.";
+      } else if (error?.response?.status === 409) {
+        title = "File In Use";
+        description =
+          "This media file is currently being used and cannot be deleted.";
+      } else if (error?.response?.status >= 500) {
+        title = "Server Error";
+        description =
+          "The server encountered an error while deleting the file. Please try again.";
+      } else if (error?.message) {
+        description = error.message;
+      }
+
       toast({
-        title: "Error",
-        description: error?.message || "Failed to delete media",
+        title,
+        description,
         variant: "destructive",
       });
     },
@@ -502,34 +580,94 @@ export default function ProductEdit() {
   const handleFileUpload = (files: FileList) => {
     if (!files || files.length === 0) return;
 
-    // Validate file types and sizes
-    const validFiles = Array.from(files).filter((file) => {
-      const isValidType =
-        file.type.startsWith("image/") ||
-        file.type.startsWith("video/") ||
-        file.type.includes("pdf");
-      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+    const supportedTypes = {
+      image: [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/tiff",
+      ],
+      video: ["video/mp4", "video/mpeg", "video/quicktime", "video/webm"],
+      document: ["application/pdf"],
+    };
 
-      if (!isValidType) {
+    const allSupportedTypes = [
+      ...supportedTypes.image,
+      ...supportedTypes.video,
+      ...supportedTypes.document,
+    ];
+
+    // Validate file types and sizes with detailed feedback
+    const validFiles: File[] = [];
+    let errorCount = 0;
+
+    Array.from(files).forEach((file) => {
+      // Check file type
+      if (!allSupportedTypes.includes(file.type)) {
+        errorCount++;
+        const suggestedTypes =
+          file.name.toLowerCase().includes("image") ||
+          file.name.match(/\.(jpg|jpeg|png|gif|webp|bmp|tiff)$/i)
+            ? supportedTypes.image.join(", ")
+            : "JPEG, PNG, GIF, WebP, MP4, WebM, PDF";
+
         toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported file type`,
+          title: "Unsupported File Type",
+          description: `"${file.name}" (${file.type}) is not supported. Please use: ${suggestedTypes}`,
           variant: "destructive",
         });
-        return false;
+        return;
       }
 
-      if (!isValidSize) {
+      // Check file size with contextual limits
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024; // 50MB for video, 10MB for others
+      const maxSizeLabel = isVideo ? "50MB" : "10MB";
+
+      if (file.size > maxSize) {
+        errorCount++;
         toast({
-          title: "File too large",
-          description: `${file.name} exceeds the 10MB size limit`,
+          title: "File Too Large",
+          description: `"${file.name}" (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds ${maxSizeLabel} limit for ${isImage ? "images" : isVideo ? "videos" : "documents"}`,
           variant: "destructive",
         });
-        return false;
+        return;
       }
 
-      return true;
+      // Check for empty files
+      if (file.size === 0) {
+        errorCount++;
+        toast({
+          title: "Empty File",
+          description: `"${file.name}" appears to be empty (0 bytes)`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      validFiles.push(file);
     });
+
+    // Provide summary feedback
+    if (errorCount > 0 && validFiles.length === 0) {
+      toast({
+        title: "Upload Failed",
+        description: `${errorCount} file(s) failed validation. Please fix the issues and try again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (errorCount > 0 && validFiles.length > 0) {
+      toast({
+        title: "Partial Upload",
+        description: `${validFiles.length} file(s) will be uploaded. ${errorCount} file(s) were skipped due to errors.`,
+        variant: "default",
+      });
+    }
 
     if (validFiles.length > 0) {
       const fileList = validFiles.reduce((dt, file) => {
@@ -573,6 +711,29 @@ export default function ProductEdit() {
 
   const handleUpdateMedia = (mediaId: number, updates: any) => {
     updateMediaMutation.mutate({ mediaId, updates });
+  };
+
+  const openEditDialog = (asset: any) => {
+    setEditingMedia(asset);
+    setEditForm({
+      assetType: asset.assetType || "product",
+      altText: asset.altText || "",
+    });
+  };
+
+  const closeEditDialog = () => {
+    setEditingMedia(null);
+    setEditForm({ assetType: "", altText: "" });
+  };
+
+  const saveMediaChanges = () => {
+    if (editingMedia && editForm) {
+      handleUpdateMedia(editingMedia.id, {
+        assetType: editForm.assetType,
+        altText: editForm.altText,
+      });
+      closeEditDialog();
+    }
   };
 
   const getAssetTypeIcon = (assetType: string, mimeType?: string) => {
@@ -971,7 +1132,7 @@ export default function ProductEdit() {
                     data-testid="tab-frames"
                   >
                     <Image className="h-4 w-4" />
-                    <span className="hidden sm:inline">Frames</span>
+                    <span className="hidden sm:inline">frames</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="geo"
@@ -1560,7 +1721,7 @@ export default function ProductEdit() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Upload className="h-5 w-5" />
-                        Upload Frames
+                        Upload frames
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1620,7 +1781,7 @@ export default function ProductEdit() {
                       <CardTitle className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <FileImage className="h-5 w-5" />
-                          Frame Assets
+                          frame Assets
                         </div>
                         <Badge variant="secondary">
                           {mediaAssets.length}{" "}
@@ -1691,7 +1852,7 @@ export default function ProductEdit() {
                                           variant="ghost"
                                           size="icon"
                                           className="h-6 w-6"
-                                          onClick={() => setEditingMedia(asset)}
+                                          onClick={() => openEditDialog(asset)}
                                         >
                                           <Edit2 className="h-3 w-3" />
                                         </Button>
@@ -1706,11 +1867,12 @@ export default function ProductEdit() {
                                               Asset Type
                                             </Label>
                                             <Select
-                                              defaultValue={asset.assetType}
+                                              value={editForm.assetType}
                                               onValueChange={(value) => {
-                                                handleUpdateMedia(asset.id, {
+                                                setEditForm((prev) => ({
+                                                  ...prev,
                                                   assetType: value,
-                                                });
+                                                }));
                                               }}
                                             >
                                               <SelectTrigger>
@@ -1747,23 +1909,14 @@ export default function ProductEdit() {
                                               </Label>
                                               <Input
                                                 id="altText"
-                                                defaultValue={
-                                                  asset.altText || ""
-                                                }
-                                                placeholder="Describe this image for accessibility"
-                                                onBlur={(e) => {
-                                                  if (
-                                                    e.target.value !==
-                                                    asset.altText
-                                                  ) {
-                                                    handleUpdateMedia(
-                                                      asset.id,
-                                                      {
-                                                        altText: e.target.value,
-                                                      },
-                                                    );
-                                                  }
+                                                value={editForm.altText}
+                                                onChange={(e) => {
+                                                  setEditForm((prev) => ({
+                                                    ...prev,
+                                                    altText: e.target.value,
+                                                  }));
                                                 }}
+                                                placeholder="Describe this image for accessibility"
                                               />
                                             </div>
                                           )}
@@ -1782,6 +1935,34 @@ export default function ProductEdit() {
                                             </div>
                                           </div>
                                         </div>
+                                        <DialogFooter>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={closeEditDialog}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            onClick={saveMediaChanges}
+                                            disabled={
+                                              updateMediaMutation.isPending
+                                            }
+                                          >
+                                            {updateMediaMutation.isPending ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Saving...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Save className="mr-2 h-4 w-4" />
+                                                Save Changes
+                                              </>
+                                            )}
+                                          </Button>
+                                        </DialogFooter>
                                       </DialogContent>
                                     </Dialog>
 

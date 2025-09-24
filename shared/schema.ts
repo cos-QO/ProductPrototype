@@ -112,6 +112,8 @@ export const mediaAssets = pgTable("media_assets", {
   fileSize: integer("file_size"),
   url: varchar("url", { length: 500 }).notNull(),
   assetType: varchar("asset_type", { length: 50 }).notNull(), // hero, product, lifestyle, brand, video, document
+  altText: varchar("alt_text", { length: 500 }), // Alt text for accessibility
+  metadata: jsonb("metadata"), // EXIF and other metadata
   productId: integer("product_id").references(() => products.id),
   brandId: integer("brand_id").references(() => brands.id),
   uploadedBy: varchar("uploaded_by").references(() => users.id),
@@ -284,7 +286,7 @@ export const syndicationChannels = pgTable("syndication_channels", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).unique().notNull(),
-  type: varchar("type", { length: 50 }).notNull(), // ecommerce, marketplace, social, api
+  type: varchar("type", { length: 50 }).notNull(), // ecommerce, marketplace, social, api, pos, export
   endpoint: varchar("endpoint", { length: 500 }),
   apiKey: varchar("api_key", { length: 255 }),
   webhookUrl: varchar("webhook_url", { length: 500 }),

@@ -81,6 +81,7 @@ import {
   Loader2,
   History,
   BarChart3,
+  CreditCard,
 } from "lucide-react";
 
 // Import sub-components
@@ -285,6 +286,10 @@ export function ChannelsTab({ productId, product }: ChannelsTabProps) {
         return <Share2 className="h-4 w-4" />;
       case "api":
         return <Target className="h-4 w-4" />;
+      case "pos":
+        return <CreditCard className="h-4 w-4" />;
+      case "export":
+        return <Download className="h-4 w-4" />;
       default:
         return <Globe className="h-4 w-4" />;
     }
