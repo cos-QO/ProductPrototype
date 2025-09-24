@@ -78,6 +78,17 @@ export const products: any = pgTable("products", {
   compareAtPrice: integer("compare_at_price"),
   stock: integer("stock"),
   lowStockThreshold: integer("low_stock_threshold"),
+  // SEO fields for Phase 3.4 SEO Tab implementation
+  metaTitle: varchar("meta_title", { length: 60 }),
+  metaDescription: text("meta_description"),
+  canonicalUrl: varchar("canonical_url", { length: 500 }),
+  ogTitle: varchar("og_title", { length: 60 }),
+  ogDescription: text("og_description"),
+  ogImage: varchar("og_image", { length: 500 }),
+  focusKeywords: text("focus_keywords"),
+  schemaMarkup: jsonb("schema_markup").default(sql`'{}'::jsonb`),
+  seoScore: integer("seo_score").default(0),
+  seoUpdatedAt: timestamp("seo_updated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -144,6 +155,129 @@ export const brandRetailers = pgTable("brand_retailers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Phase 3.5: Product Variants System Tables
+
+// Variant Options Table (Size, Color, Material, etc.)
+export const variantOptions = pgTable(
+  "variant_options",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 100 }).notNull(),
+    slug: varchar("slug", { length: 100 }).unique().notNull(),
+    displayName: varchar("display_name", { length: 100 }).notNull(),
+    description: text("description"),
+    optionType: varchar("option_type", { length: 50 })
+      .notNull()
+      .default("text"), // text, color, size, image, number
+    isGlobal: boolean("is_global").default(true), // Global options vs product-specific
+    sortOrder: integer("sort_order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_variant_options_slug").on(table.slug),
+    index("idx_variant_options_type").on(table.optionType),
+  ],
+);
+
+// Variant Option Values (Small, Medium, Large for Size option)
+export const variantOptionValues = pgTable(
+  "variant_option_values",
+  {
+    id: serial("id").primaryKey(),
+    optionId: integer("option_id")
+      .references(() => variantOptions.id)
+      .notNull(),
+    value: varchar("value", { length: 255 }).notNull(),
+    displayValue: varchar("display_value", { length: 255 }).notNull(),
+    hexColor: varchar("hex_color", { length: 7 }), // For color options (#FF0000)
+    imageUrl: varchar("image_url", { length: 500 }), // For image-based options
+    sortOrder: integer("sort_order").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("idx_variant_option_values_option_id").on(table.optionId)],
+);
+
+// Product Variant Options (Which options apply to which products)
+export const productVariantOptions = pgTable(
+  "product_variant_options",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .references(() => products.id)
+      .notNull(),
+    optionId: integer("option_id")
+      .references(() => variantOptions.id)
+      .notNull(),
+    isRequired: boolean("is_required").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_product_variant_options_product_id").on(table.productId),
+    index("idx_product_variant_options_unique").on(
+      table.productId,
+      table.optionId,
+    ),
+  ],
+);
+
+// Product Variants (The actual variant products)
+export const productVariants = pgTable(
+  "product_variants",
+  {
+    id: serial("id").primaryKey(),
+    parentProductId: integer("parent_product_id")
+      .references(() => products.id)
+      .notNull(),
+    variantProductId: integer("variant_product_id")
+      .references(() => products.id)
+      .notNull(),
+    variantSku: varchar("variant_sku", { length: 100 }),
+    variantName: varchar("variant_name", { length: 255 }),
+    priceAdjustment: integer("price_adjustment").default(0), // Price difference from parent in cents
+    weightAdjustment: integer("weight_adjustment").default(0), // Weight difference in grams
+    isActive: boolean("is_active").default(true),
+    sortOrder: integer("sort_order").default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_product_variants_parent").on(table.parentProductId),
+    index("idx_product_variants_variant").on(table.variantProductId),
+    index("idx_product_variants_unique").on(
+      table.parentProductId,
+      table.variantProductId,
+    ),
+  ],
+);
+
+// Variant Option Combinations (Size=Large + Color=Red)
+export const variantCombinations = pgTable(
+  "variant_combinations",
+  {
+    id: serial("id").primaryKey(),
+    variantId: integer("variant_id")
+      .references(() => productVariants.id)
+      .notNull(),
+    optionId: integer("option_id")
+      .references(() => variantOptions.id)
+      .notNull(),
+    optionValueId: integer("option_value_id")
+      .references(() => variantOptionValues.id)
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_variant_combinations_variant_id").on(table.variantId),
+    index("idx_variant_combinations_unique").on(
+      table.variantId,
+      table.optionId,
+    ),
+  ],
+);
 
 // Syndication channels table
 export const syndicationChannels = pgTable("syndication_channels", {
@@ -556,6 +690,76 @@ export const brandRetailersRelations = relations(brandRetailers, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// Phase 3.5: Variant Relations
+export const variantOptionsRelations = relations(
+  variantOptions,
+  ({ many }) => ({
+    values: many(variantOptionValues),
+    productOptions: many(productVariantOptions),
+    combinations: many(variantCombinations),
+  }),
+);
+
+export const variantOptionValuesRelations = relations(
+  variantOptionValues,
+  ({ one, many }) => ({
+    option: one(variantOptions, {
+      fields: [variantOptionValues.optionId],
+      references: [variantOptions.id],
+    }),
+    combinations: many(variantCombinations),
+  }),
+);
+
+export const productVariantOptionsRelations = relations(
+  productVariantOptions,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productVariantOptions.productId],
+      references: [products.id],
+    }),
+    option: one(variantOptions, {
+      fields: [productVariantOptions.optionId],
+      references: [variantOptions.id],
+    }),
+  }),
+);
+
+export const productVariantsRelations = relations(
+  productVariants,
+  ({ one, many }) => ({
+    parentProduct: one(products, {
+      fields: [productVariants.parentProductId],
+      references: [products.id],
+      relationName: "parentProduct",
+    }),
+    variantProduct: one(products, {
+      fields: [productVariants.variantProductId],
+      references: [products.id],
+      relationName: "variantProduct",
+    }),
+    combinations: many(variantCombinations),
+  }),
+);
+
+export const variantCombinationsRelations = relations(
+  variantCombinations,
+  ({ one }) => ({
+    variant: one(productVariants, {
+      fields: [variantCombinations.variantId],
+      references: [productVariants.id],
+    }),
+    option: one(variantOptions, {
+      fields: [variantCombinations.optionId],
+      references: [variantOptions.id],
+    }),
+    optionValue: one(variantOptionValues, {
+      fields: [variantCombinations.optionValueId],
+      references: [variantOptionValues.id],
+    }),
+  }),
+);
 
 export const syndicationChannelsRelations = relations(
   syndicationChannels,
@@ -1120,30 +1324,45 @@ export const automationMetrics = pgTable(
     totalTests: integer("total_tests").default(0),
     automatedTests: integer("automated_tests").default(0),
     manualInterventions: integer("manual_interventions").default(0),
-    automationRate: decimal("automation_rate", { precision: 5, scale: 4 }).default(sql`0`), // 80/20 target
+    automationRate: decimal("automation_rate", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`), // 80/20 target
 
     // Performance metrics
     averageExecutionTime: integer("average_execution_time").default(0), // milliseconds
     totalProcessingTime: integer("total_processing_time").default(0), // milliseconds
     passRate: decimal("pass_rate", { precision: 5, scale: 4 }).default(sql`0`), // Test pass rate
-    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(sql`0`), // Error rate
+    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Error rate
 
     // Edge case detection effectiveness
     edgeCasesDetected: integer("edge_cases_detected").default(0),
     truePositives: integer("true_positives").default(0),
     falsePositives: integer("false_positives").default(0),
     falseNegatives: integer("false_negatives").default(0),
-    detectionAccuracy: decimal("detection_accuracy", { precision: 5, scale: 4 }).default(sql`0`),
+    detectionAccuracy: decimal("detection_accuracy", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`),
 
     // Cost and resource optimization
     llmCosts: decimal("llm_costs", { precision: 10, scale: 6 }).default(sql`0`), // USD
     tokensUsed: integer("tokens_used").default(0),
-    costPerTest: decimal("cost_per_test", { precision: 8, scale: 6 }).default(sql`0`),
-    resourceUtilization: decimal("resource_utilization", { precision: 5, scale: 4 }).default(sql`0`),
+    costPerTest: decimal("cost_per_test", { precision: 8, scale: 6 }).default(
+      sql`0`,
+    ),
+    resourceUtilization: decimal("resource_utilization", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`),
 
     // User decision patterns
     approvalRequests: integer("approval_requests").default(0),
-    approvalRate: decimal("approval_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    approvalRate: decimal("approval_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
     averageApprovalTime: integer("average_approval_time").default(0), // minutes
     escalations: integer("escalations").default(0),
 
@@ -1154,8 +1373,13 @@ export const automationMetrics = pgTable(
 
     // ROI metrics
     timeSaved: integer("time_saved").default(0), // minutes
-    manualEffortReduction: decimal("manual_effort_reduction", { precision: 5, scale: 4 }).default(sql`0`),
-    costSavings: decimal("cost_savings", { precision: 10, scale: 2 }).default(sql`0`),
+    manualEffortReduction: decimal("manual_effort_reduction", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`),
+    costSavings: decimal("cost_savings", { precision: 10, scale: 2 }).default(
+      sql`0`,
+    ),
 
     // Metadata and tracking
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
@@ -1216,7 +1440,7 @@ export const testExecutionAnalytics = pgTable(
     testExecutionId: varchar("test_execution_id")
       .notNull()
       .references(() => testExecutions.id),
-    
+
     // Execution details
     testType: varchar("test_type", { length: 50 }).notNull(),
     status: varchar("status", { length: 50 }).notNull(),
@@ -1257,7 +1481,9 @@ export const testExecutionAnalytics = pgTable(
     index("idx_test_execution_analytics_test_id").on(table.testExecutionId),
     index("idx_test_execution_analytics_type").on(table.testType),
     index("idx_test_execution_analytics_status").on(table.status),
-    index("idx_test_execution_analytics_execution_time").on(table.executionTime),
+    index("idx_test_execution_analytics_execution_time").on(
+      table.executionTime,
+    ),
     index("idx_test_execution_analytics_created_at").on(table.createdAt),
   ],
 );
@@ -1280,22 +1506,38 @@ export const costOptimizationMetrics = pgTable(
     outputTokens: integer("output_tokens").default(0),
 
     // Cost tracking
-    totalCost: decimal("total_cost", { precision: 10, scale: 6 }).default(sql`0`),
-    costPerRequest: decimal("cost_per_request", { precision: 8, scale: 6 }).default(sql`0`),
-    costPerToken: decimal("cost_per_token", { precision: 10, scale: 8 }).default(sql`0`),
+    totalCost: decimal("total_cost", { precision: 10, scale: 6 }).default(
+      sql`0`,
+    ),
+    costPerRequest: decimal("cost_per_request", {
+      precision: 8,
+      scale: 6,
+    }).default(sql`0`),
+    costPerToken: decimal("cost_per_token", {
+      precision: 10,
+      scale: 8,
+    }).default(sql`0`),
 
     // Performance tracking
     averageLatency: integer("average_latency").default(0), // milliseconds
-    successRate: decimal("success_rate", { precision: 5, scale: 4 }).default(sql`0`),
-    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    successRate: decimal("success_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
+    errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
 
     // Optimization insights
-    cacheHitRate: decimal("cache_hit_rate", { precision: 5, scale: 4 }).default(sql`0`),
+    cacheHitRate: decimal("cache_hit_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ),
     redundantRequests: integer("redundant_requests").default(0),
     optimizationOpportunities: jsonb("optimization_opportunities"),
 
     // Budget tracking
-    budgetUsed: decimal("budget_used", { precision: 5, scale: 4 }).default(sql`0`), // percentage
+    budgetUsed: decimal("budget_used", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // percentage
     budgetRemaining: decimal("budget_remaining", { precision: 10, scale: 2 }),
     projectedSpend: decimal("projected_spend", { precision: 10, scale: 2 }),
 
@@ -1325,22 +1567,34 @@ export const performanceTrends = pgTable(
     endDate: timestamp("end_date").notNull(),
 
     // Trend calculations
-    currentValue: decimal("current_value", { precision: 10, scale: 4 }).notNull(),
+    currentValue: decimal("current_value", {
+      precision: 10,
+      scale: 4,
+    }).notNull(),
     previousValue: decimal("previous_value", { precision: 10, scale: 4 }),
     trendDirection: varchar("trend_direction", { length: 20 }), // increasing, decreasing, stable, volatile
     changePercentage: decimal("change_percentage", { precision: 6, scale: 3 }),
-    
+
     // Statistical analysis
     average: decimal("average", { precision: 10, scale: 4 }),
     median: decimal("median", { precision: 10, scale: 4 }),
-    standardDeviation: decimal("standard_deviation", { precision: 10, scale: 4 }),
+    standardDeviation: decimal("standard_deviation", {
+      precision: 10,
+      scale: 4,
+    }),
     min: decimal("min", { precision: 10, scale: 4 }),
     max: decimal("max", { precision: 10, scale: 4 }),
 
     // Prediction and forecasting
     predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
-    confidenceInterval: decimal("confidence_interval", { precision: 5, scale: 4 }),
-    seasonalityFactor: decimal("seasonality_factor", { precision: 5, scale: 4 }),
+    confidenceInterval: decimal("confidence_interval", {
+      precision: 5,
+      scale: 4,
+    }),
+    seasonalityFactor: decimal("seasonality_factor", {
+      precision: 5,
+      scale: 4,
+    }),
 
     // Anomaly detection
     isAnomaly: boolean("is_anomaly").default(false),
@@ -1350,7 +1604,10 @@ export const performanceTrends = pgTable(
     // Data quality
     dataPoints: integer("data_points").notNull(),
     dataQuality: decimal("data_quality", { precision: 3, scale: 2 }), // 0-1 quality score
-    missingDataPercentage: decimal("missing_data_percentage", { precision: 5, scale: 2 }),
+    missingDataPercentage: decimal("missing_data_percentage", {
+      precision: 5,
+      scale: 2,
+    }),
 
     // Metadata
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
@@ -1380,14 +1637,22 @@ export const automationAlerts = pgTable(
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description").notNull(),
     metric: varchar("metric", { length: 100 }).notNull(),
-    currentValue: decimal("current_value", { precision: 10, scale: 4 }).notNull(),
+    currentValue: decimal("current_value", {
+      precision: 10,
+      scale: 4,
+    }).notNull(),
     threshold: decimal("threshold", { precision: 10, scale: 4 }).notNull(),
-    deviationPercentage: decimal("deviation_percentage", { precision: 6, scale: 3 }),
+    deviationPercentage: decimal("deviation_percentage", {
+      precision: 6,
+      scale: 3,
+    }),
 
     // Context and references
     component: varchar("component", { length: 100 }),
     sessionId: varchar("session_id"),
-    testExecutionId: varchar("test_execution_id").references(() => testExecutions.id),
+    testExecutionId: varchar("test_execution_id").references(
+      () => testExecutions.id,
+    ),
     userId: varchar("user_id"),
 
     // Resolution tracking
@@ -1434,20 +1699,46 @@ export const roiMetrics = pgTable(
     endDate: date("end_date").notNull(),
 
     // Investment costs
-    automationInvestment: decimal("automation_investment", { precision: 12, scale: 2 }).default(sql`0`),
-    developmentCosts: decimal("development_costs", { precision: 12, scale: 2 }).default(sql`0`),
-    maintenanceCosts: decimal("maintenance_costs", { precision: 12, scale: 2 }).default(sql`0`),
+    automationInvestment: decimal("automation_investment", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
+    developmentCosts: decimal("development_costs", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
+    maintenanceCosts: decimal("maintenance_costs", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
     llmCosts: decimal("llm_costs", { precision: 12, scale: 2 }).default(sql`0`),
-    infrastructureCosts: decimal("infrastructure_costs", { precision: 12, scale: 2 }).default(sql`0`),
-    totalInvestment: decimal("total_investment", { precision: 12, scale: 2 }).default(sql`0`),
+    infrastructureCosts: decimal("infrastructure_costs", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
+    totalInvestment: decimal("total_investment", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
 
     // Return/savings
-    manualTestingCostSaved: decimal("manual_testing_cost_saved", { precision: 12, scale: 2 }).default(sql`0`),
+    manualTestingCostSaved: decimal("manual_testing_cost_saved", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
     timeSaved: integer("time_saved").default(0), // hours
     defectsPrevented: integer("defects_prevented").default(0),
-    defectCostSaved: decimal("defect_cost_saved", { precision: 12, scale: 2 }).default(sql`0`),
-    qualityImprovement: decimal("quality_improvement", { precision: 5, scale: 2 }), // percentage
-    totalSavings: decimal("total_savings", { precision: 12, scale: 2 }).default(sql`0`),
+    defectCostSaved: decimal("defect_cost_saved", {
+      precision: 12,
+      scale: 2,
+    }).default(sql`0`),
+    qualityImprovement: decimal("quality_improvement", {
+      precision: 5,
+      scale: 2,
+    }), // percentage
+    totalSavings: decimal("total_savings", { precision: 12, scale: 2 }).default(
+      sql`0`,
+    ),
 
     // ROI calculations
     roi: decimal("roi", { precision: 6, scale: 3 }), // Return on Investment percentage
@@ -1456,15 +1747,36 @@ export const roiMetrics = pgTable(
     breakEvenPoint: date("break_even_point"),
 
     // Business impact metrics
-    testCoverageImprovement: decimal("test_coverage_improvement", { precision: 5, scale: 2 }),
-    releaseVelocityImprovement: decimal("release_velocity_improvement", { precision: 5, scale: 2 }),
-    customerSatisfactionImpact: decimal("customer_satisfaction_impact", { precision: 5, scale: 2 }),
-    teamProductivityGain: decimal("team_productivity_gain", { precision: 5, scale: 2 }),
+    testCoverageImprovement: decimal("test_coverage_improvement", {
+      precision: 5,
+      scale: 2,
+    }),
+    releaseVelocityImprovement: decimal("release_velocity_improvement", {
+      precision: 5,
+      scale: 2,
+    }),
+    customerSatisfactionImpact: decimal("customer_satisfaction_impact", {
+      precision: 5,
+      scale: 2,
+    }),
+    teamProductivityGain: decimal("team_productivity_gain", {
+      precision: 5,
+      scale: 2,
+    }),
 
     // Risk reduction
-    securityRiskReduction: decimal("security_risk_reduction", { precision: 5, scale: 2 }),
-    complianceRiskReduction: decimal("compliance_risk_reduction", { precision: 5, scale: 2 }),
-    operationalRiskReduction: decimal("operational_risk_reduction", { precision: 5, scale: 2 }),
+    securityRiskReduction: decimal("security_risk_reduction", {
+      precision: 5,
+      scale: 2,
+    }),
+    complianceRiskReduction: decimal("compliance_risk_reduction", {
+      precision: 5,
+      scale: 2,
+    }),
+    operationalRiskReduction: decimal("operational_risk_reduction", {
+      precision: 5,
+      scale: 2,
+    }),
 
     // Metadata
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
@@ -1487,32 +1799,32 @@ export const userDecisionAnalytics = pgTable(
       .default(sql`gen_random_uuid()`),
     userId: varchar("user_id").notNull(),
     sessionId: varchar("session_id"),
-    
+
     // Decision context
     decisionType: varchar("decision_type", { length: 50 }).notNull(), // approval, configuration, override
     decisionCategory: varchar("decision_category", { length: 100 }),
     riskLevel: varchar("risk_level", { length: 20 }),
-    
+
     // Decision details
     decision: varchar("decision", { length: 50 }).notNull(), // approve, reject, escalate, delegate
     decisionTime: integer("decision_time").notNull(), // milliseconds from presentation to decision
     confidenceLevel: decimal("confidence_level", { precision: 3, scale: 2 }),
-    
+
     // Context factors
     systemRecommendation: varchar("system_recommendation", { length: 50 }),
     agreedWithSystem: boolean("agreed_with_system"),
     reasoningProvided: boolean("reasoning_provided"),
-    
+
     // Outcome tracking
     outcomeCorrect: boolean("outcome_correct"),
     businessImpact: varchar("business_impact", { length: 50 }), // positive, negative, neutral
     learningPoints: jsonb("learning_points"),
-    
+
     // Performance patterns
     timeOfDay: integer("time_of_day"), // hour 0-23
     dayOfWeek: integer("day_of_week"), // 0-6
     workload: varchar("workload", { length: 20 }), // low, medium, high
-    
+
     // Metadata
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").defaultNow(),
@@ -1521,7 +1833,9 @@ export const userDecisionAnalytics = pgTable(
     index("idx_user_decision_analytics_user_id").on(table.userId),
     index("idx_user_decision_analytics_decision_type").on(table.decisionType),
     index("idx_user_decision_analytics_decision_time").on(table.decisionTime),
-    index("idx_user_decision_analytics_agreed_with_system").on(table.agreedWithSystem),
+    index("idx_user_decision_analytics_agreed_with_system").on(
+      table.agreedWithSystem,
+    ),
     index("idx_user_decision_analytics_created_at").on(table.createdAt),
   ],
 );
@@ -1536,33 +1850,33 @@ export const reportGenerations = pgTable(
     reportType: varchar("report_type", { length: 50 }).notNull(), // automation_summary, cost_analysis, trend_report
     format: varchar("format", { length: 20 }).notNull(), // pdf, excel, json, csv
     status: varchar("status", { length: 20 }).default("generating"), // generating, completed, failed
-    
+
     // Report parameters
     dateRange: jsonb("date_range").notNull(),
     filters: jsonb("filters"),
     includeCharts: boolean("include_charts").default(true),
     includeDetails: boolean("include_details").default(true),
-    
+
     // Generation details
     requestedBy: varchar("requested_by").notNull(),
     generationTime: integer("generation_time"), // milliseconds
     fileSize: integer("file_size"), // bytes
     filePath: varchar("file_path", { length: 500 }),
     downloadCount: integer("download_count").default(0),
-    
+
     // Content summary
     recordCount: integer("record_count"),
     chartCount: integer("chart_count"),
     pageCount: integer("page_count"),
-    
+
     // Error handling
     errorMessage: text("error_message"),
     retryCount: integer("retry_count").default(0),
-    
+
     // Expiration
     expiresAt: timestamp("expires_at"),
     lastAccessedAt: timestamp("last_accessed_at"),
-    
+
     // Metadata
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").defaultNow(),
@@ -1604,6 +1918,44 @@ export const insertProductFamilySchema = createInsertSchema(
 
 export const insertProductAttributeSchema = createInsertSchema(
   productAttributes,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Phase 3.5: Variant Insert Schemas
+export const insertVariantOptionSchema = createInsertSchema(
+  variantOptions,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVariantOptionValueSchema = createInsertSchema(
+  variantOptionValues,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProductVariantOptionSchema = createInsertSchema(
+  productVariantOptions,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProductVariantSchema = createInsertSchema(
+  productVariants,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVariantCombinationSchema = createInsertSchema(
+  variantCombinations,
 ).omit({
   id: true,
   createdAt: true,
@@ -1819,9 +2171,7 @@ export const insertAutomationAlertsSchema = createInsertSchema(
   updatedAt: true,
 });
 
-export const insertRoiMetricsSchema = createInsertSchema(
-  roiMetrics,
-).omit({
+export const insertRoiMetricsSchema = createInsertSchema(roiMetrics).omit({
   id: true,
   calculatedAt: true,
 });
@@ -1933,23 +2283,41 @@ export type InsertEdgeCaseIntegrationSession = z.infer<
 
 // Analytics types
 export type AutomationMetrics = typeof automationMetrics.$inferSelect;
-export type InsertAutomationMetrics = z.infer<typeof insertAutomationMetricsSchema>;
-export type SystemPerformanceMetrics = typeof systemPerformanceMetrics.$inferSelect;
-export type InsertSystemPerformanceMetrics = z.infer<typeof insertSystemPerformanceMetricsSchema>;
+export type InsertAutomationMetrics = z.infer<
+  typeof insertAutomationMetricsSchema
+>;
+export type SystemPerformanceMetrics =
+  typeof systemPerformanceMetrics.$inferSelect;
+export type InsertSystemPerformanceMetrics = z.infer<
+  typeof insertSystemPerformanceMetricsSchema
+>;
 export type TestExecutionAnalytics = typeof testExecutionAnalytics.$inferSelect;
-export type InsertTestExecutionAnalytics = z.infer<typeof insertTestExecutionAnalyticsSchema>;
-export type CostOptimizationMetrics = typeof costOptimizationMetrics.$inferSelect;
-export type InsertCostOptimizationMetrics = z.infer<typeof insertCostOptimizationMetricsSchema>;
+export type InsertTestExecutionAnalytics = z.infer<
+  typeof insertTestExecutionAnalyticsSchema
+>;
+export type CostOptimizationMetrics =
+  typeof costOptimizationMetrics.$inferSelect;
+export type InsertCostOptimizationMetrics = z.infer<
+  typeof insertCostOptimizationMetricsSchema
+>;
 export type PerformanceTrends = typeof performanceTrends.$inferSelect;
-export type InsertPerformanceTrends = z.infer<typeof insertPerformanceTrendsSchema>;
+export type InsertPerformanceTrends = z.infer<
+  typeof insertPerformanceTrendsSchema
+>;
 export type AutomationAlerts = typeof automationAlerts.$inferSelect;
-export type InsertAutomationAlerts = z.infer<typeof insertAutomationAlertsSchema>;
+export type InsertAutomationAlerts = z.infer<
+  typeof insertAutomationAlertsSchema
+>;
 export type RoiMetrics = typeof roiMetrics.$inferSelect;
 export type InsertRoiMetrics = z.infer<typeof insertRoiMetricsSchema>;
 export type UserDecisionAnalytics = typeof userDecisionAnalytics.$inferSelect;
-export type InsertUserDecisionAnalytics = z.infer<typeof insertUserDecisionAnalyticsSchema>;
+export type InsertUserDecisionAnalytics = z.infer<
+  typeof insertUserDecisionAnalyticsSchema
+>;
 export type ReportGenerations = typeof reportGenerations.$inferSelect;
-export type InsertReportGenerations = z.infer<typeof insertReportGenerationsSchema>;
+export type InsertReportGenerations = z.infer<
+  typeof insertReportGenerationsSchema
+>;
 
 // Additional types for LLM edge case detection
 export type TestStatus =

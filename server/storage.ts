@@ -60,6 +60,10 @@ export interface IStorage {
   // Media asset operations
   createMediaAsset(asset: InsertMediaAsset): Promise<MediaAsset>;
   getMediaAssets(productId?: number, brandId?: number): Promise<MediaAsset[]>;
+  updateMediaAsset(
+    id: number,
+    updates: Partial<InsertMediaAsset>,
+  ): Promise<MediaAsset>;
   deleteMediaAsset(id: number): Promise<void>;
 
   // Product attribute operations
@@ -206,6 +210,17 @@ export class DatabaseStorage implements IStorage {
         compareAtPrice: products.compareAtPrice,
         stock: products.stock,
         lowStockThreshold: products.lowStockThreshold,
+        // SEO fields for Phase 3.4 SEO Tab implementation
+        metaTitle: products.metaTitle,
+        metaDescription: products.metaDescription,
+        canonicalUrl: products.canonicalUrl,
+        ogTitle: products.ogTitle,
+        ogDescription: products.ogDescription,
+        ogImage: products.ogImage,
+        focusKeywords: products.focusKeywords,
+        schemaMarkup: products.schemaMarkup,
+        seoScore: products.seoScore,
+        seoUpdatedAt: products.seoUpdatedAt,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         brandName: brands.name,
@@ -352,6 +367,18 @@ export class DatabaseStorage implements IStorage {
 
     const result = await query.orderBy(desc(mediaAssets.createdAt));
     return result || [];
+  }
+
+  async updateMediaAsset(
+    id: number,
+    updates: Partial<InsertMediaAsset>,
+  ): Promise<MediaAsset> {
+    const [updatedAsset] = await db
+      .update(mediaAssets)
+      .set(updates)
+      .where(eq(mediaAssets.id, id))
+      .returning();
+    return updatedAsset;
   }
 
   async deleteMediaAsset(id: number): Promise<void> {

@@ -8,6 +8,7 @@ import {
   insertProductSchema,
   insertSyndicationChannelSchema,
   insertProductSyndicationSchema,
+  mediaAssets,
 } from "@shared/schema";
 import multer from "multer";
 import path from "path";
@@ -31,6 +32,7 @@ import {
   generateCSRFToken,
   validateFilePath,
 } from "./middleware/security";
+import { registerVariantRoutes } from "./variant-routes";
 
 // Configure secure multer for file uploads
 const upload = secureFileUpload({
@@ -521,6 +523,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             req.body.compareAtPrice && req.body.compareAtPrice !== ""
               ? Math.round(parseFloat(req.body.compareAtPrice) * 100)
               : undefined,
+          // SEO fields for Phase 3.4 SEO Tab Enhancement
+          metaTitle: req.body.metaTitle,
+          metaDescription: req.body.metaDescription,
+          canonicalUrl: req.body.canonicalUrl,
+          ogTitle: req.body.ogTitle,
+          ogDescription: req.body.ogDescription,
+          ogImage: req.body.ogImage,
+          focusKeywords: req.body.focusKeywords,
         };
 
         const updates = insertProductSchema.partial().parse(validFields);
@@ -700,6 +710,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch media assets" });
     }
   });
+
+  // Upload media for existing product
+  app.post(
+    "/api/products/:id/media",
+    uploadRateLimiter,
+    isAuthenticated,
+    csrfProtection,
+    upload.array("media", 10),
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const userId = req.user.claims.sub;
+
+        // Verify product exists and user has access
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        const uploadedAssets = [];
+
+        if (req.files && req.files.length > 0) {
+          for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+
+            // Scan file for security threats
+            const scanResult = await scanFileContent(file.path);
+            if (!scanResult.safe) {
+              await fs.unlink(file.path).catch(() => {});
+              continue; // Skip malicious files
+            }
+
+            const fileName = `product-${productId}-${Date.now()}-${i}${path.extname(file.originalname)}`;
+
+            // Validate file path
+            if (!validateFilePath(fileName)) {
+              await fs.unlink(file.path).catch(() => {});
+              continue;
+            }
+
+            const filePath = path.join("uploads", fileName);
+            const resolvedPath = path.resolve(filePath);
+            const resolvedUploadsDir = path.resolve("uploads");
+
+            // Security: Ensure file stays within uploads directory
+            if (!resolvedPath.startsWith(resolvedUploadsDir)) {
+              await fs.unlink(file.path).catch(() => {});
+              continue;
+            }
+
+            await fs.rename(file.path, filePath);
+
+            // Determine asset type based on MIME type
+            let assetType = "product";
+            if (file.mimetype.startsWith("video/")) {
+              assetType = "video";
+            } else if (
+              file.mimetype.includes("pdf") ||
+              file.mimetype.includes("document")
+            ) {
+              assetType = "document";
+            }
+
+            const mediaAsset = await storage.createMediaAsset({
+              fileName,
+              originalName: file.originalname,
+              mimeType: file.mimetype,
+              fileSize: file.size,
+              url: `/uploads/${fileName}`,
+              assetType,
+              productId: productId,
+              uploadedBy: userId,
+            });
+
+            uploadedAssets.push(mediaAsset);
+          }
+        }
+
+        res.status(201).json({
+          message: "Media uploaded successfully",
+          assets: uploadedAssets,
+        });
+      } catch (error) {
+        console.error("Error uploading media:", error);
+        res.status(500).json({ message: "Failed to upload media" });
+      }
+    },
+  );
+
+  // Update media metadata
+  app.put(
+    "/api/products/:productId/media/:mediaId",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.productId);
+        const mediaId = parseInt(req.params.mediaId);
+
+        // Verify product exists
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Validate update data
+        const { assetType, altText } = req.body;
+        const updates: Partial<typeof mediaAssets.$inferInsert> = {};
+
+        if (
+          assetType &&
+          [
+            "hero",
+            "product",
+            "lifestyle",
+            "brand",
+            "video",
+            "document",
+          ].includes(assetType)
+        ) {
+          updates.assetType = assetType;
+        }
+
+        if (altText !== undefined) {
+          updates.altText = altText;
+        }
+
+        const updatedAsset = await storage.updateMediaAsset(mediaId, updates);
+        res.json(updatedAsset);
+      } catch (error) {
+        console.error("Error updating media asset:", error);
+        res.status(500).json({ message: "Failed to update media asset" });
+      }
+    },
+  );
+
+  // Delete media asset
+  app.delete(
+    "/api/products/:productId/media/:mediaId",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.productId);
+        const mediaId = parseInt(req.params.mediaId);
+
+        // Verify product exists
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Get media asset to delete file
+        const assets = await storage.getMediaAssets(productId);
+        const asset = assets.find((a) => a.id === mediaId);
+
+        if (!asset) {
+          return res.status(404).json({ message: "Media asset not found" });
+        }
+
+        // Delete file from filesystem
+        if (asset.url.startsWith("/uploads/")) {
+          const filePath = path.join("uploads", path.basename(asset.url));
+          await fs.unlink(filePath).catch((err) => {
+            console.warn("Could not delete file:", filePath, err.message);
+          });
+        }
+
+        // Delete from database
+        await storage.deleteMediaAsset(mediaId);
+
+        res.json({ message: "Media asset deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting media asset:", error);
+        res.status(500).json({ message: "Failed to delete media asset" });
+      }
+    },
+  );
 
   // Search routes
   app.get("/api/search", isAuthenticated, async (req, res) => {
@@ -1073,6 +1261,508 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error fetching syndication status:", error);
         res.status(500).json({ message: "Failed to fetch syndication status" });
+      }
+    },
+  );
+
+  // Enhanced Channels Tab API Endpoints - Phase 3.6
+
+  // Bulk syndication with channel selection
+  app.post(
+    "/api/products/:id/bulk-syndicate",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const userId = req.user.claims.sub;
+        const { action = "create", channelIds } = req.body;
+
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Check permissions
+        const brand = await storage.getBrand(product.brandId!);
+        if (brand?.ownerId !== userId) {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        const results: any[] = [];
+
+        if (channelIds && Array.isArray(channelIds)) {
+          // Syndicate to selected channels
+          for (const channelId of channelIds) {
+            try {
+              const result = await syndicationService.syndicateProduct(
+                product,
+                channelId,
+                action,
+                userId,
+              );
+              results.push({ channelId, ...result });
+            } catch (error) {
+              results.push({
+                channelId,
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+              });
+            }
+          }
+        } else {
+          // Syndicate to all channels (fallback)
+          const allResults = await syndicationService.syndicateToAllChannels(
+            product,
+            action,
+            userId,
+          );
+          results.push(...allResults);
+        }
+
+        res.json({ results });
+      } catch (error) {
+        console.error("Error in bulk syndication:", error);
+        res.status(400).json({ message: "Failed to execute bulk syndication" });
+      }
+    },
+  );
+
+  // Channel configuration endpoints
+  app.patch(
+    "/api/products/:id/syndications/:channelId/config",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const channelId = parseInt(req.params.channelId);
+        const userId = req.user.claims.sub;
+        const settings = req.body;
+
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Check permissions
+        const brand = await storage.getBrand(product.brandId!);
+        if (brand?.ownerId !== userId) {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        // Get or create syndication record
+        let syndication = await storage.getProductSyndication(
+          productId,
+          channelId,
+        );
+
+        if (syndication) {
+          // Update existing syndication settings
+          const updatedSyndication = await storage.updateProductSyndication(
+            syndication.id!,
+            { settings: { ...syndication.settings, ...settings } },
+          );
+          res.json(updatedSyndication);
+        } else {
+          // Create new syndication record with settings
+          const newSyndication = await storage.createProductSyndication({
+            productId,
+            channelId,
+            status: "pending",
+            settings,
+            isEnabled: true,
+          });
+          res.json(newSyndication);
+        }
+      } catch (error) {
+        console.error("Error updating channel configuration:", error);
+        res
+          .status(400)
+          .json({ message: "Failed to update channel configuration" });
+      }
+    },
+  );
+
+  // Field mappings endpoints
+  app.patch(
+    "/api/products/:id/syndications/:channelId/mappings",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const channelId = parseInt(req.params.channelId);
+        const userId = req.user.claims.sub;
+        const { fieldMappings } = req.body;
+
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Check permissions
+        const brand = await storage.getBrand(product.brandId!);
+        if (brand?.ownerId !== userId) {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        // Get or create syndication record
+        let syndication = await storage.getProductSyndication(
+          productId,
+          channelId,
+        );
+
+        if (syndication) {
+          // Update field mappings
+          const updatedSyndication = await storage.updateProductSyndication(
+            syndication.id!,
+            {
+              settings: {
+                ...syndication.settings,
+                fieldMappings,
+              },
+            },
+          );
+          res.json(updatedSyndication);
+        } else {
+          // Create new syndication record with mappings
+          const newSyndication = await storage.createProductSyndication({
+            productId,
+            channelId,
+            status: "pending",
+            settings: { fieldMappings },
+            isEnabled: true,
+          });
+          res.json(newSyndication);
+        }
+      } catch (error) {
+        console.error("Error updating field mappings:", error);
+        res.status(400).json({ message: "Failed to update field mappings" });
+      }
+    },
+  );
+
+  // Preview mapping data
+  app.post(
+    "/api/products/:id/syndications/:channelId/preview",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const channelId = parseInt(req.params.channelId);
+        const { fieldMappings } = req.body;
+
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        const channel = await storage.getSyndicationChannel(channelId);
+        if (!channel) {
+          return res.status(404).json({ message: "Channel not found" });
+        }
+
+        // Apply field mappings to generate preview data
+        const previewData: any = {};
+
+        if (fieldMappings) {
+          for (const [targetField, mapping] of Object.entries(fieldMappings)) {
+            const mappingConfig = mapping as any;
+            if (mappingConfig.sourceField) {
+              // Direct field mapping
+              const sourceValue = (product as any)[mappingConfig.sourceField];
+              previewData[targetField] = sourceValue;
+            }
+          }
+        }
+
+        res.json({
+          channel: channel.name,
+          preview: previewData,
+          mappingCount: Object.keys(fieldMappings || {}).length,
+        });
+      } catch (error) {
+        console.error("Error generating preview:", error);
+        res.status(400).json({ message: "Failed to generate preview" });
+      }
+    },
+  );
+
+  // Channel toggle endpoint
+  app.patch(
+    "/api/products/:id/syndications/:channelId",
+    isAuthenticated,
+    csrfProtection,
+    async (req: any, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const channelId = parseInt(req.params.channelId);
+        const userId = req.user.claims.sub;
+        const updates = req.body;
+
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Check permissions
+        const brand = await storage.getBrand(product.brandId!);
+        if (brand?.ownerId !== userId) {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        let syndication = await storage.getProductSyndication(
+          productId,
+          channelId,
+        );
+
+        if (syndication) {
+          // Update existing syndication
+          const updatedSyndication = await storage.updateProductSyndication(
+            syndication.id!,
+            updates,
+          );
+          res.json(updatedSyndication);
+        } else {
+          // Create new syndication record
+          const newSyndication = await storage.createProductSyndication({
+            productId,
+            channelId,
+            status: "pending",
+            ...updates,
+          });
+          res.json(newSyndication);
+        }
+      } catch (error) {
+        console.error("Error updating product syndication:", error);
+        res.status(400).json({ message: "Failed to update syndication" });
+      }
+    },
+  );
+
+  // Sync metrics and monitoring
+  app.get(
+    "/api/products/:id/sync-metrics",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const timeframe = (req.query.timeframe as string) || "24h";
+
+        // Mock metrics data - in production, this would query actual analytics
+        const metrics = {
+          successRate: 95.5,
+          avgResponseTime: 1250,
+          errorRate: 4.5,
+          totalSyncs: 156,
+          channels: [
+            {
+              channelId: 1,
+              successRate: 98.2,
+              avgResponseTime: 850,
+              totalSyncs: 52,
+              failedSyncs: 1,
+            },
+            {
+              channelId: 2,
+              successRate: 92.8,
+              avgResponseTime: 1650,
+              totalSyncs: 104,
+              failedSyncs: 8,
+            },
+          ],
+        };
+
+        res.json(metrics);
+      } catch (error) {
+        console.error("Error fetching sync metrics:", error);
+        res.status(500).json({ message: "Failed to fetch sync metrics" });
+      }
+    },
+  );
+
+  // Live sync queue
+  app.get("/api/products/:id/sync-queue", isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+
+      // Mock sync queue data - in production, this would query actual queue
+      const syncQueue = [
+        {
+          channelId: 1,
+          action: "update",
+          startedAt: new Date(Date.now() - 30000).toISOString(),
+          progress: 75,
+          status: "syncing",
+        },
+        {
+          channelId: 2,
+          action: "create",
+          startedAt: new Date(Date.now() - 60000).toISOString(),
+          progress: 100,
+          status: "completed",
+        },
+      ];
+
+      res.json(syncQueue.filter((item) => item.status === "syncing"));
+    } catch (error) {
+      console.error("Error fetching sync queue:", error);
+      res.status(500).json({ message: "Failed to fetch sync queue" });
+    }
+  });
+
+  // Performance analytics
+  app.get(
+    "/api/products/:id/sync-performance",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const timeframe = (req.query.timeframe as string) || "24h";
+
+        // Mock performance data - in production, this would query time-series data
+        const performance = {
+          timeframe,
+          dataPoints: 24, // hourly data points for 24h
+          responseTimes: Array.from({ length: 24 }, (_, i) => ({
+            timestamp: new Date(
+              Date.now() - (23 - i) * 60 * 60 * 1000,
+            ).toISOString(),
+            avgResponseTime: 800 + Math.random() * 400,
+          })),
+          successRates: Array.from({ length: 24 }, (_, i) => ({
+            timestamp: new Date(
+              Date.now() - (23 - i) * 60 * 60 * 1000,
+            ).toISOString(),
+            successRate: 90 + Math.random() * 10,
+          })),
+        };
+
+        res.json(performance);
+      } catch (error) {
+        console.error("Error fetching performance analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch performance analytics" });
+      }
+    },
+  );
+
+  // Enhanced sync history
+  app.get(
+    "/api/products/:id/sync-history",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+
+        // Get syndication logs for this product
+        const logs = await storage.getSyndicationLogs(productId, undefined, 50);
+
+        // Transform logs to match frontend expectations
+        const history = logs.map((log: any) => ({
+          id: log.id,
+          channelId: log.channelId,
+          channelName: log.channelName,
+          action: log.action,
+          status: log.status === 200 ? "success" : "error",
+          responseTime: log.responseTime,
+          timestamp: log.createdAt,
+          createdAt: log.createdAt,
+          triggeredBy: log.triggeredBy,
+          errorMessage: log.errorMessage,
+          httpStatus: log.status,
+          requestPayload: log.requestPayload,
+          responsePayload: log.responsePayload,
+          externalUrl: null, // Would be derived from response payload in production
+        }));
+
+        res.json(history);
+      } catch (error) {
+        console.error("Error fetching sync history:", error);
+        res.status(500).json({ message: "Failed to fetch sync history" });
+      }
+    },
+  );
+
+  // Detailed sync history with filters
+  app.get(
+    "/api/products/:id/sync-history/detailed",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const timeframe = (req.query.timeframe as string) || "7d";
+        const status = (req.query.status as string) || "all";
+        const channelId =
+          req.query.channel !== "all"
+            ? parseInt(req.query.channel as string)
+            : undefined;
+
+        // Calculate date range based on timeframe
+        let startDate = new Date();
+        switch (timeframe) {
+          case "1h":
+            startDate.setHours(startDate.getHours() - 1);
+            break;
+          case "24h":
+            startDate.setDate(startDate.getDate() - 1);
+            break;
+          case "7d":
+            startDate.setDate(startDate.getDate() - 7);
+            break;
+          case "30d":
+            startDate.setDate(startDate.getDate() - 30);
+            break;
+          case "90d":
+            startDate.setDate(startDate.getDate() - 90);
+            break;
+        }
+
+        // Get filtered logs
+        const logs = await storage.getSyndicationLogs(
+          productId,
+          channelId,
+          100,
+        );
+
+        // Filter by date and status
+        const filteredLogs = logs
+          .filter((log: any) => {
+            const logDate = new Date(log.createdAt);
+            if (logDate < startDate) return false;
+
+            if (status !== "all") {
+              const logStatus = log.status === 200 ? "success" : "error";
+              if (logStatus !== status) return false;
+            }
+
+            return true;
+          })
+          .map((log: any) => ({
+            id: log.id,
+            channelId: log.channelId,
+            channelName: log.channelName,
+            action: log.action,
+            status: log.status === 200 ? "success" : "error",
+            responseTime: log.responseTime,
+            timestamp: log.createdAt,
+            createdAt: log.createdAt,
+            triggeredBy: log.triggeredBy,
+            errorMessage: log.errorMessage,
+            httpStatus: log.status,
+            requestPayload: log.requestPayload,
+            responsePayload: log.responsePayload,
+            externalUrl: null,
+          }));
+
+        res.json(filteredLogs);
+      } catch (error) {
+        console.error("Error fetching detailed sync history:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch detailed sync history" });
       }
     },
   );
@@ -2585,156 +3275,269 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AUTOMATION ANALYTICS ROUTES - Comprehensive Analytics and Reporting System
   try {
-    const AutomationAnalyticsService = await import("./services/automation-analytics");
+    const AutomationAnalyticsService = await import(
+      "./services/automation-analytics"
+    );
     const ReportGenerator = await import("./services/report-generator");
     const { webSocketService } = await import("./websocket-service");
 
-    const analyticsService = new AutomationAnalyticsService.default(webSocketService);
-    const reportGenerator = new ReportGenerator.default(analyticsService, webSocketService);
+    const analyticsService = new AutomationAnalyticsService.default(
+      webSocketService,
+    );
+    const reportGenerator = new ReportGenerator.default(
+      analyticsService,
+      webSocketService,
+    );
 
     // Get automation metrics
-    app.get("/api/automation/metrics", isAuthenticated, async (req: any, res) => {
-      try {
-        const timeRange = req.query.timeRange as '1h' | '24h' | '7d' | '30d' || '24h';
-        const metrics = await analyticsService.getAutomationMetrics(timeRange);
-        res.json(metrics);
-      } catch (error: any) {
-        console.error("Error fetching automation metrics:", error);
-        res.status(500).json({ error: "Failed to fetch automation metrics", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/metrics",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const timeRange =
+            (req.query.timeRange as "1h" | "24h" | "7d" | "30d") || "24h";
+          const metrics =
+            await analyticsService.getAutomationMetrics(timeRange);
+          res.json(metrics);
+        } catch (error: any) {
+          console.error("Error fetching automation metrics:", error);
+          res.status(500).json({
+            error: "Failed to fetch automation metrics",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Get business impact analysis
-    app.get("/api/automation/business-impact", isAuthenticated, async (req: any, res) => {
-      try {
-        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
-        const businessImpact = await analyticsService.getBusinessImpact(timeRange);
-        res.json(businessImpact);
-      } catch (error: any) {
-        console.error("Error fetching business impact:", error);
-        res.status(500).json({ error: "Failed to fetch business impact", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/business-impact",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const timeRange =
+            (req.query.timeRange as "7d" | "30d" | "90d") || "30d";
+          const businessImpact =
+            await analyticsService.getBusinessImpact(timeRange);
+          res.json(businessImpact);
+        } catch (error: any) {
+          console.error("Error fetching business impact:", error);
+          res.status(500).json({
+            error: "Failed to fetch business impact",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Get performance trends
-    app.get("/api/automation/trends", isAuthenticated, async (req: any, res) => {
-      try {
-        const days = parseInt(req.query.days as string) || 30;
-        const trends = await analyticsService.getTrendData(days);
-        res.json(trends);
-      } catch (error: any) {
-        console.error("Error fetching trends:", error);
-        res.status(500).json({ error: "Failed to fetch trends", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/trends",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const days = parseInt(req.query.days as string) || 30;
+          const trends = await analyticsService.getTrendData(days);
+          res.json(trends);
+        } catch (error: any) {
+          console.error("Error fetching trends:", error);
+          res
+            .status(500)
+            .json({ error: "Failed to fetch trends", message: error.message });
+        }
+      },
+    );
 
     // Get cost breakdown
-    app.get("/api/automation/cost-breakdown", isAuthenticated, async (req: any, res) => {
-      try {
-        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
-        const costBreakdown = await analyticsService.getCostBreakdown(timeRange);
-        res.json(costBreakdown);
-      } catch (error: any) {
-        console.error("Error fetching cost breakdown:", error);
-        res.status(500).json({ error: "Failed to fetch cost breakdown", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/cost-breakdown",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const timeRange =
+            (req.query.timeRange as "7d" | "30d" | "90d") || "30d";
+          const costBreakdown =
+            await analyticsService.getCostBreakdown(timeRange);
+          res.json(costBreakdown);
+        } catch (error: any) {
+          console.error("Error fetching cost breakdown:", error);
+          res.status(500).json({
+            error: "Failed to fetch cost breakdown",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Get optimization recommendations
-    app.get("/api/automation/recommendations", isAuthenticated, async (req: any, res) => {
-      try {
-        const recommendations = await analyticsService.getOptimizationRecommendations();
-        res.json(recommendations);
-      } catch (error: any) {
-        console.error("Error fetching recommendations:", error);
-        res.status(500).json({ error: "Failed to fetch recommendations", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/recommendations",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const recommendations =
+            await analyticsService.getOptimizationRecommendations();
+          res.json(recommendations);
+        } catch (error: any) {
+          console.error("Error fetching recommendations:", error);
+          res.status(500).json({
+            error: "Failed to fetch recommendations",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Get executive summary
-    app.get("/api/automation/executive-summary", isAuthenticated, async (req: any, res) => {
-      try {
-        const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '30d';
-        const summary = await analyticsService.generateExecutiveSummary(timeRange);
-        res.json(summary);
-      } catch (error: any) {
-        console.error("Error fetching executive summary:", error);
-        res.status(500).json({ error: "Failed to fetch executive summary", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/executive-summary",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const timeRange =
+            (req.query.timeRange as "7d" | "30d" | "90d") || "30d";
+          const summary =
+            await analyticsService.generateExecutiveSummary(timeRange);
+          res.json(summary);
+        } catch (error: any) {
+          console.error("Error fetching executive summary:", error);
+          res.status(500).json({
+            error: "Failed to fetch executive summary",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Generate report
-    app.post("/api/automation/reports/generate", isAuthenticated, csrfProtection, async (req: any, res) => {
-      try {
-        const { type, timeRange, format, customOptions } = req.body;
-        
-        if (!type || !['executive', 'technical', 'operational', 'cost'].includes(type)) {
-          return res.status(400).json({ error: "Invalid report type" });
-        }
+    app.post(
+      "/api/automation/reports/generate",
+      isAuthenticated,
+      csrfProtection,
+      async (req: any, res) => {
+        try {
+          const { type, timeRange, format, customOptions } = req.body;
 
-        const report = await reportGenerator.generateReport(type, timeRange, format, customOptions);
-        res.json({
-          success: true,
-          reportId: report.id,
-          filePath: report.filePath,
-          size: report.size,
-          status: report.status
-        });
-      } catch (error: any) {
-        console.error("Error generating report:", error);
-        res.status(500).json({ error: "Failed to generate report", message: error.message });
-      }
-    });
+          if (
+            !type ||
+            !["executive", "technical", "operational", "cost"].includes(type)
+          ) {
+            return res.status(400).json({ error: "Invalid report type" });
+          }
+
+          const report = await reportGenerator.generateReport(
+            type,
+            timeRange,
+            format,
+            customOptions,
+          );
+          res.json({
+            success: true,
+            reportId: report.id,
+            filePath: report.filePath,
+            size: report.size,
+            status: report.status,
+          });
+        } catch (error: any) {
+          console.error("Error generating report:", error);
+          res.status(500).json({
+            error: "Failed to generate report",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Schedule report
-    app.post("/api/automation/reports/schedule", isAuthenticated, csrfProtection, async (req: any, res) => {
-      try {
-        const { name, config, nextRun, enabled, createdBy } = req.body;
-        
-        if (!name || !config || !nextRun) {
-          return res.status(400).json({ error: "Name, config, and nextRun are required" });
+    app.post(
+      "/api/automation/reports/schedule",
+      isAuthenticated,
+      csrfProtection,
+      async (req: any, res) => {
+        try {
+          const { name, config, nextRun, enabled, createdBy } = req.body;
+
+          if (!name || !config || !nextRun) {
+            return res
+              .status(400)
+              .json({ error: "Name, config, and nextRun are required" });
+          }
+
+          const scheduleId = reportGenerator.scheduleReport({
+            name,
+            config,
+            nextRun: new Date(nextRun),
+            enabled: enabled !== false,
+            createdBy: createdBy || req.user.claims.sub,
+          });
+
+          res.json({ success: true, scheduleId });
+        } catch (error: any) {
+          console.error("Error scheduling report:", error);
+          res.status(500).json({
+            error: "Failed to schedule report",
+            message: error.message,
+          });
         }
-
-        const scheduleId = reportGenerator.scheduleReport({
-          name,
-          config,
-          nextRun: new Date(nextRun),
-          enabled: enabled !== false,
-          createdBy: createdBy || req.user.claims.sub
-        });
-
-        res.json({ success: true, scheduleId });
-      } catch (error: any) {
-        console.error("Error scheduling report:", error);
-        res.status(500).json({ error: "Failed to schedule report", message: error.message });
-      }
-    });
+      },
+    );
 
     // Get scheduled reports
-    app.get("/api/automation/reports/schedules", isAuthenticated, async (req: any, res) => {
-      try {
-        const schedules = reportGenerator.getSchedules();
-        res.json(schedules);
-      } catch (error: any) {
-        console.error("Error fetching schedules:", error);
-        res.status(500).json({ error: "Failed to fetch schedules", message: error.message });
-      }
-    });
+    app.get(
+      "/api/automation/reports/schedules",
+      isAuthenticated,
+      async (req: any, res) => {
+        try {
+          const schedules = reportGenerator.getSchedules();
+          res.json(schedules);
+        } catch (error: any) {
+          console.error("Error fetching schedules:", error);
+          res.status(500).json({
+            error: "Failed to fetch schedules",
+            message: error.message,
+          });
+        }
+      },
+    );
 
     // Remove scheduled report
-    app.delete("/api/automation/reports/schedules/:id", isAuthenticated, csrfProtection, async (req: any, res) => {
-      try {
-        const success = reportGenerator.removeSchedule(req.params.id);
-        res.json({ success });
-      } catch (error: any) {
-        console.error("Error removing schedule:", error);
-        res.status(500).json({ error: "Failed to remove schedule", message: error.message });
-      }
-    });
+    app.delete(
+      "/api/automation/reports/schedules/:id",
+      isAuthenticated,
+      csrfProtection,
+      async (req: any, res) => {
+        try {
+          const success = reportGenerator.removeSchedule(req.params.id);
+          res.json({ success });
+        } catch (error: any) {
+          console.error("Error removing schedule:", error);
+          res.status(500).json({
+            error: "Failed to remove schedule",
+            message: error.message,
+          });
+        }
+      },
+    );
 
-    console.log("[ROUTES] Automation Analytics routes registered at /api/automation/*");
+    console.log(
+      "[ROUTES] Automation Analytics routes registered at /api/automation/*",
+    );
   } catch (error) {
-    console.warn("[ROUTES] Automation Analytics routes could not be loaded:", error);
+    console.warn(
+      "[ROUTES] Automation Analytics routes could not be loaded:",
+      error,
+    );
+  }
+
+  // Phase 3.5: Register Variant Routes
+  try {
+    registerVariantRoutes(app);
+    console.log(
+      "[ROUTES] Variant management routes registered at /api/variants/* and /api/products/*/variants/*",
+    );
+  } catch (error) {
+    console.warn("[ROUTES] Variant routes could not be loaded:", error);
   }
 
   // Serve uploaded files with security

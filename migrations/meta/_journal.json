@@ -50,6 +50,20 @@
       "when": 1758712651428,
       "tag": "0006_chilly_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1758725217506,
+      "tag": "0007_stormy_albert_cleary",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1758726443098,
+      "tag": "0008_crazy_shiva",
+      "breakpoints": true
     }
   ]
 }
