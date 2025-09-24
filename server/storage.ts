@@ -31,20 +31,20 @@ import {
   type InsertSyndicationLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, like, and, or, count, sql } from "drizzle-orm";
+import { eq, desc, like, and, or, count, sql, gte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // Brand operations
   createBrand(brand: InsertBrand): Promise<Brand>;
   getBrands(userId?: string): Promise<Brand[]>;
   getBrand(id: number): Promise<Brand | undefined>;
   updateBrand(id: number, updates: Partial<InsertBrand>): Promise<Brand>;
   deleteBrand(id: number): Promise<void>;
-  
+
   // Product operations
   createProduct(product: InsertProduct): Promise<Product>;
   getProducts(brandId?: number, userId?: string): Promise<Product[]>;
@@ -52,38 +52,68 @@ export interface IStorage {
   updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
   getProductsByBrand(brandId: number): Promise<Product[]>;
-  
+
+  // Count operations
+  countProducts(userId?: string): Promise<number>;
+  countBrands(userId?: string): Promise<number>;
+
   // Media asset operations
   createMediaAsset(asset: InsertMediaAsset): Promise<MediaAsset>;
   getMediaAssets(productId?: number, brandId?: number): Promise<MediaAsset[]>;
+  updateMediaAsset(
+    id: number,
+    updates: Partial<InsertMediaAsset>,
+  ): Promise<MediaAsset>;
   deleteMediaAsset(id: number): Promise<void>;
-  
+
   // Product attribute operations
-  createProductAttribute(attribute: InsertProductAttribute): Promise<ProductAttribute>;
+  createProductAttribute(
+    attribute: InsertProductAttribute,
+  ): Promise<ProductAttribute>;
   getProductAttributes(productId: number): Promise<ProductAttribute[]>;
-  
+
   // Product family operations
   createProductFamily(family: InsertProductFamily): Promise<ProductFamily>;
   getProductFamilies(brandId?: number): Promise<ProductFamily[]>;
-  
+
   // Syndication channel operations
-  createSyndicationChannel(channel: InsertSyndicationChannel): Promise<SyndicationChannel>;
+  createSyndicationChannel(
+    channel: InsertSyndicationChannel,
+  ): Promise<SyndicationChannel>;
   getSyndicationChannels(): Promise<SyndicationChannel[]>;
   getSyndicationChannel(id: number): Promise<SyndicationChannel | undefined>;
-  updateSyndicationChannel(id: number, updates: Partial<InsertSyndicationChannel>): Promise<SyndicationChannel>;
+  updateSyndicationChannel(
+    id: number,
+    updates: Partial<InsertSyndicationChannel>,
+  ): Promise<SyndicationChannel>;
   deleteSyndicationChannel(id: number): Promise<void>;
-  
+
   // Product syndication operations
-  createProductSyndication(syndication: InsertProductSyndication): Promise<ProductSyndication>;
-  getProductSyndications(productId?: number, channelId?: number): Promise<ProductSyndication[]>;
-  getProductSyndication(productId: number, channelId: number): Promise<ProductSyndication | undefined>;
-  updateProductSyndication(id: number, updates: Partial<InsertProductSyndication>): Promise<ProductSyndication>;
+  createProductSyndication(
+    syndication: InsertProductSyndication,
+  ): Promise<ProductSyndication>;
+  getProductSyndications(
+    productId?: number,
+    channelId?: number,
+  ): Promise<ProductSyndication[]>;
+  getProductSyndication(
+    productId: number,
+    channelId: number,
+  ): Promise<ProductSyndication | undefined>;
+  updateProductSyndication(
+    id: number,
+    updates: Partial<InsertProductSyndication>,
+  ): Promise<ProductSyndication>;
   deleteProductSyndication(id: number): Promise<void>;
-  
+
   // Syndication logs operations
   createSyndicationLog(log: InsertSyndicationLog): Promise<SyndicationLog>;
-  getSyndicationLogs(productId?: number, channelId?: number, limit?: number): Promise<SyndicationLog[]>;
-  
+  getSyndicationLogs(
+    productId?: number,
+    channelId?: number,
+    limit?: number,
+  ): Promise<SyndicationLog[]>;
+
   // Dashboard analytics
   getDashboardStats(userId: string): Promise<{
     totalBrands: number;
@@ -91,7 +121,7 @@ export interface IStorage {
     apiSyncsToday: number;
     avgTimeToMarket: number;
   }>;
-  
+
   // Search operations
   searchProducts(query: string): Promise<Product[]>;
   searchBrands(query: string): Promise<Brand[]>;
@@ -127,11 +157,13 @@ export class DatabaseStorage implements IStorage {
 
   async getBrands(userId?: string): Promise<Brand[]> {
     const query = db.select().from(brands);
-    
+
     if (userId) {
-      return await query.where(eq(brands.ownerId, userId)).orderBy(desc(brands.createdAt));
+      return await query
+        .where(eq(brands.ownerId, userId))
+        .orderBy(desc(brands.createdAt));
     }
-    
+
     return await query.orderBy(desc(brands.createdAt));
   }
 
@@ -171,8 +203,24 @@ export class DatabaseStorage implements IStorage {
         brandId: products.brandId,
         parentId: products.parentId,
         sku: products.sku,
+        gtin: products.gtin,
         status: products.status,
         isVariant: products.isVariant,
+        price: products.price,
+        compareAtPrice: products.compareAtPrice,
+        stock: products.stock,
+        lowStockThreshold: products.lowStockThreshold,
+        // SEO fields for Phase 3.4 SEO Tab implementation
+        metaTitle: products.metaTitle,
+        metaDescription: products.metaDescription,
+        canonicalUrl: products.canonicalUrl,
+        ogTitle: products.ogTitle,
+        ogDescription: products.ogDescription,
+        ogImage: products.ogImage,
+        focusKeywords: products.focusKeywords,
+        schemaMarkup: products.schemaMarkup,
+        seoScore: products.seoScore,
+        seoUpdatedAt: products.seoUpdatedAt,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         brandName: brands.name,
@@ -181,28 +229,32 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(brands, eq(products.brandId, brands.id));
 
     const conditions = [];
-    
+
     if (brandId) {
       conditions.push(eq(products.brandId, brandId));
     }
-    
+
     if (userId) {
       conditions.push(eq(brands.ownerId, userId));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
 
-    return await query.orderBy(desc(products.createdAt));
+    const result = await query.orderBy(desc(products.createdAt));
+    return result || [];
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.id, id));
-    return product;
+    const result = await db.select().from(products).where(eq(products.id, id));
+    return result?.[0];
   }
 
-  async updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product> {
+  async updateProduct(
+    id: number,
+    updates: Partial<InsertProduct>,
+  ): Promise<Product> {
     const [updatedProduct] = await db
       .update(products)
       .set({ ...updates, updatedAt: new Date() })
@@ -212,15 +264,87 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProduct(id: number): Promise<void> {
-    await db.delete(products).where(eq(products.id, id));
+    // Use a transaction to ensure all related data is deleted consistently
+    await db.transaction(async (tx) => {
+      console.log(`[DELETE] Starting deletion of product ${id}`);
+
+      // Delete associated syndication logs first
+      const deletedLogs = await tx
+        .delete(syndicationLogs)
+        .where(eq(syndicationLogs.productId, id))
+        .returning();
+      console.log(`[DELETE] Deleted ${deletedLogs.length} syndication logs`);
+
+      // Delete associated product syndications
+      const deletedSyndications = await tx
+        .delete(productSyndications)
+        .where(eq(productSyndications.productId, id))
+        .returning();
+      console.log(
+        `[DELETE] Deleted ${deletedSyndications.length} product syndications`,
+      );
+
+      // Delete associated media assets
+      const deletedMedia = await tx
+        .delete(mediaAssets)
+        .where(eq(mediaAssets.productId, id))
+        .returning();
+      console.log(`[DELETE] Deleted ${deletedMedia.length} media assets`);
+
+      // Delete associated product attributes
+      const deletedAttributes = await tx
+        .delete(productAttributes)
+        .where(eq(productAttributes.productId, id))
+        .returning();
+      console.log(
+        `[DELETE] Deleted ${deletedAttributes.length} product attributes`,
+      );
+
+      // Finally delete the product itself
+      console.log(`[DELETE] About to delete product ${id}`);
+      const deletedProduct = await tx
+        .delete(products)
+        .where(eq(products.id, id))
+        .returning();
+      console.log(
+        `[DELETE] Successfully deleted product ${id}`,
+        deletedProduct.length > 0 ? "found" : "not found",
+      );
+    });
   }
 
   async getProductsByBrand(brandId: number): Promise<Product[]> {
-    return await db
+    const result = await db
       .select()
       .from(products)
       .where(eq(products.brandId, brandId))
       .orderBy(desc(products.createdAt));
+    return result || [];
+  }
+
+  // Count operations
+  async countProducts(userId?: string): Promise<number> {
+    let query = db.select({ count: count() }).from(products);
+
+    if (userId) {
+      query = query
+        .leftJoin(brands, eq(products.brandId, brands.id))
+        .where(eq(brands.ownerId, userId));
+    }
+
+    const result = await query;
+    return result[0]?.count ?? 0;
+  }
+
+  async countBrands(userId?: string): Promise<number> {
+    let query = db.select({ count: count() }).from(brands);
+
+    if (userId) {
+      query = query.where(eq(brands.ownerId, userId));
+    }
+
+    const result = await query;
+    return result[0]?.count ?? 0;
   }
 
   // Media asset operations
@@ -229,16 +353,32 @@ export class DatabaseStorage implements IStorage {
     return newAsset;
   }
 
-  async getMediaAssets(productId?: number, brandId?: number): Promise<MediaAsset[]> {
+  async getMediaAssets(
+    productId?: number,
+    brandId?: number,
+  ): Promise<MediaAsset[]> {
     let query = db.select().from(mediaAssets);
-    
+
     if (productId) {
       query = query.where(eq(mediaAssets.productId, productId));
     } else if (brandId) {
       query = query.where(eq(mediaAssets.brandId, brandId));
     }
-    
-    return await query.orderBy(desc(mediaAssets.createdAt));
+
+    const result = await query.orderBy(desc(mediaAssets.createdAt));
+    return result || [];
+  }
+
+  async updateMediaAsset(
+    id: number,
+    updates: Partial<InsertMediaAsset>,
+  ): Promise<MediaAsset> {
+    const [updatedAsset] = await db
+      .update(mediaAssets)
+      .set(updates)
+      .where(eq(mediaAssets.id, id))
+      .returning();
+    return updatedAsset;
   }
 
   async deleteMediaAsset(id: number): Promise<void> {
@@ -246,8 +386,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product attribute operations
-  async createProductAttribute(attribute: InsertProductAttribute): Promise<ProductAttribute> {
-    const [newAttribute] = await db.insert(productAttributes).values(attribute).returning();
+  async createProductAttribute(
+    attribute: InsertProductAttribute,
+  ): Promise<ProductAttribute> {
+    const [newAttribute] = await db
+      .insert(productAttributes)
+      .values(attribute)
+      .returning();
     return newAttribute;
   }
 
@@ -259,24 +404,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product family operations
-  async createProductFamily(family: InsertProductFamily): Promise<ProductFamily> {
-    const [newFamily] = await db.insert(productFamilies).values(family).returning();
+  async createProductFamily(
+    family: InsertProductFamily,
+  ): Promise<ProductFamily> {
+    const [newFamily] = await db
+      .insert(productFamilies)
+      .values(family)
+      .returning();
     return newFamily;
   }
 
   async getProductFamilies(brandId?: number): Promise<ProductFamily[]> {
     let query = db.select().from(productFamilies);
-    
+
     if (brandId) {
       query = query.where(eq(productFamilies.brandId, brandId));
     }
-    
+
     return await query.orderBy(desc(productFamilies.createdAt));
   }
 
   // Syndication channel operations
-  async createSyndicationChannel(channel: InsertSyndicationChannel): Promise<SyndicationChannel> {
-    const [newChannel] = await db.insert(syndicationChannels).values(channel).returning();
+  async createSyndicationChannel(
+    channel: InsertSyndicationChannel,
+  ): Promise<SyndicationChannel> {
+    const [newChannel] = await db
+      .insert(syndicationChannels)
+      .values(channel)
+      .returning();
     return newChannel;
   }
 
@@ -288,7 +443,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(syndicationChannels.createdAt));
   }
 
-  async getSyndicationChannel(id: number): Promise<SyndicationChannel | undefined> {
+  async getSyndicationChannel(
+    id: number,
+  ): Promise<SyndicationChannel | undefined> {
     const [channel] = await db
       .select()
       .from(syndicationChannels)
@@ -296,7 +453,10 @@ export class DatabaseStorage implements IStorage {
     return channel;
   }
 
-  async updateSyndicationChannel(id: number, updates: Partial<InsertSyndicationChannel>): Promise<SyndicationChannel> {
+  async updateSyndicationChannel(
+    id: number,
+    updates: Partial<InsertSyndicationChannel>,
+  ): Promise<SyndicationChannel> {
     const [updatedChannel] = await db
       .update(syndicationChannels)
       .set({ ...updates, updatedAt: new Date() })
@@ -310,12 +470,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product syndication operations
-  async createProductSyndication(syndication: InsertProductSyndication): Promise<ProductSyndication> {
-    const [newSyndication] = await db.insert(productSyndications).values(syndication).returning();
+  async createProductSyndication(
+    syndication: InsertProductSyndication,
+  ): Promise<ProductSyndication> {
+    const [newSyndication] = await db
+      .insert(productSyndications)
+      .values(syndication)
+      .returning();
     return newSyndication;
   }
 
-  async getProductSyndications(productId?: number, channelId?: number): Promise<ProductSyndication[]> {
+  async getProductSyndications(
+    productId?: number,
+    channelId?: number,
+  ): Promise<ProductSyndication[]> {
     let query = db
       .select({
         id: productSyndications.id,
@@ -336,19 +504,22 @@ export class DatabaseStorage implements IStorage {
         productName: products.name,
       })
       .from(productSyndications)
-      .leftJoin(syndicationChannels, eq(productSyndications.channelId, syndicationChannels.id))
+      .leftJoin(
+        syndicationChannels,
+        eq(productSyndications.channelId, syndicationChannels.id),
+      )
       .leftJoin(products, eq(productSyndications.productId, products.id));
 
     const conditions = [];
-    
+
     if (productId) {
       conditions.push(eq(productSyndications.productId, productId));
     }
-    
+
     if (channelId) {
       conditions.push(eq(productSyndications.channelId, channelId));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
@@ -356,20 +527,26 @@ export class DatabaseStorage implements IStorage {
     return await query.orderBy(desc(productSyndications.updatedAt));
   }
 
-  async getProductSyndication(productId: number, channelId: number): Promise<ProductSyndication | undefined> {
+  async getProductSyndication(
+    productId: number,
+    channelId: number,
+  ): Promise<ProductSyndication | undefined> {
     const [syndication] = await db
       .select()
       .from(productSyndications)
       .where(
         and(
           eq(productSyndications.productId, productId),
-          eq(productSyndications.channelId, channelId)
-        )
+          eq(productSyndications.channelId, channelId),
+        ),
       );
     return syndication;
   }
 
-  async updateProductSyndication(id: number, updates: Partial<InsertProductSyndication>): Promise<ProductSyndication> {
+  async updateProductSyndication(
+    id: number,
+    updates: Partial<InsertProductSyndication>,
+  ): Promise<ProductSyndication> {
     const [updatedSyndication] = await db
       .update(productSyndications)
       .set({ ...updates, updatedAt: new Date() })
@@ -383,12 +560,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Syndication logs operations
-  async createSyndicationLog(log: InsertSyndicationLog): Promise<SyndicationLog> {
+  async createSyndicationLog(
+    log: InsertSyndicationLog,
+  ): Promise<SyndicationLog> {
     const [newLog] = await db.insert(syndicationLogs).values(log).returning();
     return newLog;
   }
 
-  async getSyndicationLogs(productId?: number, channelId?: number, limit: number = 100): Promise<SyndicationLog[]> {
+  async getSyndicationLogs(
+    productId?: number,
+    channelId?: number,
+    limit: number = 100,
+  ): Promise<SyndicationLog[]> {
     let query = db
       .select({
         id: syndicationLogs.id,
@@ -408,26 +591,27 @@ export class DatabaseStorage implements IStorage {
         productName: products.name,
       })
       .from(syndicationLogs)
-      .leftJoin(syndicationChannels, eq(syndicationLogs.channelId, syndicationChannels.id))
+      .leftJoin(
+        syndicationChannels,
+        eq(syndicationLogs.channelId, syndicationChannels.id),
+      )
       .leftJoin(products, eq(syndicationLogs.productId, products.id));
 
     const conditions = [];
-    
+
     if (productId) {
       conditions.push(eq(syndicationLogs.productId, productId));
     }
-    
+
     if (channelId) {
       conditions.push(eq(syndicationLogs.channelId, channelId));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
 
-    return await query
-      .orderBy(desc(syndicationLogs.createdAt))
-      .limit(limit);
+    return await query.orderBy(desc(syndicationLogs.createdAt)).limit(limit);
   }
 
   // Dashboard analytics
@@ -440,26 +624,29 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [brandCount] = await db
+    const brandCountResult = await db
       .select({ count: count() })
       .from(brands)
       .where(eq(brands.ownerId, userId));
+    const brandCount = brandCountResult?.[0];
 
-    const [productCount] = await db
+    const productCountResult = await db
       .select({ count: count() })
       .from(products)
       .leftJoin(brands, eq(products.brandId, brands.id))
       .where(eq(brands.ownerId, userId));
+    const productCount = productCountResult?.[0];
 
-    const [syncCount] = await db
+    const syncCountResult = await db
       .select({ count: count() })
       .from(syndicationLogs)
-      .where(sql`${syndicationLogs.createdAt} >= ${today}`);
+      .where(gte(syndicationLogs.createdAt, today));
+    const syncCount = syncCountResult?.[0];
 
     return {
-      totalBrands: brandCount.count,
-      totalProducts: productCount.count,
-      apiSyncsToday: syncCount.count,
+      totalBrands: brandCount?.count || 0,
+      totalProducts: productCount?.count || 0,
+      apiSyncsToday: syncCount?.count || 0,
       avgTimeToMarket: 8.2, // Mock value for now
     };
   }
@@ -473,8 +660,8 @@ export class DatabaseStorage implements IStorage {
         or(
           like(products.name, `%${query}%`),
           like(products.shortDescription, `%${query}%`),
-          like(products.sku, `%${query}%`)
-        )
+          like(products.sku, `%${query}%`),
+        ),
       )
       .orderBy(desc(products.createdAt))
       .limit(20);
@@ -487,8 +674,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         or(
           like(brands.name, `%${query}%`),
-          like(brands.description, `%${query}%`)
-        )
+          like(brands.description, `%${query}%`),
+        ),
       )
       .orderBy(desc(brands.createdAt))
       .limit(20);

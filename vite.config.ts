@@ -33,5 +33,17 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    hmr: {
+      port: 5000, // Explicit port for HMR WebSocket
+      host: 'localhost',
+    },
+    // Ensure proper handling of WebSocket connections
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:5000',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
 });

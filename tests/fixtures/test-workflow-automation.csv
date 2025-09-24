@@ -1,0 +1,6 @@
+product_name,description,price,sku,category
+Test Product 1,A test product for workflow automation,29.99,TEST-001,Electronics
+Test Product 2,Another test product,39.99,TEST-002,Electronics
+Test Product 3,Third test product,19.99,TEST-003,Accessories
+Test Product 4,Fourth test product,49.99,TEST-004,Electronics
+Test Product 5,Fifth test product,9.99,TEST-005,Accessories

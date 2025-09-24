@@ -1,0 +1,1 @@
+ALTER TABLE "import_sessions" ADD COLUMN "workflow_state" varchar(50);
