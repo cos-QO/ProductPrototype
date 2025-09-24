@@ -1,0 +1,535 @@
+import fetch from "node-fetch";
+
+/**
+ * OpenRouter API Client for GPT-4o-mini Integration
+ * Provides LLM capabilities for intelligent field mapping
+ */
+
+interface OpenRouterRequest {
+  model: string;
+  messages: Array<{
+    role: "system" | "user" | "assistant";
+    content: string;
+  }>;
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+}
+
+interface OpenRouterResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+interface OpenRouterError {
+  error: {
+    message: string;
+    type: string;
+    code?: string;
+  };
+}
+
+interface TokenUsageStats {
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number; // USD
+  promptTokens: number;
+  completionTokens: number;
+  averageResponseTime: number;
+}
+
+export class OpenRouterClient {
+  private static instance: OpenRouterClient;
+  private apiKey: string;
+  private baseUrl: string;
+  private httpReferer: string;
+  private appTitle: string;
+  private stats: TokenUsageStats;
+  private readonly MODEL_4O_MINI = "openai/gpt-4o-mini";
+  private readonly MODEL_4O = "openai/gpt-4o";
+
+  // Pricing for different models (per 1M tokens)
+  private readonly PRICING = {
+    "openai/gpt-4o-mini": {
+      input: 0.15, // $0.150 per 1M input tokens
+      output: 0.6, // $0.600 per 1M output tokens
+    },
+    "openai/gpt-4o": {
+      input: 2.5, // $2.50 per 1M input tokens
+      output: 10.0, // $10.00 per 1M output tokens
+    },
+  };
+
+  private constructor() {
+    this.apiKey = process.env.OPENROUTER_API_KEY || "";
+    this.baseUrl =
+      process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+    this.httpReferer =
+      process.env.OPENROUTER_HTTP_REFERER ||
+      "https://github.com/QueenOne/ProductPrototype";
+    this.appTitle =
+      process.env.OPENROUTER_X_TITLE ||
+      "QueenOne ProductPrototype - Bulk Upload";
+
+    this.stats = {
+      totalRequests: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      averageResponseTime: 0,
+    };
+
+    if (!this.apiKey) {
+      console.warn(
+        "OpenRouter API key not found. LLM field mapping will be disabled.",
+      );
+    } else {
+      console.log("OpenRouter client initialized successfully");
+    }
+  }
+
+  public static getInstance(): OpenRouterClient {
+    if (!OpenRouterClient.instance) {
+      OpenRouterClient.instance = new OpenRouterClient();
+    }
+    return OpenRouterClient.instance;
+  }
+
+  /**
+   * Check if OpenRouter is available for use
+   */
+  public isAvailable(): boolean {
+    return !!this.apiKey;
+  }
+
+  /**
+   * Get current token usage statistics
+   */
+  public getStats(): TokenUsageStats {
+    return { ...this.stats };
+  }
+
+  /**
+   * Reset statistics (useful for testing)
+   */
+  public resetStats(): void {
+    this.stats = {
+      totalRequests: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      averageResponseTime: 0,
+    };
+  }
+
+  /**
+   * Make a completion request to OpenRouter
+   */
+  public async createCompletion(
+    request: OpenRouterRequest,
+    options: {
+      timeout?: number;
+      retries?: number;
+      costLimit?: number; // USD limit per request
+    } = {},
+  ): Promise<{
+    success: boolean;
+    data?: OpenRouterResponse;
+    error?: string;
+    usage?: {
+      tokens: number;
+      cost: number;
+      responseTime: number;
+    };
+  }> {
+    const { timeout = 30000, retries = 2, costLimit = 0.01 } = options;
+
+    if (!this.isAvailable()) {
+      return {
+        success: false,
+        error: "OpenRouter API key not configured",
+      };
+    }
+
+    const startTime = Date.now();
+    let lastError: string = "";
+
+    // Estimate cost before making request
+    const estimatedInputTokens = this.estimateTokens(
+      request.messages.map((m) => m.content).join(" "),
+    );
+    const estimatedOutputTokens = request.max_tokens || 500;
+    const estimatedCost = this.calculateCost(
+      estimatedInputTokens,
+      estimatedOutputTokens,
+      request.model,
+    );
+
+    if (estimatedCost > costLimit) {
+      return {
+        success: false,
+        error: `Estimated cost $${estimatedCost.toFixed(4)} exceeds limit $${costLimit.toFixed(4)}`,
+      };
+    }
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": this.httpReferer,
+            "X-Title": this.appTitle,
+          },
+          body: JSON.stringify({
+            ...request,
+            model: request.model || this.MODEL_4O_MINI, // Use provided model or default to 4o-mini
+          }),
+          signal: controller.signal as any,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = (await response.json()) as OpenRouterError;
+          lastError = errorData.error?.message || `HTTP ${response.status}`;
+
+          // Don't retry on client errors (4xx)
+          if (response.status >= 400 && response.status < 500) {
+            break;
+          }
+
+          continue;
+        }
+
+        const data = (await response.json()) as OpenRouterResponse;
+        const responseTime = Date.now() - startTime;
+
+        // Update statistics
+        this.updateStats(data.usage, responseTime);
+
+        return {
+          success: true,
+          data,
+          usage: {
+            tokens: data.usage.total_tokens,
+            cost: this.calculateCost(
+              data.usage.prompt_tokens,
+              data.usage.completion_tokens,
+              data.model,
+            ),
+            responseTime,
+          },
+        };
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : "Unknown error";
+
+        if (attempt === retries) {
+          break;
+        }
+
+        // Exponential backoff
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 1000),
+        );
+      }
+    }
+
+    return {
+      success: false,
+      error: `Failed after ${retries + 1} attempts: ${lastError}`,
+    };
+  }
+
+  /**
+   * Create a field mapping completion request
+   */
+  public async analyzeFieldMapping(
+    sourceFields: string[],
+    sampleData: any[][],
+    targetFields: string[],
+    context?: string,
+  ): Promise<{
+    success: boolean;
+    mappings?: Array<{
+      sourceField: string;
+      targetField: string;
+      confidence: number;
+      reasoning: string;
+    }>;
+    error?: string;
+    usage?: {
+      tokens: number;
+      cost: number;
+      responseTime: number;
+    };
+  }> {
+    if (!this.isAvailable()) {
+      return {
+        success: false,
+        error: "OpenRouter not available",
+      };
+    }
+
+    const systemPrompt = this.buildFieldMappingSystemPrompt();
+    const userPrompt = this.buildFieldMappingUserPrompt(
+      sourceFields,
+      sampleData,
+      targetFields,
+      context,
+    );
+
+    const result = await this.createCompletion(
+      {
+        model: this.MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 1000,
+        temperature: 0.1, // Low temperature for consistency
+        top_p: 0.9,
+      },
+      {
+        costLimit: 0.005, // $0.005 limit per field mapping request
+      },
+    );
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+        usage: result.usage,
+      };
+    }
+
+    try {
+      const content = result.data!.choices[0].message.content;
+      const mappings = this.parseFieldMappingResponse(content);
+
+      return {
+        success: true,
+        mappings,
+        usage: result.usage,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to parse LLM response: ${error instanceof Error ? error.message : "Unknown error"}`,
+        usage: result.usage,
+      };
+    }
+  }
+
+  /**
+   * Build system prompt for field mapping
+   */
+  private buildFieldMappingSystemPrompt(): string {
+    return `You are an expert data analyst specializing in field mapping for e-commerce product data.
+
+Your task is to analyze source data fields and map them to target product schema fields with high accuracy.
+
+Product Schema Fields:
+- name: Product name/title (required)
+- slug: URL-friendly identifier
+- sku: Stock keeping unit
+- gtin: Global trade item number (barcode)
+- shortDescription: Brief product description
+- longDescription: Detailed description
+- story: Product/brand story
+- price: Selling price (number)
+- compareAtPrice: Original/MSRP price (number)
+- inventoryQuantity: Stock quantity (number)
+- trackInventory: Whether to track inventory (boolean)
+- isActive: Product status (boolean)
+- tags: Product tags (array)
+- metaTitle: SEO title
+- metaDescription: SEO description
+- weight: Product weight (number)
+- weightUnit: Weight unit (string)
+- hsCode: Harmonized system code
+- countryOfOrigin: Country of origin
+- material: Product material
+- color: Product color
+- size: Product size
+- gender: Target gender
+- ageGroup: Target age group
+- season: Seasonal category
+- brand: Brand name
+- vendor: Vendor/supplier
+- productType: Product category
+- collection: Product collection
+
+Mapping Rules:
+1. Only map to valid target fields listed above
+2. Confidence score 0-100 based on field name similarity and data content
+3. Consider data types and sample values
+4. Provide clear reasoning for each mapping
+5. Return exactly one mapping per source field
+6. Use "unmapped" as targetField if no good match exists (confidence < 30)
+
+Response Format (JSON only):
+{
+  "mappings": [
+    {
+      "sourceField": "source_field_name",
+      "targetField": "target_field_name_or_unmapped",
+      "confidence": 85,
+      "reasoning": "Brief explanation"
+    }
+  ]
+}`;
+  }
+
+  /**
+   * Build user prompt for specific field mapping request
+   */
+  private buildFieldMappingUserPrompt(
+    sourceFields: string[],
+    sampleData: any[][],
+    targetFields: string[],
+    context?: string,
+  ): string {
+    let prompt = `Please analyze and map the following source fields to the product schema:\n\n`;
+
+    prompt += `Source Fields:\n`;
+    sourceFields.forEach((field, index) => {
+      prompt += `${index + 1}. "${field}"\n`;
+    });
+
+    if (sampleData.length > 0) {
+      prompt += `\nSample Data (first 3 rows):\n`;
+      sampleData.slice(0, 3).forEach((row, rowIndex) => {
+        prompt += `Row ${rowIndex + 1}: `;
+        sourceFields.forEach((field, fieldIndex) => {
+          const value = row[fieldIndex];
+          prompt += `${field}="${value}" `;
+        });
+        prompt += `\n`;
+      });
+    }
+
+    if (context) {
+      prompt += `\nAdditional Context: ${context}\n`;
+    }
+
+    prompt += `\nReturn field mappings as JSON following the specified format.`;
+
+    return prompt;
+  }
+
+  /**
+   * Parse LLM response to extract field mappings
+   */
+  private parseFieldMappingResponse(content: string): Array<{
+    sourceField: string;
+    targetField: string;
+    confidence: number;
+    reasoning: string;
+  }> {
+    // Try to extract JSON from the response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON found in response");
+    }
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      if (!parsed.mappings || !Array.isArray(parsed.mappings)) {
+        throw new Error("Invalid response format: missing mappings array");
+      }
+
+      return parsed.mappings.map((mapping: any) => ({
+        sourceField: String(mapping.sourceField || ""),
+        targetField: String(mapping.targetField || "unmapped"),
+        confidence: Math.max(0, Math.min(100, Number(mapping.confidence || 0))),
+        reasoning: String(mapping.reasoning || "No reasoning provided"),
+      }));
+    } catch (error) {
+      throw new Error(
+        `JSON parsing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  }
+
+  /**
+   * Estimate token count for text (rough approximation)
+   */
+  private estimateTokens(text: string): number {
+    // Rough approximation: 1 token ≈ 4 characters for English text
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Calculate cost based on token usage and model
+   */
+  private calculateCost(
+    inputTokens: number,
+    outputTokens: number,
+    model?: string,
+  ): number {
+    const modelToUse = model || this.MODEL_4O_MINI;
+    const pricing =
+      this.PRICING[modelToUse as keyof typeof this.PRICING] ||
+      this.PRICING["openai/gpt-4o-mini"];
+
+    const inputCost = (inputTokens / 1000000) * pricing.input;
+    const outputCost = (outputTokens / 1000000) * pricing.output;
+    return inputCost + outputCost;
+  }
+
+  /**
+   * Update internal statistics
+   */
+  private updateStats(
+    usage: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    },
+    responseTime: number,
+  ): void {
+    const cost = this.calculateCost(
+      usage.prompt_tokens,
+      usage.completion_tokens,
+    );
+
+    this.stats.totalRequests++;
+    this.stats.totalTokens += usage.total_tokens;
+    this.stats.totalCost += cost;
+    this.stats.promptTokens += usage.prompt_tokens;
+    this.stats.completionTokens += usage.completion_tokens;
+
+    // Update average response time
+    this.stats.averageResponseTime =
+      (this.stats.averageResponseTime * (this.stats.totalRequests - 1) +
+        responseTime) /
+      this.stats.totalRequests;
+  }
+}
+
+export default OpenRouterClient;

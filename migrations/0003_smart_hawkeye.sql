@@ -1,0 +1,1 @@
+ALTER TABLE "import_sessions" ADD COLUMN "file_path" varchar(1000);

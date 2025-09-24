@@ -13,15 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Box, Plus, Search, Filter, Download, Upload, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { useLocation } from "wouter";
+import { BulkUploadWizard } from "@/components/bulk-upload";
+import type { ImportResults } from "@/components/bulk-upload/types";
 
 export default function Products() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedImportBrand, setSelectedImportBrand] = useState<string>("");
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -50,16 +57,23 @@ export default function Products() {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: number) => {
-      await apiRequest("DELETE", `/api/products/${productId}`);
+      try {
+        await apiRequest("DELETE", `/api/products/${productId}`);
+      } catch (error) {
+        // Re-throw to trigger onError handler
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
         description: "Product deleted successfully",
       });
     },
     onError: (error) => {
+      console.error("Product deletion error:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -73,7 +87,7 @@ export default function Products() {
       }
       toast({
         title: "Error",
-        description: "Failed to delete product",
+        description: "Failed to delete product. It might have been deleted already or you lack permissions.",
         variant: "destructive",
       });
     },
@@ -116,9 +130,38 @@ export default function Products() {
   });
 
   const handleDeleteProduct = (productId: number) => {
-    if (confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-      deleteProductMutation.mutate(productId);
+    setProductToDelete(productId);
+  };
+
+  const confirmDeleteProduct = () => {
+    if (productToDelete) {
+      deleteProductMutation.mutate(productToDelete);
+      setProductToDelete(null);
     }
+  };
+
+  const cancelDeleteProduct = () => {
+    setProductToDelete(null);
+  };
+
+  const handleBulkUploadComplete = (results: ImportResults) => {
+    // Refresh products list
+    queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
+    
+    // Show success toast
+    toast({
+      title: "Import Successful",
+      description: `Successfully imported ${results.successfulRecords} products`,
+    });
+    
+    // Update filters to show new products
+    if (results.brandId) {
+      setSelectedBrand(results.brandId.toString());
+    }
+    
+    // Close wizard
+    setIsBulkUploadOpen(false);
   };
 
   const filteredProducts = (products as any[])?.filter((product: any) => {
@@ -221,13 +264,19 @@ export default function Products() {
                 </DialogContent>
               </Dialog>
               
-              <Button variant="outline" data-testid="button-bulk-upload">
+              <Button 
+                variant="outline" 
+                data-testid="button-bulk-upload"
+                onClick={() => setIsBulkUploadOpen(true)}
+                className="hover:border-primary/50 transition-colors"
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Bulk Upload
               </Button>
               <Button 
                 className="gradient-primary text-white hover:opacity-90"
                 data-testid="button-create-product"
+                onClick={() => navigate('/products/new')}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Product
@@ -313,6 +362,15 @@ export default function Products() {
                   isDeleting={deleteProductMutation.isPending}
                 />
               ))}
+              <ConfirmationDialog
+                isOpen={!!productToDelete}
+                onClose={cancelDeleteProduct}
+                onConfirm={confirmDeleteProduct}
+                title="Delete Product"
+                description="Are you sure you want to delete this product? This action cannot be undone."
+                confirmText="Delete Product"
+                isLoading={deleteProductMutation.isPending}
+              />
             </div>
           ) : (
             <Card className="bg-card border-border">
@@ -339,6 +397,13 @@ export default function Products() {
           )}
         </main>
       </div>
+      
+      {/* Bulk Upload Wizard */}
+      <BulkUploadWizard 
+        isOpen={isBulkUploadOpen}
+        onClose={() => setIsBulkUploadOpen(false)}
+        onComplete={handleBulkUploadComplete}
+      />
     </div>
   );
 }

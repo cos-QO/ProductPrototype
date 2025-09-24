@@ -66,6 +66,7 @@ export default function Brands() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       setIsRegistrationOpen(false);
       form.reset();
       toast({
@@ -99,6 +100,7 @@ export default function Brands() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/brands"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/counts"] });
       toast({
         title: "Success",
         description: "Brand deleted successfully",
@@ -313,10 +315,21 @@ export default function Brands() {
                               src={brand.logoUrl} 
                               alt={brand.name}
                               className="w-8 h-8 rounded object-cover"
+                              onError={(e) => {
+                                // Fix corrupted URLs that might be missing domain
+                                const target = e.target as HTMLImageElement;
+                                if (target.src.includes('200x200?text=') && !target.src.includes('https://via.placeholder.com/')) {
+                                  target.src = `https://via.placeholder.com/${target.src.split('200x200?text=')[1] ? target.src : '200x200?text=' + encodeURIComponent(brand.name)}`;
+                                } else {
+                                  // Hide image and show fallback
+                                  target.style.display = 'none';
+                                  target.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
+                                }
+                              }}
                             />
-                          ) : (
-                            <Crown className="text-white h-5 w-5" />
-                          )}
+                          ) : null}
+                          {/* Fallback icon */}
+                          <Crown className={`text-white h-5 w-5 ${brand.logoUrl ? 'hidden fallback-icon' : ''}`} />
                         </div>
                         <div>
                           <h3 className="font-semibold text-sm" data-testid={`text-brand-name-${brand.id}`}>

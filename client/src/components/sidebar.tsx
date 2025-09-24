@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Crown, 
   Box, 
@@ -16,6 +17,12 @@ import { cn } from "@/lib/utils";
 export default function Sidebar() {
   const [location] = useLocation();
 
+  // Fetch dynamic counts for sidebar badges
+  const { data: counts } = useQuery({
+    queryKey: ["/api/dashboard/counts"],
+    retry: false,
+  });
+
   const navigation = [
     {
       section: "Overview",
@@ -27,8 +34,8 @@ export default function Sidebar() {
     {
       section: "Catalog",
       items: [
-        { name: "Brands", href: "/brands", icon: Crown, current: location === "/brands", badge: "12" },
-        { name: "Products", href: "/products", icon: Box, current: location === "/products", badge: "1,847" },
+        { name: "Brands", href: "/brands", icon: Crown, current: location === "/brands", badge: counts?.brands?.toString() || "0" },
+        { name: "Products", href: "/products", icon: Box, current: location === "/products", badge: counts?.products?.toString() || "0" },
         { name: "Media Assets", href: "/assets", icon: Images, current: location === "/assets" },
         { name: "Product Families", href: "/families", icon: Layers, current: location === "/families" },
       ]
