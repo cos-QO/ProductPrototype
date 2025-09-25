@@ -1,8 +1,12 @@
 import primitiveColors from "../tokens/primitive/colors.json";
 import primitiveSpacing from "../tokens/primitive/spacing.json";
 import primitiveTypography from "../tokens/primitive/typography.json";
+import primitiveElevation from "../tokens/primitive/elevation.json";
+import primitiveMotion from "../tokens/primitive/motion.json";
+import primitiveLayout from "../tokens/primitive/layout.json";
 import semanticStatus from "../tokens/semantic/status.json";
 import semanticTheme from "../tokens/semantic/theme.json";
+import semanticElevation from "../tokens/semantic/elevation.json";
 
 type TokenValue = string | number | object | string[];
 type TokenMap = Record<string, TokenValue>;
@@ -17,8 +21,12 @@ class TokenResolver {
       primitiveColors,
       primitiveSpacing,
       primitiveTypography,
+      primitiveElevation,
+      primitiveMotion,
+      primitiveLayout,
       semanticStatus,
       semanticTheme,
+      semanticElevation,
     ]);
   }
 

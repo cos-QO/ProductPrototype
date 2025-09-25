@@ -65,93 +65,101 @@ export interface EnhancedBadgeProps
   useTokenStyles?: boolean;
 }
 
-function EnhancedBadge({
-  className,
-  variant,
-  size,
-  tokenPath,
-  useTokenStyles = false,
-  style,
-  ...props
-}: EnhancedBadgeProps) {
-  // Dynamic styles based on token resolution
-  const dynamicStyles = React.useMemo(() => {
-    const baseStyles = style || {};
+const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      tokenPath,
+      useTokenStyles = false,
+      style,
+      ...props
+    },
+    ref,
+  ) => {
+    // Dynamic styles based on token resolution
+    const dynamicStyles = React.useMemo(() => {
+      const baseStyles = style || {};
 
-    if (useTokenStyles && variant) {
-      // Apply token-resolved colors directly as CSS-in-JS
-      switch (variant) {
-        case "success":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.success.background,
-            color: statusColors.success.foreground,
-            borderColor: statusColors.success.border,
-          };
-        case "warning":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.warning.background,
-            color: statusColors.warning.foreground,
-            borderColor: statusColors.warning.border,
-          };
-        case "info":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.info.background,
-            color: statusColors.info.foreground,
-            borderColor: statusColors.info.border,
-          };
-        case "processing":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.processing.background,
-            color: statusColors.processing.foreground,
-            borderColor: statusColors.processing.border,
-          };
-        case "success-light":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.success.light,
-            color: statusColors.success.text,
-          };
-        case "warning-light":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.warning.light,
-            color: statusColors.warning.text,
-          };
-        case "info-light":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.info.light,
-            color: statusColors.info.text,
-          };
-        case "processing-light":
-          return {
-            ...baseStyles,
-            backgroundColor: statusColors.processing.light,
-            color: statusColors.processing.text,
-          };
+      if (useTokenStyles && variant) {
+        // Apply token-resolved colors directly as CSS-in-JS
+        switch (variant) {
+          case "success":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.success.background,
+              color: statusColors.success.foreground,
+              borderColor: statusColors.success.border,
+            };
+          case "warning":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.warning.background,
+              color: statusColors.warning.foreground,
+              borderColor: statusColors.warning.border,
+            };
+          case "info":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.info.background,
+              color: statusColors.info.foreground,
+              borderColor: statusColors.info.border,
+            };
+          case "processing":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.processing.background,
+              color: statusColors.processing.foreground,
+              borderColor: statusColors.processing.border,
+            };
+          case "success-light":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.success.light,
+              color: statusColors.success.text,
+            };
+          case "warning-light":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.warning.light,
+              color: statusColors.warning.text,
+            };
+          case "info-light":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.info.light,
+              color: statusColors.info.text,
+            };
+          case "processing-light":
+            return {
+              ...baseStyles,
+              backgroundColor: statusColors.processing.light,
+              color: statusColors.processing.text,
+            };
+        }
       }
-    }
 
-    if (tokenPath) {
-      // Custom token path - this would need more sophisticated resolution
-      console.log("Custom token path not yet implemented:", tokenPath);
-    }
+      if (tokenPath) {
+        // Custom token path - this would need more sophisticated resolution
+        console.log("Custom token path not yet implemented:", tokenPath);
+      }
 
-    return baseStyles;
-  }, [style, variant, tokenPath, useTokenStyles]);
+      return baseStyles;
+    }, [style, variant, tokenPath, useTokenStyles]);
 
-  return (
-    <div
-      className={cn(enhancedBadgeVariants({ variant, size }), className)}
-      style={dynamicStyles}
-      {...props}
-    />
-  );
-}
+    return (
+      <div
+        ref={ref}
+        className={cn(enhancedBadgeVariants({ variant, size }), className)}
+        style={dynamicStyles}
+        {...props}
+      />
+    );
+  },
+);
+
+EnhancedBadge.displayName = "EnhancedBadge";
 
 /**
  * Backward-compatible export that matches original Badge API exactly
