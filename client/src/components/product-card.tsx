@@ -27,20 +27,6 @@ export default function ProductCard({
   isDeleting,
 }: ProductCardProps) {
   const [, navigate] = useLocation();
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "live":
-        return "bg-green-400";
-      case "review":
-        return "bg-yellow-400";
-      case "draft":
-        return "bg-blue-400";
-      case "archived":
-        return "bg-gray-400";
-      default:
-        return "bg-muted";
-    }
-  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -88,33 +74,20 @@ export default function ProductCard({
       </div>
 
       <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3
-              className="font-semibold text-sm mb-1 truncate"
-              title={product.name}
-              data-testid={`text-product-name-${product.id}`}
-            >
-              {product.name}
-            </h3>
-            <p
-              className="text-xs text-muted-foreground"
-              data-testid={`text-product-brand-${product.id}`}
-            >
-              {product.brandName || "Unknown Brand"}
-            </p>
-          </div>
-          <div className="flex items-center space-x-1 flex-shrink-0">
-            <span
-              className={`w-2 h-2 rounded-full ${getStatusColor(product.status)}`}
-            ></span>
-            <span
-              className="text-xs capitalize"
-              data-testid={`text-product-status-${product.id}`}
-            >
-              {product.status}
-            </span>
-          </div>
+        <div className="mb-3">
+          <h3
+            className="font-semibold text-sm mb-1 truncate"
+            title={product.name}
+            data-testid={`text-product-name-${product.id}`}
+          >
+            {product.name}
+          </h3>
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid={`text-product-brand-${product.id}`}
+          >
+            {product.brandName || "Unknown Brand"}
+          </p>
         </div>
 
         <p
