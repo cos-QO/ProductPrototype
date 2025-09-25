@@ -27,6 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -494,24 +495,25 @@ export default function ProductEdit() {
         ),
       );
       refetchMedia();
+      closeEditDialog(); // Close dialog after successful update
       toast({
         title: "Success",
-        description: "Media updated successfully",
+        description: "frame updated successfully",
       });
     },
     onError: (error: any) => {
       console.error("Media update error:", error);
 
       let title = "Update Failed";
-      let description = "Failed to update media properties";
+      let description = "Failed to update frame properties";
 
       if (error?.response?.status === 404) {
-        title = "Media Not Found";
+        title = "frame Not Found";
         description =
-          "The media file you're trying to update no longer exists.";
+          "The frame file you're trying to update no longer exists.";
       } else if (error?.response?.status === 403) {
         title = "Permission Denied";
-        description = "You don't have permission to update this media file.";
+        description = "You don't have permission to update this frame file.";
       } else if (error?.response?.status >= 500) {
         title = "Server Error";
         description = "The server encountered an error. Please try again.";
@@ -547,19 +549,19 @@ export default function ProductEdit() {
       console.error("Media delete error:", error);
 
       let title = "Delete Failed";
-      let description = "Failed to delete media file";
+      let description = "Failed to delete frame file";
 
       if (error?.response?.status === 404) {
-        title = "Media Not Found";
+        title = "frame Not Found";
         description =
-          "The media file you're trying to delete no longer exists.";
+          "The frame file you're trying to delete no longer exists.";
       } else if (error?.response?.status === 403) {
         title = "Permission Denied";
-        description = "You don't have permission to delete this media file.";
+        description = "You don't have permission to delete this frame file.";
       } else if (error?.response?.status === 409) {
         title = "File In Use";
         description =
-          "This media file is currently being used and cannot be deleted.";
+          "This frame file is currently being used and cannot be deleted.";
       } else if (error?.response?.status >= 500) {
         title = "Server Error";
         description =
@@ -732,7 +734,7 @@ export default function ProductEdit() {
         assetType: editForm.assetType,
         altText: editForm.altText,
       });
-      closeEditDialog();
+      // Don't close dialog immediately - let the mutation success handler close it
     }
   };
 
@@ -1148,7 +1150,7 @@ export default function ProductEdit() {
                     data-testid="tab-channels"
                   >
                     <Globe className="h-4 w-4" />
-                    <span className="hidden sm:inline">Channels</span>
+                    <span className="hidden sm:inline">Syndication</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="history"
@@ -1846,7 +1848,14 @@ export default function ProductEdit() {
                                     {asset.assetType}
                                   </Badge>
                                   <div className="flex gap-1">
-                                    <Dialog>
+                                    <Dialog
+                                      open={editingMedia?.id === asset.id}
+                                      onOpenChange={(open) => {
+                                        if (!open) {
+                                          closeEditDialog();
+                                        }
+                                      }}
+                                    >
                                       <DialogTrigger asChild>
                                         <Button
                                           variant="ghost"
@@ -1859,82 +1868,90 @@ export default function ProductEdit() {
                                       </DialogTrigger>
                                       <DialogContent>
                                         <DialogHeader>
-                                          <DialogTitle>Edit Media</DialogTitle>
+                                          <DialogTitle>Edit frame</DialogTitle>
+                                          <DialogDescription>
+                                            Update the metadata and settings for
+                                            this frame asset.
+                                          </DialogDescription>
                                         </DialogHeader>
-                                        <div className="space-y-4">
-                                          <div>
-                                            <Label htmlFor="assetType">
-                                              Asset Type
-                                            </Label>
-                                            <Select
-                                              value={editForm.assetType}
-                                              onValueChange={(value) => {
-                                                setEditForm((prev) => ({
-                                                  ...prev,
-                                                  assetType: value,
-                                                }));
-                                              }}
-                                            >
-                                              <SelectTrigger>
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="hero">
-                                                  Hero
-                                                </SelectItem>
-                                                <SelectItem value="product">
-                                                  Product
-                                                </SelectItem>
-                                                <SelectItem value="lifestyle">
-                                                  Lifestyle
-                                                </SelectItem>
-                                                <SelectItem value="brand">
-                                                  Brand
-                                                </SelectItem>
-                                                <SelectItem value="video">
-                                                  Video
-                                                </SelectItem>
-                                                <SelectItem value="document">
-                                                  Document
-                                                </SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          {asset.mimeType?.startsWith(
-                                            "image/",
-                                          ) && (
+                                        {editingMedia?.id === asset.id && (
+                                          <div className="space-y-4">
                                             <div>
-                                              <Label htmlFor="altText">
-                                                Alt Text
+                                              <Label htmlFor="assetType">
+                                                Asset Type
                                               </Label>
-                                              <Input
-                                                id="altText"
-                                                value={editForm.altText}
-                                                onChange={(e) => {
+                                              <Select
+                                                value={editForm.assetType}
+                                                onValueChange={(value) => {
                                                   setEditForm((prev) => ({
                                                     ...prev,
-                                                    altText: e.target.value,
+                                                    assetType: value,
                                                   }));
                                                 }}
-                                                placeholder="Describe this image for accessibility"
-                                              />
+                                              >
+                                                <SelectTrigger>
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="hero">
+                                                    Hero
+                                                  </SelectItem>
+                                                  <SelectItem value="product">
+                                                    Product
+                                                  </SelectItem>
+                                                  <SelectItem value="lifestyle">
+                                                    Lifestyle
+                                                  </SelectItem>
+                                                  <SelectItem value="brand">
+                                                    Brand
+                                                  </SelectItem>
+                                                  <SelectItem value="video">
+                                                    Video
+                                                  </SelectItem>
+                                                  <SelectItem value="document">
+                                                    Document
+                                                  </SelectItem>
+                                                </SelectContent>
+                                              </Select>
                                             </div>
-                                          )}
-                                          <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                              <Label>File Size</Label>
-                                              <p className="text-sm text-muted-foreground">
-                                                {formatFileSize(asset.fileSize)}
-                                              </p>
-                                            </div>
-                                            <div>
-                                              <Label>Type</Label>
-                                              <p className="text-sm text-muted-foreground">
-                                                {asset.mimeType}
-                                              </p>
+                                            {asset.mimeType?.startsWith(
+                                              "image/",
+                                            ) && (
+                                              <div>
+                                                <Label htmlFor="altText">
+                                                  Alt Text
+                                                </Label>
+                                                <Input
+                                                  id="altText"
+                                                  value={editForm.altText}
+                                                  onChange={(e) => {
+                                                    setEditForm((prev) => ({
+                                                      ...prev,
+                                                      altText: e.target.value,
+                                                    }));
+                                                  }}
+                                                  placeholder="Describe this image for accessibility"
+                                                />
+                                              </div>
+                                            )}
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div>
+                                                <Label>File Size</Label>
+                                                <p className="text-sm text-muted-foreground">
+                                                  {formatFileSize(
+                                                    asset.fileSize,
+                                                  )}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <Label>Type</Label>
+                                                <p className="text-sm text-muted-foreground">
+                                                  {asset.mimeType}
+                                                </p>
+                                              </div>
                                             </div>
                                           </div>
-                                        </div>
+                                        )}
                                         <DialogFooter>
                                           <Button
                                             type="button"
@@ -1979,7 +1996,7 @@ export default function ProductEdit() {
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>
-                                            Delete Media
+                                            Delete frame
                                           </AlertDialogTitle>
                                           <AlertDialogDescription>
                                             Are you sure you want to delete "

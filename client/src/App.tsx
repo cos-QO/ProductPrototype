@@ -16,6 +16,7 @@ import ProductDetails from "@/pages/product-details";
 import BulkEdit from "@/pages/bulk-edit";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import DesignSystemTest from "@/pages/design-system-test";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,7 +26,7 @@ function Router() {
       {/* Public routes - always accessible */}
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
-      
+
       {isLoading ? (
         // Show loading state - could add a loading component here
         <Route path="/" component={Landing} />
@@ -34,7 +35,10 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard" component={Dashboard} />
-          <Route path="/product-management" component={ProductManagementDashboard} />
+          <Route
+            path="/product-management"
+            component={ProductManagementDashboard}
+          />
           <Route path="/bulk-edit" component={BulkEdit} />
           <Route path="/brands" component={Brands} />
           <Route path="/products" component={Products} />
@@ -42,6 +46,7 @@ function Router() {
           <Route path="/products/:id/edit" component={ProductEdit} />
           <Route path="/products/:id/view" component={ProductDetails} />
           <Route path="/products/:id/manage" component={ProductDetails} />
+          <Route path="/design-system-test" component={DesignSystemTest} />
         </>
       ) : (
         // Not authenticated - show landing for protected routes

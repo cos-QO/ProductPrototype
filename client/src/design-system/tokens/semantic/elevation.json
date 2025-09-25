@@ -1,0 +1,16 @@
+{
+  "semantic": {
+    "elevation": {
+      "card": "{primitive.elevation.base}",
+      "dropdown": "{primitive.elevation.lg}",
+      "modal": "{primitive.elevation.2xl}",
+      "tooltip": "{primitive.elevation.md}",
+      "navigation": "{primitive.elevation.sm}",
+      "sidebar": "{primitive.elevation.base}",
+      "sheet": "{primitive.elevation.xl}",
+      "hover": "{primitive.elevation.md}",
+      "focus": "{primitive.elevation.lg}",
+      "pressed": "{primitive.elevation.inner}"
+    }
+  }
+}
