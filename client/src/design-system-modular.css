@@ -2,7 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===============================================
+   MODULAR DESIGN SYSTEM - COMPATIBLE VERSION
+   This file extends existing tokens with modular architecture
+   while maintaining full backward compatibility.
+=============================================== */
+
 :root {
+  /* ==== EXISTING THEME TOKENS (Maintained) ==== */
   --background: hsl(222, 84%, 4.9%);
   --foreground: hsl(210, 40%, 98%);
   --card: hsl(222, 84%, 4.9%);
@@ -20,24 +27,29 @@
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(210, 40%, 98%);
   
-  /* Semantic Status Colors */
-  --success: hsl(142, 76%, 36%);
-  --success-foreground: hsl(355, 7%, 97%);
-  --warning: hsl(45, 93%, 47%);
-  --warning-foreground: hsl(222, 84%, 4.9%);
-  --info: hsl(217, 91%, 60%);
-  --info-foreground: hsl(210, 40%, 98%);
-  --processing: hsl(262, 83%, 58%);
-  --processing-foreground: hsl(210, 40%, 98%);
+  /* ==== NEW SEMANTIC STATUS TOKENS (Modular System) ==== */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #eab308;
+  --warning-foreground: #111827;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+  --processing: #a855f7;
+  --processing-foreground: #ffffff;
   
+  /* ==== BORDERS & INPUTS ==== */
   --border: hsl(217, 32%, 17%);
   --input: hsl(217, 32%, 17%);
   --ring: hsl(262, 83%, 58%);
+  
+  /* ==== CHART COLORS (Maintained) ==== */
   --chart-1: hsl(262, 83%, 58%);
   --chart-2: hsl(159, 100%, 36%);
   --chart-3: hsl(45, 93%, 47%);
   --chart-4: hsl(147, 78%, 42%);
   --chart-5: hsl(341, 75%, 51%);
+  
+  /* ==== SIDEBAR TOKENS (Maintained) ==== */
   --sidebar: hsl(222, 84%, 4.9%);
   --sidebar-foreground: hsl(210, 40%, 98%);
   --sidebar-primary: hsl(262, 83%, 58%);
@@ -46,25 +58,27 @@
   --sidebar-accent-foreground: hsl(262, 83%, 58%);
   --sidebar-border: hsl(217, 32%, 17%);
   --sidebar-ring: hsl(262, 83%, 58%);
+  
+  /* ==== TYPOGRAPHY TOKENS ==== */
   --font-sans: "Inter", sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   
-  /* Typography Scale */
-  --font-size-xs: 0.75rem;      /* 12px */
-  --font-size-sm: 0.875rem;     /* 14px */
-  --font-size-base: 1rem;       /* 16px */
-  --font-size-lg: 1.125rem;     /* 18px */
-  --font-size-xl: 1.25rem;      /* 20px */
-  --font-size-2xl: 1.5rem;      /* 24px */
-  --font-size-3xl: 1.875rem;    /* 30px */
+  /* Modular Typography Scale (NEW) */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
   
-  /* Line Heights */
+  /* Line Heights (NEW) */
   --line-height-tight: 1.25;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.625;
   
-  /* Spacing Scale */
+  /* Modular Spacing Scale (NEW) */
   --space-1: 0.25rem;    /* 4px */
   --space-2: 0.5rem;     /* 8px */
   --space-3: 0.75rem;    /* 12px */
@@ -75,6 +89,7 @@
   --space-10: 2.5rem;    /* 40px */
   --space-12: 3rem;      /* 48px */
   
+  /* ==== RADIUS & SHADOWS (Maintained) ==== */
   --radius: 0.75rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
@@ -88,6 +103,7 @@
   --spacing: 0.25rem;
 }
 
+/* ==== DARK THEME (Enhanced with New Tokens) ==== */
 .dark {
   --background: hsl(0, 0%, 0%);
   --foreground: hsl(200, 6.6667%, 91.1765%);
@@ -106,14 +122,14 @@
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
   
-  /* Semantic Status Colors - Dark Theme */
-  --success: hsl(142, 76%, 36%);
+  /* Enhanced Status Tokens for Dark Theme */
+  --success: #22c55e;
   --success-foreground: hsl(0, 0%, 100%);
-  --warning: hsl(45, 93%, 47%);
+  --warning: #eab308;
   --warning-foreground: hsl(0, 0%, 0%);
-  --info: hsl(217, 91%, 60%);
+  --info: #3b82f6;
   --info-foreground: hsl(0, 0%, 100%);
-  --processing: hsl(262, 83%, 58%);
+  --processing: #a855f7;
   --processing-foreground: hsl(0, 0%, 100%);
   
   --border: hsl(210, 5.2632%, 14.9020%);
@@ -143,9 +159,10 @@
   --shadow-md: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00), 0px 2px 4px -1px hsl(262, 83%, 58% / 0.00);
   --shadow-lg: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00), 0px 4px 6px -1px hsl(262, 83%, 58% / 0.00);
   --shadow-xl: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00), 0px 8px 10px -1px hsl(262, 83%, 58% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
+  --shadow-2xl: 0px 2 0px 0px hsl(262, 83%, 58% / 0.00);
 }
 
+/* ==== BASE LAYER (Maintained) ==== */
 @layer base {
   * {
     border-color: var(--border);
@@ -160,6 +177,7 @@
   }
 }
 
+/* ==== UTILITY CLASSES (Maintained) ==== */
 .gradient-primary {
   background: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(252, 83%, 68%) 100%);
 }
