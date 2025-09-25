@@ -1,0 +1,46 @@
+{
+  "semantic": {
+    "status": {
+      "success": {
+        "background": "{primitive.colors.green.500}",
+        "foreground": "{primitive.colors.neutral.0}",
+        "border": "{primitive.colors.green.600}",
+        "hover": "{primitive.colors.green.600}",
+        "light": "{primitive.colors.green.100}",
+        "text": "{primitive.colors.green.700}"
+      },
+      "warning": {
+        "background": "{primitive.colors.yellow.500}",
+        "foreground": "{primitive.colors.neutral.900}",
+        "border": "{primitive.colors.yellow.600}",
+        "hover": "{primitive.colors.yellow.600}",
+        "light": "{primitive.colors.yellow.100}",
+        "text": "{primitive.colors.yellow.700}"
+      },
+      "error": {
+        "background": "{primitive.colors.red.500}",
+        "foreground": "{primitive.colors.neutral.0}",
+        "border": "{primitive.colors.red.600}",
+        "hover": "{primitive.colors.red.600}",
+        "light": "{primitive.colors.red.100}",
+        "text": "{primitive.colors.red.700}"
+      },
+      "info": {
+        "background": "{primitive.colors.blue.500}",
+        "foreground": "{primitive.colors.neutral.0}",
+        "border": "{primitive.colors.blue.600}",
+        "hover": "{primitive.colors.blue.600}",
+        "light": "{primitive.colors.blue.100}",
+        "text": "{primitive.colors.blue.700}"
+      },
+      "processing": {
+        "background": "{primitive.colors.purple.500}",
+        "foreground": "{primitive.colors.neutral.0}",
+        "border": "{primitive.colors.purple.600}",
+        "hover": "{primitive.colors.purple.600}",
+        "light": "{primitive.colors.purple.100}",
+        "text": "{primitive.colors.purple.700}"
+      }
+    }
+  }
+}
