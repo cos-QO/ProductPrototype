@@ -1,0 +1,42 @@
+{
+  "semantic": {
+    "theme": {
+      "background": {
+        "primary": "hsl(222, 84%, 4.9%)",
+        "secondary": "hsl(217, 32%, 17%)",
+        "elevated": "hsl(222, 84%, 4.9%)"
+      },
+      "foreground": {
+        "primary": "hsl(210, 40%, 98%)",
+        "secondary": "hsl(215, 20%, 65%)",
+        "muted": "hsl(215, 20%, 65%)"
+      },
+      "border": {
+        "primary": "hsl(217, 32%, 17%)",
+        "subtle": "hsl(217, 32%, 17%)"
+      },
+      "surface": {
+        "card": "hsl(222, 84%, 4.9%)",
+        "popover": "hsl(222, 84%, 4.9%)",
+        "elevated": "hsl(217, 32%, 17%)"
+      },
+      "action": {
+        "primary": {
+          "background": "hsl(262, 83%, 58%)",
+          "foreground": "hsl(210, 40%, 98%)",
+          "hover": "hsl(262, 83%, 48%)"
+        },
+        "secondary": {
+          "background": "hsl(217, 32%, 17%)",
+          "foreground": "hsl(210, 40%, 98%)",
+          "hover": "hsl(217, 32%, 27%)"
+        },
+        "accent": {
+          "background": "hsl(45, 93%, 47%)",
+          "foreground": "hsl(222, 84%, 4.9%)",
+          "hover": "hsl(45, 93%, 37%)"
+        }
+      }
+    }
+  }
+}
