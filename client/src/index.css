@@ -19,6 +19,17 @@
   --accent-foreground: hsl(222, 84%, 4.9%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(210, 40%, 98%);
+  
+  /* Semantic Status Colors */
+  --success: hsl(142, 76%, 36%);
+  --success-foreground: hsl(355, 7%, 97%);
+  --warning: hsl(45, 93%, 47%);
+  --warning-foreground: hsl(222, 84%, 4.9%);
+  --info: hsl(217, 91%, 60%);
+  --info-foreground: hsl(210, 40%, 98%);
+  --processing: hsl(262, 83%, 58%);
+  --processing-foreground: hsl(210, 40%, 98%);
+  
   --border: hsl(217, 32%, 17%);
   --input: hsl(217, 32%, 17%);
   --ring: hsl(262, 83%, 58%);
@@ -38,6 +49,32 @@
   --font-sans: "Inter", sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
+  
+  /* Typography Scale */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;     /* 18px */
+  --font-size-xl: 1.25rem;      /* 20px */
+  --font-size-2xl: 1.5rem;      /* 24px */
+  --font-size-3xl: 1.875rem;    /* 30px */
+  
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  
+  /* Spacing Scale */
+  --space-1: 0.25rem;    /* 4px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  
   --radius: 0.75rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
@@ -68,6 +105,17 @@
   --accent-foreground: hsl(222, 84%, 4.9%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
+  
+  /* Semantic Status Colors - Dark Theme */
+  --success: hsl(142, 76%, 36%);
+  --success-foreground: hsl(0, 0%, 100%);
+  --warning: hsl(45, 93%, 47%);
+  --warning-foreground: hsl(0, 0%, 0%);
+  --info: hsl(217, 91%, 60%);
+  --info-foreground: hsl(0, 0%, 100%);
+  --processing: hsl(262, 83%, 58%);
+  --processing-foreground: hsl(0, 0%, 100%);
+  
   --border: hsl(210, 5.2632%, 14.9020%);
   --input: hsl(207, 27.6596%, 18.4314%);
   --ring: hsl(262, 83%, 58%);

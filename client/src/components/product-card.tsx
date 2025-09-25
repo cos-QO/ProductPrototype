@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Box, Eye, Share, MoreHorizontal, Edit, Trash2 } from "lucide-react";
@@ -28,20 +29,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const [, navigate] = useLocation();
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "live":
-        return "bg-green-500/10 text-green-400";
-      case "review":
-        return "bg-yellow-500/10 text-yellow-400";
-      case "draft":
-        return "bg-blue-500/10 text-blue-400";
-      case "archived":
-        return "bg-gray-500/10 text-gray-400";
-      default:
-        return "";
-    }
-  };
+  // Status badge function removed - now using StatusBadge component
 
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
@@ -127,20 +115,10 @@ export default function ProductCard({
                 Variant
               </Badge>
             )}
-            {product.sku && (
-              <Badge
-                variant="outline"
-                className={`text-xs ${getStatusBadgeVariant(product.status)} border-current`}
-              >
-                {product.status === "live"
-                  ? "Live"
-                  : product.status === "review"
-                    ? "Review"
-                    : product.status === "draft"
-                      ? "Draft"
-                      : "Archived"}
-              </Badge>
-            )}
+            <StatusBadge
+              status={product.status}
+              className="text-xs capitalize"
+            />
           </div>
         </div>
 

@@ -6,11 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -87,7 +94,13 @@ export function VariantsList({
 
   // Update variant mutation
   const updateVariantMutation = useMutation({
-    mutationFn: async ({ variantId, updates }: { variantId: number; updates: any }) => {
+    mutationFn: async ({
+      variantId,
+      updates,
+    }: {
+      variantId: number;
+      updates: any;
+    }) => {
       return apiRequest("PATCH", `/api/variants/${variantId}`, updates);
     },
     onSuccess: () => {
@@ -142,23 +155,28 @@ export function VariantsList({
   };
 
   const getStatusColor = (variant: any) => {
-    if (!variant.isActive) return "text-red-600";
-    if (variant.variantProduct?.stock === 0) return "text-orange-600";
-    return "text-green-600";
+    if (!variant.isActive) return "text-destructive";
+    if (variant.variantProduct?.stock === 0) return "text-warning";
+    return "text-success";
   };
 
   const getStatusIcon = (variant: any) => {
     if (!variant.isActive) return <XCircle className="h-4 w-4" />;
-    if (variant.variantProduct?.stock === 0) return <AlertTriangle className="h-4 w-4" />;
+    if (variant.variantProduct?.stock === 0)
+      return <AlertTriangle className="h-4 w-4" />;
     return <CheckCircle className="h-4 w-4" />;
   };
 
   const getOptionIcon = (optionType: string) => {
     switch (optionType) {
-      case 'color': return <Palette className="h-3 w-3" />;
-      case 'size': return <Ruler className="h-3 w-3" />;
-      case 'image': return <ImageIcon className="h-3 w-3" />;
-      default: return <Package className="h-3 w-3" />;
+      case "color":
+        return <Palette className="h-3 w-3" />;
+      case "size":
+        return <Ruler className="h-3 w-3" />;
+      case "image":
+        return <ImageIcon className="h-3 w-3" />;
+      default:
+        return <Package className="h-3 w-3" />;
     }
   };
 
@@ -166,9 +184,15 @@ export function VariantsList({
     return (
       <div className="flex flex-wrap gap-1">
         {combinations.map((combo, index) => (
-          <Badge key={index} variant="outline" className="text-xs flex items-center gap-1">
+          <Badge
+            key={index}
+            variant="outline"
+            className="text-xs flex items-center gap-1"
+          >
             {getOptionIcon(combo.option.optionType)}
-            <span>{combo.option.displayName}: {combo.optionValue.displayValue}</span>
+            <span>
+              {combo.option.displayName}: {combo.optionValue.displayValue}
+            </span>
           </Badge>
         ))}
       </div>
@@ -201,7 +225,7 @@ export function VariantsList({
                   <Checkbox
                     checked={selectedVariants.length === variants.length}
                     onCheckedChange={(checked) => {
-                      variants.forEach(variant => {
+                      variants.forEach((variant) => {
                         onVariantSelect(variant.id, !!checked);
                       });
                     }}
@@ -222,14 +246,18 @@ export function VariantsList({
                   <TableCell>
                     <Checkbox
                       checked={selectedVariants.includes(variant.id)}
-                      onCheckedChange={(checked) => onVariantSelect(variant.id, !!checked)}
+                      onCheckedChange={(checked) =>
+                        onVariantSelect(variant.id, !!checked)
+                      }
                     />
                   </TableCell>
-                  
+
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {variant.variantName || variant.variantProduct?.name || "Unnamed Variant"}
+                        {variant.variantName ||
+                          variant.variantProduct?.name ||
+                          "Unnamed Variant"}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         ID: {variant.id}
@@ -243,7 +271,9 @@ export function VariantsList({
 
                   <TableCell>
                     <code className="text-sm bg-muted px-2 py-1 rounded">
-                      {variant.variantSku || variant.variantProduct?.sku || "Not set"}
+                      {variant.variantSku ||
+                        variant.variantProduct?.sku ||
+                        "Not set"}
                     </code>
                   </TableCell>
 
@@ -259,7 +289,13 @@ export function VariantsList({
 
                   <TableCell>
                     {variant.variantProduct?.stock !== null ? (
-                      <Badge variant={variant.variantProduct.stock > 0 ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          variant.variantProduct.stock > 0
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
                         {variant.variantProduct.stock}
                       </Badge>
                     ) : (
@@ -268,7 +304,9 @@ export function VariantsList({
                   </TableCell>
 
                   <TableCell>
-                    <div className={`flex items-center gap-1 ${getStatusColor(variant)}`}>
+                    <div
+                      className={`flex items-center gap-1 ${getStatusColor(variant)}`}
+                    >
                       {getStatusIcon(variant)}
                       <span className="text-sm">
                         {variant.isActive ? "Active" : "Inactive"}
@@ -285,7 +323,9 @@ export function VariantsList({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setEditingVariant(variant)}>
+                        <DropdownMenuItem
+                          onClick={() => setEditingVariant(variant)}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
@@ -300,8 +340,8 @@ export function VariantsList({
                         <DropdownMenuSeparator />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              className="text-red-600"
+                            <DropdownMenuItem
+                              className="text-destructive"
                               onSelect={(e) => e.preventDefault()}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -310,16 +350,19 @@ export function VariantsList({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Variant</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Delete Variant
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete this variant? This action cannot be undone.
+                                Are you sure you want to delete this variant?
+                                This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => handleDeleteVariant(variant.id)}
-                                className="bg-red-600 hover:bg-red-700"
+                                variant="destructive"
                               >
                                 Delete
                               </AlertDialogAction>
@@ -348,11 +391,15 @@ export function VariantsList({
               <div className="flex items-start gap-2">
                 <Checkbox
                   checked={selectedVariants.includes(variant.id)}
-                  onCheckedChange={(checked) => onVariantSelect(variant.id, !!checked)}
+                  onCheckedChange={(checked) =>
+                    onVariantSelect(variant.id, !!checked)
+                  }
                 />
                 <div className="flex-1">
                   <div className="font-medium text-sm">
-                    {variant.variantName || variant.variantProduct?.name || "Unnamed Variant"}
+                    {variant.variantName ||
+                      variant.variantProduct?.name ||
+                      "Unnamed Variant"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     ID: {variant.id}
@@ -372,7 +419,9 @@ export function VariantsList({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setEditingVariant(variant)}>
+                    <DropdownMenuItem
+                      onClick={() => setEditingVariant(variant)}
+                    >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
@@ -387,8 +436,8 @@ export function VariantsList({
                     <DropdownMenuSeparator />
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <DropdownMenuItem 
-                          className="text-red-600"
+                        <DropdownMenuItem
+                          className="text-destructive"
                           onSelect={(e) => e.preventDefault()}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -399,14 +448,15 @@ export function VariantsList({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Variant</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete this variant? This action cannot be undone.
+                            Are you sure you want to delete this variant? This
+                            action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteVariant(variant.id)}
-                            className="bg-red-600 hover:bg-red-700"
+                            variant="destructive"
                           >
                             Delete
                           </AlertDialogAction>
@@ -422,20 +472,28 @@ export function VariantsList({
           <CardContent className="space-y-3">
             {/* Variant Combinations */}
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Combinations</Label>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Combinations
+              </Label>
               {renderVariantCombinations(variant.combinations || [])}
             </div>
 
             {/* SKU and Price */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-medium text-muted-foreground">SKU</Label>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  SKU
+                </Label>
                 <div className="text-sm font-mono">
-                  {variant.variantSku || variant.variantProduct?.sku || "Not set"}
+                  {variant.variantSku ||
+                    variant.variantProduct?.sku ||
+                    "Not set"}
                 </div>
               </div>
               <div>
-                <Label className="text-xs font-medium text-muted-foreground">Price</Label>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Price
+                </Label>
                 <div className="text-sm font-medium">
                   {formatPrice(variant.variantProduct?.price)}
                 </div>
@@ -451,10 +509,18 @@ export function VariantsList({
             {/* Stock and Status */}
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-xs font-medium text-muted-foreground">Stock</Label>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Stock
+                </Label>
                 <div className="flex items-center gap-1">
                   {variant.variantProduct?.stock !== null ? (
-                    <Badge variant={variant.variantProduct.stock > 0 ? "default" : "secondary"}>
+                    <Badge
+                      variant={
+                        variant.variantProduct.stock > 0
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
                       {variant.variantProduct.stock}
                     </Badge>
                   ) : (
@@ -463,7 +529,9 @@ export function VariantsList({
                 </div>
               </div>
 
-              <div className={`flex items-center gap-1 text-sm ${getStatusColor(variant)}`}>
+              <div
+                className={`flex items-center gap-1 text-sm ${getStatusColor(variant)}`}
+              >
                 {getStatusIcon(variant)}
                 <span>{variant.isActive ? "Active" : "Inactive"}</span>
               </div>
@@ -474,14 +542,19 @@ export function VariantsList({
 
       {/* Edit Variant Dialog */}
       {editingVariant && (
-        <Dialog open={!!editingVariant} onOpenChange={() => setEditingVariant(null)}>
+        <Dialog
+          open={!!editingVariant}
+          onOpenChange={() => setEditingVariant(null)}
+        >
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Variant</DialogTitle>
             </DialogHeader>
             <VariantEditForm
               variant={editingVariant}
-              onSave={(updates) => handleUpdateVariant(editingVariant.id, updates)}
+              onSave={(updates) =>
+                handleUpdateVariant(editingVariant.id, updates)
+              }
               onCancel={() => setEditingVariant(null)}
               isLoading={updateVariantMutation.isPending}
             />
@@ -493,11 +566,11 @@ export function VariantsList({
 }
 
 // Variant Edit Form Component
-function VariantEditForm({ 
-  variant, 
-  onSave, 
-  onCancel, 
-  isLoading 
+function VariantEditForm({
+  variant,
+  onSave,
+  onCancel,
+  isLoading,
 }: {
   variant: any;
   onSave: (updates: any) => void;
@@ -507,7 +580,9 @@ function VariantEditForm({
   const [formData, setFormData] = useState({
     variantName: variant.variantName || "",
     sku: variant.variantProduct?.sku || "",
-    price: variant.variantProduct?.price ? (variant.variantProduct.price / 100).toString() : "",
+    price: variant.variantProduct?.price
+      ? (variant.variantProduct.price / 100).toString()
+      : "",
     stock: variant.variantProduct?.stock?.toString() || "",
     status: variant.variantProduct?.status || "draft",
     isActive: variant.isActive,
@@ -515,16 +590,18 @@ function VariantEditForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const updates = {
       variantName: formData.variantName,
       sku: formData.sku,
-      price: formData.price ? Math.round(parseFloat(formData.price) * 100) : null,
+      price: formData.price
+        ? Math.round(parseFloat(formData.price) * 100)
+        : null,
       stock: formData.stock ? parseInt(formData.stock) : null,
       status: formData.status,
       isActive: formData.isActive,
     };
-    
+
     onSave(updates);
   };
 
@@ -536,17 +613,21 @@ function VariantEditForm({
           <Input
             id="variantName"
             value={formData.variantName}
-            onChange={(e) => setFormData(prev => ({ ...prev, variantName: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, variantName: e.target.value }))
+            }
             placeholder="Variant display name"
           />
         </div>
-        
+
         <div>
           <Label htmlFor="sku">SKU</Label>
           <Input
             id="sku"
             value={formData.sku}
-            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, sku: e.target.value }))
+            }
             placeholder="Product SKU"
           />
         </div>
@@ -560,18 +641,22 @@ function VariantEditForm({
             type="number"
             step="0.01"
             value={formData.price}
-            onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, price: e.target.value }))
+            }
             placeholder="0.00"
           />
         </div>
-        
+
         <div>
           <Label htmlFor="stock">Stock Quantity</Label>
           <Input
             id="stock"
             type="number"
             value={formData.stock}
-            onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, stock: e.target.value }))
+            }
             placeholder="0"
           />
         </div>
@@ -580,7 +665,12 @@ function VariantEditForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="status">Status</Label>
-          <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+          <Select
+            value={formData.status}
+            onValueChange={(value) =>
+              setFormData((prev) => ({ ...prev, status: value }))
+            }
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -592,19 +682,26 @@ function VariantEditForm({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="flex items-center space-x-2 pt-6">
           <Checkbox
             id="isActive"
             checked={formData.isActive}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: !!checked }))}
+            onCheckedChange={(checked) =>
+              setFormData((prev) => ({ ...prev, isActive: !!checked }))
+            }
           />
           <Label htmlFor="isActive">Active Variant</Label>
         </div>
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isLoading}
+        >
           Cancel
         </Button>
         <Button type="submit" disabled={isLoading}>
