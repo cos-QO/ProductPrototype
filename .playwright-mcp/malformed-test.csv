@@ -1,0 +1,6 @@
+name,price,sku
+"Product A",invalid_price,ABC123
+"Product B",,"" 
+Product C without quotes,299.99
+"Product D",99.99,DEF456,extra_field
+Missing fields in this row

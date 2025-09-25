@@ -4,3 +4,68 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Claude-related files and folders
+/.claude/
+.claude/
+CLAUDE.md
+AGENT.md
+*.claude
+*.claude.md
+.claude*
+
+# Cursor/Other AI tools
+.cursorrules
+.cursor/
+.codeium/
+.continue/
+.aider/
+.github/copilot/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+~*
+
+# Logs
+*.log
+server.log
+logs/
+*.log.*
+
+# Uploads directory (user files)
+uploads/*
+!uploads/.gitkeep
+
+# Firebase
+.firebase/
+.firebaserc
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Runtime files
+.pid
+.seed
+*.seed
+
+# Development utilities
+.env.development.local
+.env.test.local
+.env.production.local

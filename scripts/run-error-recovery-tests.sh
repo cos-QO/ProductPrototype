@@ -1,0 +1,192 @@
+#!/bin/bash
+
+# Error Recovery Test Suite Execution Script
+# Comprehensive testing of error recovery functionality
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+REPORT_DIR="${PROJECT_ROOT}/coverage/error-recovery"
+LOG_FILE="${REPORT_DIR}/test-execution-${TIMESTAMP}.log"
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  Error Recovery Test Suite Execution  ${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "Timestamp: ${TIMESTAMP}"
+echo -e "Project Root: ${PROJECT_ROOT}"
+echo -e "Report Directory: ${REPORT_DIR}"
+echo ""
+
+# Create report directory
+mkdir -p "${REPORT_DIR}"
+
+# Function to log with timestamp
+log() {
+    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
+}
+
+# Function to run test with error handling
+run_test() {
+    local test_name="$1"
+    local test_command="$2"
+    local required="$3"
+    
+    log "${BLUE}Running ${test_name}...${NC}"
+    echo -e "${YELLOW}Command: ${test_command}${NC}"
+    
+    if eval "${test_command}" >> "${LOG_FILE}" 2>&1; then
+        log "${GREEN}✅ ${test_name} PASSED${NC}"
+        return 0
+    else
+        log "${RED}❌ ${test_name} FAILED${NC}"
+        if [ "${required}" = "true" ]; then
+            log "${RED}Required test failed. Stopping execution.${NC}"
+            exit 1
+        fi
+        return 1
+    fi
+}
+
+# Pre-test environment check
+log "${YELLOW}Checking test environment...${NC}"
+
+# Check if Jest config exists
+if [ ! -f "${PROJECT_ROOT}/jest.config.error-recovery.cjs" ]; then
+    log "${RED}❌ Error recovery Jest config not found${NC}"
+    exit 1
+fi
+
+# Check if Node.js is available
+if ! command -v node &> /dev/null; then
+    log "${RED}❌ Node.js not found${NC}"
+    exit 1
+fi
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    log "${RED}❌ npm not found${NC}"
+    exit 1
+fi
+
+log "${GREEN}✅ Environment check passed${NC}"
+
+# Start database if needed (optional)
+log "${YELLOW}Starting database if needed...${NC}"
+if command -v docker-compose &> /dev/null; then
+    cd "${PROJECT_ROOT}"
+    npm run docker:up || log "${YELLOW}⚠️ Database startup failed or already running${NC}"
+fi
+
+# Test execution phases
+log "${BLUE}Starting Error Recovery Test Execution${NC}"
+
+# Phase 1: Quick validation tests
+log "${BLUE}Phase 1: Quick Validation Tests${NC}"
+run_test "Quick Validation" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:quick" true
+
+# Phase 2: Unit tests
+log "${BLUE}Phase 2: Unit Tests${NC}"
+run_test "Unit Tests" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:unit" true
+
+# Phase 3: Integration tests
+log "${BLUE}Phase 3: Integration Tests${NC}"
+run_test "Integration Tests" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:integration" true
+
+# Phase 4: API tests
+log "${BLUE}Phase 4: API Tests${NC}"
+run_test "API Tests" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:api" false
+
+# Phase 5: E2E tests
+log "${BLUE}Phase 5: End-to-End Tests${NC}"
+run_test "E2E Tests" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:e2e" false
+
+# Phase 6: Performance tests
+log "${BLUE}Phase 6: Performance Tests${NC}"
+run_test "Performance Tests" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:performance" false
+
+# Phase 7: Full test suite with coverage
+log "${BLUE}Phase 7: Full Test Suite with Coverage${NC}"
+run_test "Full Coverage Test" "cd '${PROJECT_ROOT}' && npm run test:error-recovery:coverage" false
+
+# Generate summary report
+log "${BLUE}Generating Test Summary Report...${NC}"
+
+# Create execution summary
+cat > "${REPORT_DIR}/execution-summary-${TIMESTAMP}.md" << EOF
+# Error Recovery Test Execution Summary
+
+**Execution Time**: ${TIMESTAMP}
+**Project**: QueenOne ProductPrototype
+**Test Suite**: Error Recovery Comprehensive Testing
+
+## Execution Environment
+- **Node.js Version**: $(node --version)
+- **npm Version**: $(npm --version)
+- **Jest Config**: jest.config.error-recovery.cjs
+- **Database**: PostgreSQL (Docker)
+
+## Test Phases Executed
+1. ✅ Quick Validation Tests
+2. ✅ Unit Tests  
+3. ✅ Integration Tests
+4. ⚠️ API Tests (Optional)
+5. ⚠️ End-to-End Tests (Optional)
+6. ⚠️ Performance Tests (Optional)
+7. ⚠️ Full Coverage Test (Optional)
+
+## Test Results Summary
+- **Total Phases**: 7
+- **Required Phases**: 3
+- **Optional Phases**: 4
+- **Execution Log**: test-execution-${TIMESTAMP}.log
+
+## Generated Reports
+- **Test Results**: error-recovery-results.json
+- **Coverage Report**: error-recovery-test-report.html
+- **Summary**: error-recovery-summary.md
+- **JUnit XML**: error-recovery-junit.xml
+
+## Next Steps
+1. Review detailed test results in generated reports
+2. Address any failing tests identified in logs
+3. Validate coverage meets minimum thresholds
+4. Review performance metrics and recommendations
+
+---
+*Generated by Error Recovery Test Suite Execution Script*
+EOF
+
+# Display final status
+log "${BLUE}========================================${NC}"
+log "${GREEN}Error Recovery Test Suite Execution Complete${NC}"
+log "${BLUE}========================================${NC}"
+
+echo -e "${GREEN}📊 Reports generated in: ${REPORT_DIR}${NC}"
+echo -e "${GREEN}📝 Execution log: ${LOG_FILE}${NC}"
+echo -e "${GREEN}📋 Summary report: ${REPORT_DIR}/execution-summary-${TIMESTAMP}.md${NC}"
+
+# Display quick stats if coverage report exists
+if [ -f "${REPORT_DIR}/error-recovery-summary.md" ]; then
+    echo -e "${BLUE}Quick Coverage Summary:${NC}"
+    grep -E "^- \*\*.*\*\*:" "${REPORT_DIR}/error-recovery-summary.md" | head -5 || true
+fi
+
+# Display recommendations if available
+if [ -f "${REPORT_DIR}/error-recovery-summary.md" ]; then
+    echo -e "${BLUE}Key Recommendations:${NC}"
+    grep -A 2 "^### [0-9]" "${REPORT_DIR}/error-recovery-summary.md" | head -10 || true
+fi
+
+log "${GREEN}Test execution completed successfully${NC}"
+
+# Exit with success if we got this far
+exit 0
