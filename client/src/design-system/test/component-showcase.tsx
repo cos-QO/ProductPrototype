@@ -50,6 +50,19 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { TimePicker } from "@/components/ui/time-picker";
+import { Calendar as DateCalendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Link } from "@/components/ui/link";
+import {
   AlertCircle,
   CheckCircle,
   Info,
@@ -62,6 +75,13 @@ import {
   Loader2,
   Spinner,
   Keyboard,
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Settings,
+  Heart,
+  Timer,
 } from "lucide-react";
 
 // Import keyboard shortcuts system
@@ -394,6 +414,93 @@ export function ComponentShowcase() {
             </Button>
           </div>
 
+          <h4 className="font-medium">Icon-Only Buttons</h4>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="default" size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button variant="secondary" size="icon">
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="destructive" size="icon">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button variant="success" size="icon">
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button variant="warning" size="icon">
+                <AlertTriangle className="h-4 w-4" />
+              </Button>
+              <Button variant="info" size="icon">
+                <Info className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline-white"
+                size="icon"
+                className="bg-slate-800"
+              >
+                <Heart className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost-white"
+                size="icon"
+                className="bg-slate-800"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <h4 className="font-medium">Buttons with Icons</h4>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+              <Button variant="secondary">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <Button variant="success">
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Approve
+              </Button>
+              <Button variant="warning">
+                <Timer className="h-4 w-4 mr-2" />
+                Pending Review
+              </Button>
+              <Button variant="info">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Important Action
+              </Button>
+            </div>
+          </div>
+
           <h4 className="font-medium">Special States</h4>
           <div className="flex flex-wrap gap-2">
             <EnhancedButton variant="success" loading>
@@ -503,6 +610,14 @@ export function ComponentShowcase() {
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold">Advanced Patterns</h2>
         <AdvancedPatternsShowcase />
+      </div>
+
+      {/* Accessibility Guidelines */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">
+          Accessibility & WCAG Compliance
+        </h2>
+        <AccessibilityShowcase />
       </div>
 
       {/* Token System Debug Info */}
@@ -862,7 +977,7 @@ function StatusFeedbackShowcase() {
             </AlertDescription>
           </Alert>
 
-          <Alert className="border-success text-success">
+          <Alert variant="success">
             <CheckCircle className="h-4 w-4" />
             <AlertTitle>Success</AlertTitle>
             <AlertDescription>
@@ -870,7 +985,7 @@ function StatusFeedbackShowcase() {
             </AlertDescription>
           </Alert>
 
-          <Alert className="border-warning text-warning">
+          <Alert variant="warning">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Warning</AlertTitle>
             <AlertDescription>
@@ -1032,29 +1147,103 @@ function ColorPaletteShowcase() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(themeColors).map(([name, color]) => (
-              <div key={name} className="text-center space-y-2">
-                <div
-                  className="w-full h-20 rounded-lg border"
-                  style={{
-                    backgroundColor: color.replace(
-                      /var\(([^)]+)\)/,
-                      (match, varName) => {
-                        return getComputedStyle(
-                          document.documentElement,
-                        ).getPropertyValue(varName);
-                      },
-                    ),
-                  }}
-                />
-                <div>
-                  <p className="font-medium capitalize">{name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {color}
-                  </p>
+            {Object.entries(themeColors).map(([name, color]) => {
+              // Resolve CSS variables to computed values
+              const resolveColorValue = (
+                colorValue: any,
+              ): { original: string; hex: string } => {
+                if (typeof colorValue !== "string") {
+                  return { original: "[invalid]", hex: "#000000" };
+                }
+
+                if (colorValue.startsWith("var(--")) {
+                  // Extract CSS variable name
+                  const varName = colorValue.match(/var\((--[^)]+)\)/)?.[1];
+                  if (varName) {
+                    try {
+                      const computedValue = getComputedStyle(
+                        document.documentElement,
+                      )
+                        .getPropertyValue(varName)
+                        .trim();
+                      return {
+                        original: computedValue,
+                        hex: getHexFromHSL(computedValue),
+                      };
+                    } catch (e) {
+                      return { original: colorValue, hex: "#000000" };
+                    }
+                  }
+                }
+
+                if (colorValue.startsWith("hsl")) {
+                  return {
+                    original: colorValue,
+                    hex: getHexFromHSL(colorValue),
+                  };
+                }
+
+                return { original: colorValue, hex: colorValue };
+              };
+
+              // Convert HSL to hex for display
+              const getHexFromHSL = (hslStr: string) => {
+                const match = hslStr.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+                if (!match) return hslStr;
+
+                const h = parseInt(match[1]) / 360;
+                const s = parseInt(match[2]) / 100;
+                const l = parseInt(match[3]) / 100;
+
+                const hue2rgb = (p: number, q: number, t: number) => {
+                  if (t < 0) t += 1;
+                  if (t > 1) t -= 1;
+                  if (t < 1 / 6) return p + (q - p) * 6 * t;
+                  if (t < 1 / 2) return q;
+                  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                  return p;
+                };
+
+                let r, g, b;
+                if (s === 0) {
+                  r = g = b = l;
+                } else {
+                  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                  const p = 2 * l - q;
+                  r = hue2rgb(p, q, h + 1 / 3);
+                  g = hue2rgb(p, q, h);
+                  b = hue2rgb(p, q, h - 1 / 3);
+                }
+
+                const toHex = (c: number) => {
+                  const hex = Math.round(c * 255).toString(16);
+                  return hex.length === 1 ? "0" + hex : hex;
+                };
+
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+              };
+
+              const resolvedColor = resolveColorValue(color);
+              const displayColor = resolvedColor.hex;
+
+              return (
+                <div key={name} className="text-center space-y-2">
+                  <div
+                    className="w-full h-20 rounded-lg border"
+                    style={{ backgroundColor: displayColor }}
+                  />
+                  <div>
+                    <p className="font-medium capitalize">{name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {resolvedColor.original}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {resolvedColor.hex}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -1150,13 +1339,15 @@ function FoundationShowcase() {
             ].map((elevation) => (
               <div key={elevation.name} className="space-y-2">
                 <div
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 h-16 flex items-center justify-center border"
+                  className="bg-card rounded-lg p-4 h-16 flex items-center justify-center border border-border/50"
                   style={{ boxShadow: elevation.value }}
                 >
-                  <span className="text-sm font-medium">{elevation.name}</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {elevation.name}
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground text-center font-mono">
-                  {elevation.name.toLowerCase()}
+                <p className="text-xs text-foreground/90 text-center font-medium">
+                  {elevation.name}
                 </p>
               </div>
             ))}
@@ -1180,34 +1371,39 @@ function FoundationShowcase() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
                   {
-                    name: "Instant",
-                    value: tokenResolver.resolve(
-                      "{primitive.motion.duration.instant}",
-                    ),
-                  },
-                  {
                     name: "Fast",
                     value: tokenResolver.resolve(
                       "{primitive.motion.duration.fast}",
                     ),
+                    description: "Quick interactions (99ms)",
                   },
                   {
-                    name: "Normal",
+                    name: "Medium",
                     value: tokenResolver.resolve(
-                      "{primitive.motion.duration.normal}",
+                      "{primitive.motion.duration.medium}",
                     ),
+                    description: "Exit animations (199ms)",
+                  },
+                  {
+                    name: "Default",
+                    value: tokenResolver.resolve(
+                      "{primitive.motion.duration.default}",
+                    ),
+                    description: "Most UI elements (299ms)",
                   },
                   {
                     name: "Slow",
                     value: tokenResolver.resolve(
                       "{primitive.motion.duration.slow}",
                     ),
+                    description: "Dialogs, modals (399ms)",
                   },
                   {
-                    name: "Slower",
+                    name: "Very Slow",
                     value: tokenResolver.resolve(
-                      "{primitive.motion.duration.slower}",
+                      "{primitive.motion.duration.very-slow}",
                     ),
+                    description: "Loaders, progress (599ms)",
                   },
                 ].map((duration) => (
                   <div key={duration.name} className="space-y-2">
@@ -1228,6 +1424,11 @@ function FoundationShowcase() {
                       <p className="text-xs text-muted-foreground">
                         {duration.value}
                       </p>
+                      {duration.description && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {duration.description}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1240,28 +1441,32 @@ function FoundationShowcase() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   {
+                    name: "Default",
+                    value: tokenResolver.resolve(
+                      "{primitive.motion.easing.default}",
+                    ),
+                    description: "Used for buttons, dialogs, drawers",
+                  },
+                  {
                     name: "Linear",
                     value: tokenResolver.resolve(
                       "{primitive.motion.easing.linear}",
                     ),
-                  },
-                  {
-                    name: "Ease Out",
-                    value: tokenResolver.resolve(
-                      "{primitive.motion.easing.ease-out}",
-                    ),
+                    description: "For progress bars and loaders",
                   },
                   {
                     name: "Bounce",
                     value: tokenResolver.resolve(
                       "{primitive.motion.easing.bounce}",
                     ),
+                    description: "For playful interactions",
                   },
                   {
                     name: "Smooth",
                     value: tokenResolver.resolve(
                       "{primitive.motion.easing.smooth}",
                     ),
+                    description: "For subtle transitions",
                   },
                 ].map((easing) => (
                   <div key={easing.name} className="space-y-2">
@@ -1274,6 +1479,11 @@ function FoundationShowcase() {
                       <p className="text-xs text-muted-foreground font-mono truncate">
                         {easing.value}
                       </p>
+                      {easing.description && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {easing.description}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1344,7 +1554,7 @@ function FoundationShowcase() {
                       {Array.from({ length: grid.cols || 6 }, (_, i) => (
                         <div
                           key={i}
-                          className="bg-blue-100 dark:bg-blue-900 p-2 rounded text-center text-xs"
+                          className="bg-primary/10 border border-primary/20 p-2 rounded text-center text-xs font-medium text-foreground"
                         >
                           Item {i + 1}
                         </div>
@@ -1393,7 +1603,7 @@ function FoundationShowcase() {
                       {Array.from({ length: 3 }, (_, i) => (
                         <div
                           key={i}
-                          className="bg-purple-100 dark:bg-purple-900 p-1 rounded text-center text-xs"
+                          className="bg-secondary/20 border border-secondary/30 p-1 rounded text-center text-xs font-medium text-foreground"
                         >
                           {i + 1}
                         </div>
@@ -1401,7 +1611,7 @@ function FoundationShowcase() {
                     </div>
                     <div className="text-center">
                       <p className="text-xs font-medium">{gap.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-foreground/70 font-mono">
                         {gap.value}
                       </p>
                     </div>
@@ -1460,10 +1670,10 @@ function FoundationShowcase() {
                 ].map((breakpoint) => (
                   <div key={breakpoint.key} className="p-3 border rounded">
                     <p className="font-medium text-sm">{breakpoint.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-foreground/70 font-mono">
                       {breakpoint.key}: {breakpoint.value}
                     </p>
-                    <code className="text-xs bg-muted px-1 rounded">
+                    <code className="text-xs bg-muted px-2 py-1 rounded text-foreground/80">
                       @media (min-width: {breakpoint.value})
                     </code>
                   </div>
@@ -1503,10 +1713,9 @@ function EssentialComponentsShowcase() {
       "Open command palette",
     ),
     createShortcut.command("d", () => setIsDialogOpen(true), "Open dialog"),
-    createShortcut.commandShift(
-      "a",
+    createShortcut.commandEscape(
       () => setIsAlertDialogOpen(true),
-      "Open alert dialog",
+      "Open delete dialog",
     ),
   ]);
 
@@ -1572,9 +1781,9 @@ function EssentialComponentsShowcase() {
                     </code>
                   </div>
                   <div className="flex justify-between">
-                    <span>Open alert dialog</span>
+                    <span>Open delete dialog</span>
                     <code className="bg-muted px-2 py-1 rounded text-xs">
-                      ⌘ ⇧ A
+                      ⌘ ESC
                     </code>
                   </div>
                 </div>
@@ -1788,7 +1997,7 @@ function EssentialComponentsShowcase() {
                   variant="destructive"
                   onClick={() => setIsAlertDialogOpen(true)}
                 >
-                  Delete Item <code className="ml-2 text-xs">⌘⇧A</code>
+                  Delete Item <code className="ml-2 text-xs">⌘ESC</code>
                 </Button>
 
                 <AlertDialog
@@ -2138,6 +2347,297 @@ function EssentialComponentsShowcase() {
                   </AccordionItem>
                 </Accordion>
               </div>
+
+              {/* Pagination */}
+              <div>
+                <h4 className="font-medium mb-3">Pagination Controls</h4>
+                <div className="space-y-4">
+                  {/* Basic Pagination */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Basic pagination with previous/next
+                    </p>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious href="#" />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">1</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#" isActive>
+                            2
+                          </PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">3</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationNext href="#" />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+
+                  {/* Pagination with Ellipsis */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Pagination with ellipsis for large datasets
+                    </p>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious href="#" />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">1</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">8</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#" isActive>
+                            9
+                          </PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">10</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#">20</PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationNext href="#" />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+
+                  {/* Compact Pagination */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Compact pagination for mobile or tight spaces
+                    </p>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious href="#" />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLink href="#" isActive>
+                            5 / 20
+                          </PaginationLink>
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationNext href="#" />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date & Time Pickers */}
+              <div>
+                <h4 className="font-medium mb-3">Date & Time Controls</h4>
+                <div className="space-y-6">
+                  {/* Date Picker */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Date picker (popover)
+                      </p>
+                      <DatePicker
+                        placeholder="Select a date"
+                        onChange={(date) => console.log("Selected date:", date)}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Date picker with value
+                      </p>
+                      <DatePicker
+                        value={new Date()}
+                        placeholder="Select a date"
+                        onChange={(date) => console.log("Selected date:", date)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Calendar Static */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Static calendar display
+                    </p>
+                    <div className="border rounded-md p-3 w-fit">
+                      <DateCalendar
+                        mode="single"
+                        selected={new Date()}
+                        className="rounded-md border-0 p-0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Time Pickers */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 24-hour format */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        24-hour time picker
+                      </p>
+                      <TimePicker
+                        placeholder="Select time (24h)"
+                        format="24"
+                        onChange={(time) => console.log("24h time:", time)}
+                      />
+                    </div>
+
+                    {/* 12-hour format */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        12-hour time picker with AM/PM
+                      </p>
+                      <TimePicker
+                        placeholder="Select time (12h)"
+                        format="12"
+                        onChange={(time) => console.log("12h time:", time)}
+                      />
+                    </div>
+
+                    {/* With seconds */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Time picker with seconds
+                      </p>
+                      <TimePicker
+                        placeholder="Select time with seconds"
+                        format="24"
+                        includeSeconds
+                        onChange={(time) =>
+                          console.log("Time with seconds:", time)
+                        }
+                      />
+                    </div>
+
+                    {/* 15-minute steps */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        15-minute step increments
+                      </p>
+                      <TimePicker
+                        placeholder="Select time (15min steps)"
+                        format="12"
+                        step={15}
+                        onChange={(time) =>
+                          console.log("15min step time:", time)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Link Components */}
+              <div>
+                <h4 className="font-medium mb-3">Link Components</h4>
+                <div className="space-y-4">
+                  {/* Basic Links */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Link variants
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      <Link href="#" variant="default">
+                        Default Link
+                      </Link>
+                      <Link href="#" variant="destructive">
+                        Destructive Link
+                      </Link>
+                      <Link href="#" variant="success">
+                        Success Link
+                      </Link>
+                      <Link href="#" variant="warning">
+                        Warning Link
+                      </Link>
+                      <Link href="#" variant="info">
+                        Info Link
+                      </Link>
+                      <Link href="#" variant="muted">
+                        Muted Link
+                      </Link>
+                      <Link href="#" variant="ghost">
+                        Ghost Link
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Link Sizes */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Link sizes
+                    </p>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Link href="#" size="sm">
+                        Small Link
+                      </Link>
+                      <Link href="#" size="default">
+                        Default Link
+                      </Link>
+                      <Link href="#" size="lg">
+                        Large Link
+                      </Link>
+                      <Link href="#" size="xl">
+                        Extra Large Link
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* External Links */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      External links (with icon)
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      <Link href="https://example.com" external>
+                        External Link
+                      </Link>
+                      <Link
+                        href="https://github.com"
+                        external
+                        variant="success"
+                      >
+                        GitHub Repository
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Underline Options */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Underline options
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      <Link href="#" underline="none">
+                        No Underline
+                      </Link>
+                      <Link href="#" underline="hover">
+                        Hover Underline
+                      </Link>
+                      <Link href="#" underline="always">
+                        Always Underlined
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -2347,6 +2847,351 @@ function AdvancedPatternsShowcase() {
                   Drag & drop, virtualization, and complex form patterns can be
                   implemented
                 </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Accessibility & WCAG Compliance Showcase
+ * Demonstrates accessible components and guidelines
+ */
+function AccessibilityShowcase() {
+  return (
+    <div className="space-y-6">
+      {/* Color Contrast Guidelines */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-success" />
+            Color Contrast & WCAG Compliance
+          </CardTitle>
+          <CardDescription>
+            All text meets WCAG AA standards for color contrast (4.5:1 for
+            normal text, 3:1 for large text)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Text Contrast Examples */}
+            <div>
+              <h4 className="font-medium mb-3">Accessible Text Hierarchy</h4>
+              <div className="space-y-2">
+                <p className="text-foreground">
+                  Primary text - High contrast for main content
+                </p>
+                <p className="text-foreground/90">
+                  Secondary text - Good contrast for supporting content
+                </p>
+                <p className="text-foreground/70">
+                  Tertiary text - Sufficient contrast for captions
+                </p>
+                <p className="text-foreground/50">
+                  Disabled text - Meets minimum requirements
+                </p>
+              </div>
+            </div>
+
+            {/* Focus States */}
+            <div>
+              <h4 className="font-medium mb-3">Focus Management</h4>
+              <div className="flex flex-wrap gap-4">
+                <Button className="focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                  Accessible Focus
+                </Button>
+                <Button
+                  variant="outline"
+                  className="focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                >
+                  High Contrast Ring
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="focus:ring-2 focus:ring-accent focus:ring-offset-2"
+                >
+                  Alternative Focus Color
+                </Button>
+                <div className="bg-gray-800 p-4 rounded">
+                  <Button
+                    variant="outline-white"
+                    className="focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800"
+                  >
+                    White Outline Button
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-foreground/70 mt-2">
+                All interactive elements have visible focus indicators that meet
+                WCAG requirements
+              </p>
+            </div>
+
+            {/* Touch Target Sizes */}
+            <div>
+              <h4 className="font-medium mb-3">Touch Target Guidelines</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border rounded">
+                  <h5 className="font-medium mb-2">Desktop Minimum</h5>
+                  <Button
+                    size="sm"
+                    className="min-h-[44px] min-w-[44px]"
+                    aria-label="Minimum desktop touch target - 44x44 pixels"
+                  >
+                    44px
+                  </Button>
+                  <p className="text-xs text-foreground/70 mt-2">
+                    44×44px minimum for desktop
+                  </p>
+                </div>
+                <div className="p-4 border rounded">
+                  <h5 className="font-medium mb-2">Touch Optimized</h5>
+                  <Button
+                    className="min-h-[48px] min-w-[48px]"
+                    aria-label="Touch-optimized target - 48x48 pixels"
+                  >
+                    48px
+                  </Button>
+                  <p className="text-xs text-foreground/70 mt-2">
+                    48×48px for mobile devices
+                  </p>
+                </div>
+                <div className="p-4 border rounded">
+                  <h5 className="font-medium mb-2">Comfortable</h5>
+                  <Button
+                    size="lg"
+                    className="min-h-[56px] min-w-[56px]"
+                    aria-label="Comfortable touch target - 56x56 pixels"
+                  >
+                    56px
+                  </Button>
+                  <p className="text-xs text-foreground/70 mt-2">
+                    56×56px for comfortable interaction
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Semantic HTML & ARIA */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Semantic HTML & ARIA Labels</CardTitle>
+          <CardDescription>
+            Proper semantic markup and ARIA attributes for screen readers
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-3">Form Accessibility</h4>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="accessible-email">Email Address *</Label>
+                  <Input
+                    id="accessible-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    aria-describedby="email-help"
+                    aria-required="true"
+                  />
+                  <p
+                    id="email-help"
+                    className="text-xs text-foreground/70 mt-1"
+                  >
+                    We'll never share your email with anyone else
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="accessible-password">Password</Label>
+                  <Input
+                    id="accessible-password"
+                    type="password"
+                    aria-describedby="password-requirements"
+                    aria-invalid="false"
+                  />
+                  <p
+                    id="password-requirements"
+                    className="text-xs text-foreground/70 mt-1"
+                  >
+                    Must be at least 8 characters with uppercase, lowercase, and
+                    numbers
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-3">Navigation Landmarks</h4>
+              <div className="p-4 border rounded bg-muted/20">
+                <code className="text-sm">
+                  {`<nav aria-label="Main navigation">
+  <header role="banner">
+  <main role="main">
+  <aside role="complementary">
+  <footer role="contentinfo">`}
+                </code>
+              </div>
+              <p className="text-xs text-foreground/70 mt-2">
+                Use semantic HTML elements and ARIA roles for screen reader
+                navigation
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Keyboard Navigation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Keyboard Navigation & Shortcuts</CardTitle>
+          <CardDescription>
+            Full keyboard accessibility with logical tab order
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-3">Tab Order Demonstration</h4>
+              <div className="flex flex-wrap gap-4">
+                <Button tabIndex={1}>First Tab Stop</Button>
+                <Input
+                  tabIndex={2}
+                  placeholder="Second Tab Stop"
+                  className="w-40"
+                />
+                <Button variant="outline" tabIndex={3}>
+                  Third Tab Stop
+                </Button>
+                <Button variant="secondary" tabIndex={4}>
+                  Fourth Tab Stop
+                </Button>
+              </div>
+              <p className="text-xs text-foreground/70 mt-2">
+                Press Tab to navigate through interactive elements in logical
+                order
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-3">Keyboard Shortcuts</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Show help</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      ⌘ /
+                    </kbd>
+                  </div>
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Open command palette</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      ⌘ K
+                    </kbd>
+                  </div>
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Close dialog</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      Esc
+                    </kbd>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Submit form</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      ⌘ ↵
+                    </kbd>
+                  </div>
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Navigate menu</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      ↑ ↓
+                    </kbd>
+                  </div>
+                  <div className="flex justify-between items-center p-2 border rounded">
+                    <span>Select option</span>
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">
+                      Space
+                    </kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Accessibility Testing Tools */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Testing & Validation</CardTitle>
+          <CardDescription>
+            Tools and methods for ensuring accessibility compliance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-3">Recommended Testing Tools</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border rounded">
+                  <h5 className="font-medium">Browser Extensions</h5>
+                  <ul className="text-sm text-foreground/80 mt-2 space-y-1">
+                    <li>• axe DevTools</li>
+                    <li>• WAVE Web Accessibility Evaluator</li>
+                    <li>• Lighthouse Accessibility Audit</li>
+                  </ul>
+                </div>
+                <div className="p-4 border rounded">
+                  <h5 className="font-medium">Screen Readers</h5>
+                  <ul className="text-sm text-foreground/80 mt-2 space-y-1">
+                    <li>• NVDA (Windows)</li>
+                    <li>• VoiceOver (macOS)</li>
+                    <li>• JAWS (Windows)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-3">Compliance Checklist</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    Color contrast ratios meet WCAG AA standards
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    All interactive elements are keyboard accessible
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    Focus indicators are clearly visible
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    Touch targets meet minimum size requirements
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span className="text-sm">
+                    Proper ARIA labels and semantic HTML
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -1,0 +1,26 @@
+{
+  "semantic": {
+    "accessibility": {
+      "focus": {
+        "ring": "{primitive.accessibility.focus.ring.width} {primitive.accessibility.focus.ring.style} {primitive.accessibility.focus.color.primary}",
+        "high-contrast": "{primitive.accessibility.focus.ring.width} {primitive.accessibility.focus.ring.style} {primitive.accessibility.focus.color.high-contrast}"
+      },
+      "text": {
+        "readable": "{primitive.accessibility.text.readable.primary}",
+        "secondary": "{primitive.accessibility.text.readable.secondary}",
+        "caption": "{primitive.accessibility.text.readable.muted}",
+        "disabled": "{primitive.accessibility.text.readable.disabled}"
+      },
+      "interactive": {
+        "button": {
+          "min-height": "{primitive.accessibility.interactive.target.min-size}",
+          "min-width": "{primitive.accessibility.interactive.target.min-size}"
+        },
+        "touch": {
+          "min-height": "{primitive.accessibility.interactive.target.touch-size}",
+          "min-width": "{primitive.accessibility.interactive.target.touch-size}"
+        }
+      }
+    }
+  }
+}

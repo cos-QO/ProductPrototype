@@ -1,0 +1,41 @@
+{
+  "primitive": {
+    "accessibility": {
+      "contrast": {
+        "aa": {
+          "normal": "4.5:1",
+          "large": "3:1"
+        },
+        "aaa": {
+          "normal": "7:1",
+          "large": "4.5:1"
+        }
+      },
+      "focus": {
+        "ring": {
+          "width": "2px",
+          "style": "solid",
+          "offset": "2px"
+        },
+        "color": {
+          "primary": "hsl(262, 83%, 58%)",
+          "high-contrast": "hsl(45, 93%, 47%)"
+        }
+      },
+      "text": {
+        "readable": {
+          "primary": "hsl(210, 40%, 98%)",
+          "secondary": "hsl(210, 20%, 90%)",
+          "muted": "hsl(210, 15%, 75%)",
+          "disabled": "hsl(215, 13%, 55%)"
+        }
+      },
+      "interactive": {
+        "target": {
+          "min-size": "44px",
+          "touch-size": "48px"
+        }
+      }
+    }
+  }
+}

@@ -1,9 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { ThemeTokenResolver } from "./component-factory";
-
-const tokenResolver = ThemeTokenResolver.getInstance();
+import tokenResolver from "./component-factory";
 
 // Get resolved token values for badge variants
 const statusColors = tokenResolver.getStatusColors();
@@ -41,7 +39,7 @@ const enhancedBadgeVariants = cva(
       size: {
         sm: "px-1.5 py-0.5 text-xs",
         default: "px-2.5 py-0.5 text-xs",
-        lg: "px-3 py-1 text-sm",
+        lg: "px-3 py-0.5 text-sm",
       },
     },
     defaultVariants: {

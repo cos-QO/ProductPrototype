@@ -237,10 +237,16 @@ export class ThemeTokenResolver {
       primary: resolveToken("{semantic.theme.primary}", "--primary"),
       secondary: resolveToken("{semantic.theme.secondary}", "--secondary"),
       accent: resolveToken("{semantic.theme.accent}", "--accent"),
-      background: resolveToken("{semantic.theme.background}", "--background"),
-      foreground: resolveToken("{semantic.theme.foreground}", "--foreground"),
+      background: resolveToken(
+        "{semantic.theme.background.primary}",
+        "--background",
+      ),
+      foreground: resolveToken(
+        "{semantic.theme.foreground.primary}",
+        "--foreground",
+      ),
       muted: resolveToken("{semantic.theme.muted}", "--muted"),
-      border: resolveToken("{semantic.theme.border}", "--border"),
+      border: resolveToken("{semantic.theme.border.primary}", "--border"),
     };
   }
 }

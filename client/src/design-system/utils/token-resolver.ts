@@ -4,9 +4,11 @@ import primitiveTypography from "../tokens/primitive/typography.json";
 import primitiveElevation from "../tokens/primitive/elevation.json";
 import primitiveMotion from "../tokens/primitive/motion.json";
 import primitiveLayout from "../tokens/primitive/layout.json";
+import primitiveAccessibility from "../tokens/primitive/accessibility.json";
 import semanticStatus from "../tokens/semantic/status.json";
 import semanticTheme from "../tokens/semantic/theme.json";
 import semanticElevation from "../tokens/semantic/elevation.json";
+import semanticAccessibility from "../tokens/semantic/accessibility.json";
 
 type TokenValue = string | number | object | string[];
 type TokenMap = Record<string, TokenValue>;
@@ -24,9 +26,11 @@ class TokenResolver {
       primitiveElevation,
       primitiveMotion,
       primitiveLayout,
+      primitiveAccessibility,
       semanticStatus,
       semanticTheme,
       semanticElevation,
+      semanticAccessibility,
     ]);
   }
 

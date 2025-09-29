@@ -113,6 +113,17 @@ export const createShortcut = {
     action,
     description: `⌘ENTER - ${description}`,
   }),
+
+  // CMD + Escape for delete/destructive actions
+  commandEscape: (
+    action: (e: KeyboardEvent) => void,
+    description: string = "Delete/Remove",
+  ): KeyboardShortcut => ({
+    key: "Escape",
+    metaKey: true,
+    action,
+    description: `⌘ESC - ${description}`,
+  }),
 };
 
 // Hook for managing modal/dialog keyboard shortcuts
