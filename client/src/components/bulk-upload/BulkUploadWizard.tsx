@@ -209,18 +209,18 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
     // Enhanced port detection with proper environment handling
     let wsHost = window.location.hostname;
     let wsPort = "5000"; // Default port for our application
-    
+
     // In development, check if we're running on a different port
     if (window.location.port) {
       wsPort = window.location.port;
     } else if (window.location.protocol === "https:") {
       wsPort = "443";
     }
-    
+
     // Use same protocol as current page for WebSocket
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsUrl = `${wsProtocol}://${wsHost}:${wsPort}/ws?sessionId=${sessionData.id}&userId=${sessionData.userId}`;
-    
+
     console.log("[WebSocket] Connecting to:", wsUrl);
     const websocket = new WebSocket(wsUrl);
 
@@ -618,11 +618,11 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
             {["analyzing", "mapping_complete", "generating_preview"].includes(
               sessionData?.status || "",
             ) && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="mb-6 p-4 bg-info/5 rounded-lg border border-info/20">
                 <div className="flex items-center space-x-3">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-info"></div>
                   <div>
-                    <p className="text-sm font-medium text-blue-900">
+                    <p className="text-sm font-medium text-info">
                       {sessionData?.status === "analyzing" &&
                         "Analyzing CSV structure and fields..."}
                       {sessionData?.status === "mapping_complete" &&
@@ -630,7 +630,7 @@ export const BulkUploadWizard: React.FC<BulkUploadWizardProps> = ({
                       {sessionData?.status === "generating_preview" &&
                         "Generating preview automatically..."}
                     </p>
-                    <p className="text-xs text-blue-600">
+                    <p className="text-xs text-info/80">
                       This happens automatically - no action needed
                     </p>
                   </div>

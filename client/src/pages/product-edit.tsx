@@ -2071,10 +2071,10 @@ export default function ProductEdit() {
                                   }
                                   className={
                                     seoScore >= 80
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-success/10 text-success"
                                       : seoScore >= 60
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-red-100 text-red-800"
+                                        ? "bg-warning/10 text-warning"
+                                        : "bg-destructive/10 text-destructive"
                                   }
                                 >
                                   {seoScore}/100
@@ -2094,8 +2094,8 @@ export default function ProductEdit() {
                                     className={
                                       watchedValues.metaTitle &&
                                       watchedValues.metaDescription
-                                        ? "text-green-600"
-                                        : "text-red-600"
+                                        ? "text-success"
+                                        : "text-destructive"
                                     }
                                   >
                                     {watchedValues.metaTitle &&
@@ -2111,8 +2111,8 @@ export default function ProductEdit() {
                                   <div
                                     className={
                                       watchedValues.focusKeywords
-                                        ? "text-green-600"
-                                        : "text-yellow-600"
+                                        ? "text-success"
+                                        : "text-warning"
                                     }
                                   >
                                     {watchedValues.focusKeywords
@@ -2128,8 +2128,8 @@ export default function ProductEdit() {
                                     className={
                                       watchedValues.ogTitle &&
                                       watchedValues.ogDescription
-                                        ? "text-green-600"
-                                        : "text-yellow-600"
+                                        ? "text-success"
+                                        : "text-warning"
                                     }
                                   >
                                     {watchedValues.ogTitle &&
@@ -2161,11 +2161,11 @@ export default function ProductEdit() {
                                       className={`text-xs ${
                                         (watchedValues.metaTitle?.length || 0) >
                                         60
-                                          ? "text-red-600"
+                                          ? "text-destructive"
                                           : (watchedValues.metaTitle?.length ||
                                                 0) >= 30
-                                            ? "text-green-600"
-                                            : "text-yellow-600"
+                                            ? "text-success"
+                                            : "text-warning"
                                       }`}
                                     >
                                       {watchedValues.metaTitle?.length || 0}/60
@@ -2214,11 +2214,11 @@ export default function ProductEdit() {
                                       className={`text-xs ${
                                         (watchedValues.metaDescription
                                           ?.length || 0) > 160
-                                          ? "text-red-600"
+                                          ? "text-destructive"
                                           : (watchedValues.metaDescription
                                                 ?.length || 0) >= 120
-                                            ? "text-green-600"
-                                            : "text-yellow-600"
+                                            ? "text-success"
+                                            : "text-warning"
                                       }`}
                                     >
                                       {watchedValues.metaDescription?.length ||
@@ -2442,13 +2442,13 @@ export default function ProductEdit() {
                               <CardContent>
                                 <div className="border rounded-lg p-4 bg-muted/30">
                                   <div className="space-y-1">
-                                    <div className="text-blue-600 text-lg font-medium hover:underline cursor-pointer">
+                                    <div className="text-primary text-lg font-medium hover:underline cursor-pointer">
                                       {previewData.google.title}
                                     </div>
-                                    <div className="text-green-700 text-sm">
+                                    <div className="text-success text-sm">
                                       {previewData.google.displayUrl}
                                     </div>
-                                    <div className="text-gray-600 text-sm">
+                                    <div className="text-muted-foreground text-sm">
                                       {previewData.google.description}
                                     </div>
                                   </div>
@@ -2467,7 +2467,7 @@ export default function ProductEdit() {
                               </CardHeader>
                               <CardContent>
                                 <div className="border rounded-lg p-4 bg-muted/30">
-                                  <div className="aspect-video bg-gray-200 rounded mb-3 flex items-center justify-center text-gray-500 text-sm">
+                                  <div className="aspect-video bg-muted rounded mb-3 flex items-center justify-center text-muted-foreground text-sm">
                                     {previewData.social.image !==
                                     "/placeholder-og-image.jpg" ? (
                                       <img
@@ -2495,10 +2495,10 @@ export default function ProductEdit() {
                                     <div className="font-semibold text-sm">
                                       {previewData.social.title}
                                     </div>
-                                    <div className="text-gray-600 text-sm">
+                                    <div className="text-muted-foreground text-sm">
                                       {previewData.social.description}
                                     </div>
-                                    <div className="text-gray-500 text-xs uppercase">
+                                    <div className="text-muted-foreground text-xs uppercase">
                                       {window.location.hostname}
                                     </div>
                                   </div>
@@ -2517,9 +2517,9 @@ export default function ProductEdit() {
                               </CardHeader>
                               <CardContent>
                                 {recommendations.length === 0 ? (
-                                  <div className="text-center py-4 text-green-600">
+                                  <div className="text-center py-4 text-success">
                                     <div className="flex items-center justify-center gap-2 mb-2">
-                                      <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                                      <div className="w-6 h-6 bg-success/10 rounded-full flex items-center justify-center">
                                         ✓
                                       </div>
                                       <span className="font-medium">
@@ -2537,19 +2537,19 @@ export default function ProductEdit() {
                                         key={index}
                                         className={`flex gap-3 p-3 rounded-lg ${
                                           rec.type === "error"
-                                            ? "bg-red-50 border border-red-200"
+                                            ? "bg-destructive/5 border border-destructive/20"
                                             : rec.type === "warning"
-                                              ? "bg-yellow-50 border border-yellow-200"
-                                              : "bg-blue-50 border border-blue-200"
+                                              ? "bg-warning/5 border border-warning/20"
+                                              : "bg-info/5 border border-info/20"
                                         }`}
                                       >
                                         <div
                                           className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                                             rec.type === "error"
-                                              ? "bg-red-200 text-red-800"
+                                              ? "bg-destructive/20 text-destructive"
                                               : rec.type === "warning"
-                                                ? "bg-yellow-200 text-yellow-800"
-                                                : "bg-blue-200 text-blue-800"
+                                                ? "bg-warning/20 text-warning"
+                                                : "bg-info/20 text-info"
                                           }`}
                                         >
                                           {rec.type === "error"
@@ -2566,10 +2566,10 @@ export default function ProductEdit() {
                                             variant="outline"
                                             className={`mt-1 text-xs ${
                                               rec.priority === "high"
-                                                ? "border-red-300 text-red-700"
+                                                ? "border-destructive/30 text-destructive"
                                                 : rec.priority === "medium"
-                                                  ? "border-yellow-300 text-yellow-700"
-                                                  : "border-blue-300 text-blue-700"
+                                                  ? "border-warning/30 text-warning"
+                                                  : "border-info/30 text-info"
                                             }`}
                                           >
                                             {rec.priority} priority

@@ -1,34 +1,34 @@
-import React, { useState, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import React, { useState, useCallback } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Upload, 
-  CheckCircle, 
-  AlertTriangle, 
-  X, 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import {
+  Upload,
+  CheckCircle,
+  AlertTriangle,
+  X,
   FileText,
   ArrowRight,
-  Loader2
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+  Loader2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Simplified types
 interface SimpleFieldMapping {
   yourField: string;
   ourField: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
 }
 
 interface SimpleBulkUploadProps {
@@ -38,7 +38,7 @@ interface SimpleBulkUploadProps {
 }
 
 interface UploadState {
-  step: 'upload' | 'mapping' | 'importing';
+  step: "upload" | "mapping" | "importing";
   file: File | null;
   mappings: SimpleFieldMapping[];
   isProcessing: boolean;
@@ -53,7 +53,7 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
 }) => {
   const { toast } = useToast();
   const [state, setState] = useState<UploadState>({
-    step: 'upload',
+    step: "upload",
     file: null,
     mappings: [],
     isProcessing: false,
@@ -65,31 +65,41 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await apiRequest('POST', '/api/upload/analyze', formData);
+      formData.append("file", file);
+
+      const response = await apiRequest(
+        "POST",
+        "/api/upload/analyze",
+        formData,
+      );
       return response;
     },
     onSuccess: (data) => {
       // Auto-generate simple mappings from AI suggestions
-      const simpleMappings: SimpleFieldMapping[] = data.suggestions.map((suggestion: any) => ({
-        yourField: suggestion.sourceField,
-        ourField: suggestion.targetField,
-        confidence: suggestion.confidence >= 0.9 ? 'high' : 
-                   suggestion.confidence >= 0.7 ? 'medium' : 'low'
-      }));
-      
-      setState(prev => ({
+      const simpleMappings: SimpleFieldMapping[] = data.suggestions.map(
+        (suggestion: any) => ({
+          yourField: suggestion.sourceField,
+          ourField: suggestion.targetField,
+          confidence:
+            suggestion.confidence >= 0.9
+              ? "high"
+              : suggestion.confidence >= 0.7
+                ? "medium"
+                : "low",
+        }),
+      );
+
+      setState((prev) => ({
         ...prev,
-        step: 'mapping',
+        step: "mapping",
         mappings: simpleMappings,
         isProcessing: false,
       }));
     },
     onError: (error: any) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: error.message || 'Failed to process file',
+        error: error.message || "Failed to process file",
         isProcessing: false,
       }));
     },
@@ -98,75 +108,87 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
   // Import execution mutation
   const importMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/import/execute', {
+      const response = await apiRequest("POST", "/api/import/execute", {
         sessionId: uploadMutation.data?.sessionId,
         mappings: state.mappings,
       });
       return response;
     },
     onSuccess: (results) => {
-      setState(prev => ({ ...prev, step: 'importing', progress: 100 }));
+      setState((prev) => ({ ...prev, step: "importing", progress: 100 }));
       toast({
-        title: 'Import Complete',
+        title: "Import Complete",
         description: `Successfully imported ${results.successfulRecords} products`,
       });
       onComplete(results);
     },
     onError: (error: any) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: error.message || 'Import failed',
+        error: error.message || "Import failed",
         isProcessing: false,
       }));
     },
   });
 
   // Handle file selection
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    
-    if (file.size > maxSize) {
-      setState(prev => ({ ...prev, error: 'File size must be less than 10MB' }));
-      return;
-    }
-    
-    const supportedTypes = ['.csv', '.json', '.xlsx'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!supportedTypes.includes(fileExtension)) {
-      setState(prev => ({ ...prev, error: 'Supported formats: CSV, JSON, XLSX' }));
-      return;
-    }
-    
-    setState(prev => ({ 
-      ...prev, 
-      file,
-      error: null,
-      isProcessing: true 
-    }));
-    
-    uploadMutation.mutate(file);
-  }, [uploadMutation]);
+  const handleFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
 
-  // Handle drag and drop
-  const handleDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
       const file = files[0];
-      setState(prev => ({ 
-        ...prev, 
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      if (file.size > maxSize) {
+        setState((prev) => ({
+          ...prev,
+          error: "File size must be less than 10MB",
+        }));
+        return;
+      }
+
+      const supportedTypes = [".csv", ".json", ".xlsx"];
+      const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
+
+      if (!supportedTypes.includes(fileExtension)) {
+        setState((prev) => ({
+          ...prev,
+          error: "Supported formats: CSV, JSON, XLSX",
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
         file,
         error: null,
-        isProcessing: true 
+        isProcessing: true,
       }));
+
       uploadMutation.mutate(file);
-    }
-  }, [uploadMutation]);
+    },
+    [uploadMutation],
+  );
+
+  // Handle drag and drop
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        setState((prev) => ({
+          ...prev,
+          file,
+          error: null,
+          isProcessing: true,
+        }));
+        uploadMutation.mutate(file);
+      }
+    },
+    [uploadMutation],
+  );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -174,11 +196,16 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
 
   // Start import
   const handleImport = () => {
-    setState(prev => ({ ...prev, isProcessing: true, step: 'importing', progress: 0 }));
-    
+    setState((prev) => ({
+      ...prev,
+      isProcessing: true,
+      step: "importing",
+      progress: 0,
+    }));
+
     // Simulate progress
     const interval = setInterval(() => {
-      setState(prev => {
+      setState((prev) => {
         if (prev.progress >= 90) {
           clearInterval(interval);
           return prev;
@@ -186,14 +213,14 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
         return { ...prev, progress: prev.progress + 10 };
       });
     }, 200);
-    
+
     importMutation.mutate();
   };
 
   // Reset state
   const handleClose = () => {
     setState({
-      step: 'upload',
+      step: "upload",
       file: null,
       mappings: [],
       isProcessing: false,
@@ -204,9 +231,9 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
   };
 
   // Check if ready to import
-  const requiredMappings = ['name', 'sku', 'price'];
-  const mappedRequired = requiredMappings.filter(req => 
-    state.mappings.some(m => m.ourField === req)
+  const requiredMappings = ["name", "sku", "price"];
+  const mappedRequired = requiredMappings.filter((req) =>
+    state.mappings.some((m) => m.ourField === req),
   );
   const canImport = mappedRequired.length === requiredMappings.length;
 
@@ -227,24 +254,33 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
         <div className="space-y-6">
           {/* Progress Indicator */}
           <div className="flex items-center space-x-4">
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-              state.step === 'upload' ? "bg-primary text-primary-foreground" : "bg-muted"
-            )}>
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                state.step === "upload"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted",
+              )}
+            >
               1
             </div>
             <div className="flex-1 h-px bg-muted" />
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-              state.step === 'mapping' ? "bg-primary text-primary-foreground" : 
-              state.step === 'importing' ? "bg-green-500 text-white" : "bg-muted"
-            )}>
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                state.step === "mapping"
+                  ? "bg-primary text-primary-foreground"
+                  : state.step === "importing"
+                    ? "bg-success text-success-foreground"
+                    : "bg-muted",
+              )}
+            >
               2
             </div>
           </div>
 
           {/* File Upload Step */}
-          {state.step === 'upload' && (
+          {state.step === "upload" && (
             <div className="space-y-4">
               <div
                 onDrop={handleDrop}
@@ -263,12 +299,16 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
                   {state.isProcessing ? (
                     <div className="flex flex-col items-center space-y-2">
                       <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                      <p className="text-sm text-muted-foreground">Analyzing file...</p>
+                      <p className="text-sm text-muted-foreground">
+                        Analyzing file...
+                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center space-y-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-lg font-medium">Drop file or click to browse</p>
+                      <p className="text-lg font-medium">
+                        Drop file or click to browse
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         Supports: CSV, JSON, XLSX (max 10MB)
                       </p>
@@ -290,16 +330,21 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
           )}
 
           {/* Field Mapping Step */}
-          {state.step === 'mapping' && (
+          {state.step === "mapping" && (
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="font-medium">Auto-mapping detected {state.mappings.length} fields</span>
+                <CheckCircle className="h-5 w-5 text-success" />
+                <span className="font-medium">
+                  Auto-mapping detected {state.mappings.length} fields
+                </span>
               </div>
 
               <div className="space-y-3">
                 {state.mappings.map((mapping, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
                     <div className="flex items-center space-x-3">
                       <span className="font-mono text-sm text-muted-foreground">
                         {mapping.yourField}
@@ -307,9 +352,14 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{mapping.ourField}</span>
                     </div>
-                    <Badge 
-                      variant={mapping.confidence === 'high' ? 'default' : 
-                              mapping.confidence === 'medium' ? 'secondary' : 'outline'}
+                    <Badge
+                      variant={
+                        mapping.confidence === "high"
+                          ? "default"
+                          : mapping.confidence === "medium"
+                            ? "secondary"
+                            : "outline"
+                      }
                       className="text-xs"
                     >
                       {mapping.confidence} confidence
@@ -322,15 +372,19 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Missing required fields: {requiredMappings.filter(req => 
-                      !state.mappings.some(m => m.ourField === req)
-                    ).join(', ')}
+                    Missing required fields:{" "}
+                    {requiredMappings
+                      .filter(
+                        (req) =>
+                          !state.mappings.some((m) => m.ourField === req),
+                      )
+                      .join(", ")}
                   </AlertDescription>
                 </Alert>
               )}
 
               <div className="flex justify-end">
-                <Button 
+                <Button
                   onClick={handleImport}
                   disabled={!canImport || state.isProcessing}
                   className="flex items-center space-x-2"
@@ -347,7 +401,7 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
           )}
 
           {/* Import Progress Step */}
-          {state.step === 'importing' && (
+          {state.step === "importing" && (
             <div className="space-y-4">
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2 mb-4">
@@ -378,7 +432,7 @@ export const SimpleBulkUpload: React.FC<SimpleBulkUploadProps> = ({
               Cancel
             </Button>
             <div className="text-sm text-muted-foreground">
-              Step {state.step === 'upload' ? 1 : 2} of 2
+              Step {state.step === "upload" ? 1 : 2} of 2
             </div>
           </div>
         </div>

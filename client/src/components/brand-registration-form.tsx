@@ -10,12 +10,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { CloudUpload, Loader2 } from "lucide-react";
 
 const brandFormSchema = z.object({
-  name: z.string().min(1, "Brand name is required").max(255, "Brand name must be less than 255 characters"),
+  name: z
+    .string()
+    .min(1, "Brand name is required")
+    .max(255, "Brand name must be less than 255 characters"),
   description: z.string().optional(),
   story: z.string().optional(),
   category: z.string().min(1, "Category is required"),
@@ -132,14 +148,17 @@ export default function BrandRegistrationForm() {
   };
 
   return (
-    <Card className="bg-card border-border" data-testid="brand-registration-form">
+    <Card
+      className="bg-card border-border"
+      data-testid="brand-registration-form"
+    >
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl">Brand Registration</CardTitle>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-primary hover:text-primary/80"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary hover:text-primary/80 transition-colors duration-[var(--motion-duration-fast)]"
             data-testid="button-view-all-brands"
           >
             View All <span className="ml-1">→</span>
@@ -154,11 +173,13 @@ export default function BrandRegistrationForm() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Brand Name</FormLabel>
+                  <FormLabel className="text-sm font-medium">
+                    Brand Name
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter brand name" 
-                      {...field} 
+                    <Input
+                      placeholder="Enter brand name"
+                      {...field}
                       data-testid="input-brand-name"
                     />
                   </FormControl>
@@ -172,13 +193,15 @@ export default function BrandRegistrationForm() {
               name="story"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Brand Story</FormLabel>
+                  <FormLabel className="text-sm font-medium">
+                    Brand Story
+                  </FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Tell your brand's story..." 
-                      rows={3} 
+                    <Textarea
+                      placeholder="Tell your brand's story..."
+                      rows={3}
                       className="resize-none"
-                      {...field} 
+                      {...field}
                       data-testid="textarea-brand-story"
                     />
                   </FormControl>
@@ -192,19 +215,30 @@ export default function BrandRegistrationForm() {
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel className="text-sm font-medium">
+                    Category
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger data-testid="select-brand-category">
                         <SelectValue placeholder="Select category..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="fashion-apparel">Fashion & Apparel</SelectItem>
+                      <SelectItem value="fashion-apparel">
+                        Fashion & Apparel
+                      </SelectItem>
                       <SelectItem value="home-garden">Home & Garden</SelectItem>
                       <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="health-beauty">Health & Beauty</SelectItem>
-                      <SelectItem value="sports-outdoors">Sports & Outdoors</SelectItem>
+                      <SelectItem value="health-beauty">
+                        Health & Beauty
+                      </SelectItem>
+                      <SelectItem value="sports-outdoors">
+                        Sports & Outdoors
+                      </SelectItem>
                       <SelectItem value="toys-games">Toys & Games</SelectItem>
                       <SelectItem value="automotive">Automotive</SelectItem>
                       <SelectItem value="books-media">Books & Media</SelectItem>
@@ -218,16 +252,16 @@ export default function BrandRegistrationForm() {
             <div className="space-y-2">
               <label className="block text-sm font-medium">Brand Logo</label>
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-                  dragActive 
-                    ? "border-primary/50 bg-primary/5" 
-                    : "border-border hover:border-primary/50"
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-[var(--motion-duration-fast)] cursor-pointer ${
+                  dragActive
+                    ? "border-info bg-info/5"
+                    : "border-border hover:border-info/50"
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                onClick={() => document.getElementById('logo-upload')?.click()}
+                onClick={() => document.getElementById("logo-upload")?.click()}
                 data-testid="dropzone-brand-logo"
               >
                 <input
@@ -243,7 +277,7 @@ export default function BrandRegistrationForm() {
                 </div>
                 {logoFile ? (
                   <div>
-                    <p className="text-sm font-medium text-primary mb-2">
+                    <p className="text-sm font-medium text-success mb-2">
                       {logoFile.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -253,7 +287,8 @@ export default function BrandRegistrationForm() {
                 ) : (
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Drop your logo here, or <span className="text-primary">browse</span>
+                      Drop your logo here, or{" "}
+                      <span className="text-info">browse</span>
                     </p>
                     <p className="text-xs text-muted-foreground">
                       PNG, JPG up to 10MB
@@ -263,9 +298,9 @@ export default function BrandRegistrationForm() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full gradient-primary text-white hover:opacity-90 font-semibold"
+            <Button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-semibold"
               disabled={createBrandMutation.isPending}
               data-testid="button-register-brand"
             >

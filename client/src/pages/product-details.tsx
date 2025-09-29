@@ -14,15 +14,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Save, 
-  Send, 
-  CheckCircle, 
-  Globe, 
+import {
+  Save,
+  Send,
+  CheckCircle,
+  Globe,
   ChevronLeft,
   Edit,
   Package,
@@ -41,7 +54,7 @@ import {
   Languages,
   Users,
   Clock,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,7 +67,7 @@ const productFormSchema = z.object({
   longDescription: z.string().optional(),
   story: z.string().optional(),
   brandId: z.number().min(1, "Brand selection is required"),
-  status: z.enum(['draft', 'review', 'published', 'archived']),
+  status: z.enum(["draft", "review", "published", "archived"]),
 });
 
 interface ProductAttribute {
@@ -77,7 +90,7 @@ interface ProductVariant {
 
 interface MediaAsset {
   id: string;
-  type: 'image' | 'video' | 'document';
+  type: "image" | "video" | "document";
   url: string;
   alt?: string;
   isPrimary: boolean;
@@ -224,16 +237,17 @@ export default function ProductDetails() {
     );
   }
 
-  const brandName = brands?.find((b: any) => b.id === product.brandId)?.name || "Unknown Brand";
+  const brandName =
+    brands?.find((b: any) => b.id === product.brandId)?.name || "Unknown Brand";
   const completionPercentage = 65; // Calculate based on filled fields
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
-      
+
       <div className="flex min-h-screen">
         <Sidebar />
-        
+
         <main className="flex-1 p-6">
           {/* Breadcrumbs */}
           <div className="mb-6" data-testid="breadcrumbs">
@@ -248,7 +262,9 @@ export default function ProductDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`/brands/${product.brandId}`}>{brandName}</BreadcrumbLink>
+                  <BreadcrumbLink href={`/brands/${product.brandId}`}>
+                    {brandName}
+                  </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
@@ -274,21 +290,36 @@ export default function ProductDetails() {
                     </Button>
                     <div>
                       <div className="flex items-center space-x-2 mb-2">
-                        <h1 className="text-2xl font-bold" data-testid="product-name">{product.name}</h1>
-                        <Badge 
-                          variant={product.status === 'published' ? 'default' : 
-                                  product.status === 'review' ? 'secondary' : 'outline'}
+                        <h1
+                          className="text-2xl font-bold"
+                          data-testid="product-name"
+                        >
+                          {product.name}
+                        </h1>
+                        <Badge
+                          variant={
+                            product.status === "published"
+                              ? "default"
+                              : product.status === "review"
+                                ? "secondary"
+                                : "outline"
+                          }
                           data-testid="product-status"
                         >
                           {product.status}
                         </Badge>
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span data-testid="product-sku">SKU: {product.sku}</span>
+                        <span data-testid="product-sku">
+                          SKU: {product.sku}
+                        </span>
                         <span>Brand: {brandName}</span>
                         <div className="flex items-center space-x-2">
                           <span>Completion:</span>
-                          <Progress value={completionPercentage} className="w-20" />
+                          <Progress
+                            value={completionPercentage}
+                            className="w-20"
+                          />
                           <span>{completionPercentage}%</span>
                         </div>
                       </div>
@@ -324,16 +355,16 @@ export default function ProductDetails() {
                     </Button>
                     <Button
                       onClick={handlePublish}
-                      disabled={updateProductMutation.isPending || product.status !== 'review'}
+                      disabled={
+                        updateProductMutation.isPending ||
+                        product.status !== "review"
+                      }
                       data-testid="button-publish"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Publish
                     </Button>
-                    <Button
-                      variant="outline"
-                      data-testid="button-translate"
-                    >
+                    <Button variant="outline" data-testid="button-translate">
                       <Languages className="h-4 w-4 mr-2" />
                       Translate
                     </Button>
@@ -344,8 +375,15 @@ export default function ProductDetails() {
           </div>
 
           {/* Tabbed Navigation */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8" data-testid="product-tabs">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
+            <TabsList
+              className="grid w-full grid-cols-8"
+              data-testid="product-tabs"
+            >
               <TabsTrigger value="general" data-testid="tab-general">
                 <Package className="h-4 w-4 mr-2" />
                 General
@@ -409,7 +447,9 @@ export default function ProductDetails() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="shortDescription">Short Description *</Label>
+                    <Label htmlFor="shortDescription">
+                      Short Description *
+                    </Label>
                     <Textarea
                       id="shortDescription"
                       {...form.register("shortDescription")}
@@ -445,9 +485,11 @@ export default function ProductDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="brandId">Brand *</Label>
-                      <Select 
-                        value={form.watch("brandId")?.toString() || ""} 
-                        onValueChange={(value) => form.setValue("brandId", parseInt(value))}
+                      <Select
+                        value={form.watch("brandId")?.toString() || ""}
+                        onValueChange={(value) =>
+                          form.setValue("brandId", parseInt(value))
+                        }
                         disabled={!isEditing}
                       >
                         <SelectTrigger data-testid="select-brand">
@@ -455,7 +497,10 @@ export default function ProductDetails() {
                         </SelectTrigger>
                         <SelectContent>
                           {brands?.map((brand: any) => (
-                            <SelectItem key={brand.id} value={brand.id.toString()}>
+                            <SelectItem
+                              key={brand.id}
+                              value={brand.id.toString()}
+                            >
                               {brand.name}
                             </SelectItem>
                           ))}
@@ -464,9 +509,11 @@ export default function ProductDetails() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
-                      <Select 
-                        value={form.watch("status")} 
-                        onValueChange={(value) => form.setValue("status", value as any)}
+                      <Select
+                        value={form.watch("status")}
+                        onValueChange={(value) =>
+                          form.setValue("status", value as any)
+                        }
                         disabled={!isEditing}
                       >
                         <SelectTrigger data-testid="select-status">
@@ -491,7 +538,11 @@ export default function ProductDetails() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Product Attributes & Specifications</CardTitle>
-                    <Button size="sm" disabled={!isEditing} data-testid="button-add-attribute">
+                    <Button
+                      size="sm"
+                      disabled={!isEditing}
+                      data-testid="button-add-attribute"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Attribute
                     </Button>
@@ -501,37 +552,61 @@ export default function ProductDetails() {
                   <div className="space-y-6">
                     {/* Technical Specifications */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Technical Specifications</h3>
+                      <h3 className="text-lg font-semibold">
+                        Technical Specifications
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {productAttributes?.filter(attr => attr.category === 'technical').map((attr) => (
-                          <div key={attr.id} className="flex items-center space-x-4" data-testid={`attribute-${attr.id}`}>
-                            <Label className="min-w-[120px]">{attr.name}</Label>
-                            <Input 
-                              value={attr.value} 
-                              disabled={!isEditing}
-                              placeholder={attr.unit ? `Value (${attr.unit})` : "Value"}
-                            />
-                            {attr.required && <span className="text-red-500">*</span>}
-                          </div>
-                        ))}
+                        {productAttributes
+                          ?.filter((attr) => attr.category === "technical")
+                          .map((attr) => (
+                            <div
+                              key={attr.id}
+                              className="flex items-center space-x-4"
+                              data-testid={`attribute-${attr.id}`}
+                            >
+                              <Label className="min-w-[120px]">
+                                {attr.name}
+                              </Label>
+                              <Input
+                                value={attr.value}
+                                disabled={!isEditing}
+                                placeholder={
+                                  attr.unit ? `Value (${attr.unit})` : "Value"
+                                }
+                              />
+                              {attr.required && (
+                                <span className="text-destructive">*</span>
+                              )}
+                            </div>
+                          ))}
                       </div>
                     </div>
 
                     {/* Materials */}
                     <Separator />
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Materials & Composition</h3>
+                      <h3 className="text-lg font-semibold">
+                        Materials & Composition
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {productAttributes?.filter(attr => attr.category === 'materials').map((attr) => (
-                          <div key={attr.id} className="flex items-center space-x-4" data-testid={`material-${attr.id}`}>
-                            <Label className="min-w-[120px]">{attr.name}</Label>
-                            <Input 
-                              value={attr.value} 
-                              disabled={!isEditing}
-                              placeholder="Material/Percentage"
-                            />
-                          </div>
-                        ))}
+                        {productAttributes
+                          ?.filter((attr) => attr.category === "materials")
+                          .map((attr) => (
+                            <div
+                              key={attr.id}
+                              className="flex items-center space-x-4"
+                              data-testid={`material-${attr.id}`}
+                            >
+                              <Label className="min-w-[120px]">
+                                {attr.name}
+                              </Label>
+                              <Input
+                                value={attr.value}
+                                disabled={!isEditing}
+                                placeholder="Material/Percentage"
+                              />
+                            </div>
+                          ))}
                       </div>
                     </div>
                   </div>
@@ -546,11 +621,19 @@ export default function ProductDetails() {
                   <div className="flex justify-between items-center">
                     <CardTitle>Digital Asset Management</CardTitle>
                     <div className="space-x-2">
-                      <Button size="sm" disabled={!isEditing} data-testid="button-upload-media">
+                      <Button
+                        size="sm"
+                        disabled={!isEditing}
+                        data-testid="button-upload-media"
+                      >
                         <Upload className="h-4 w-4 mr-2" />
                         Upload Media
                       </Button>
-                      <Button variant="outline" size="sm" data-testid="button-bulk-edit">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-bulk-edit"
+                      >
                         <Edit className="h-4 w-4 mr-2" />
                         Bulk Edit
                       </Button>
@@ -560,24 +643,36 @@ export default function ProductDetails() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {mediaAssets?.map((asset) => (
-                      <div key={asset.id} className="border rounded-lg p-4" data-testid={`media-${asset.id}`}>
-                        <div className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                          {asset.type === 'image' ? (
-                            <Image className="h-16 w-16 text-gray-400" />
-                          ) : asset.type === 'video' ? (
-                            <div className="h-16 w-16 text-gray-400">📹</div>
+                      <div
+                        key={asset.id}
+                        className="border rounded-lg p-4"
+                        data-testid={`media-${asset.id}`}
+                      >
+                        <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
+                          {asset.type === "image" ? (
+                            <Image className="h-16 w-16 text-muted-foreground" />
+                          ) : asset.type === "video" ? (
+                            <div className="h-16 w-16 text-muted-foreground">
+                              📹
+                            </div>
                           ) : (
-                            <div className="h-16 w-16 text-gray-400">📄</div>
+                            <div className="h-16 w-16 text-muted-foreground">
+                              📄
+                            </div>
                           )}
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">{asset.type}</span>
-                            {asset.isPrimary && <Badge variant="default">Primary</Badge>}
+                            <span className="text-sm font-medium">
+                              {asset.type}
+                            </span>
+                            {asset.isPrimary && (
+                              <Badge variant="default">Primary</Badge>
+                            )}
                           </div>
-                          <Input 
-                            placeholder="Alt text" 
-                            value={asset.alt || ""} 
+                          <Input
+                            placeholder="Alt text"
+                            value={asset.alt || ""}
                             disabled={!isEditing}
                             className="text-sm"
                           />
@@ -588,7 +683,11 @@ export default function ProductDetails() {
                             <Button size="sm" variant="outline">
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" disabled={!isEditing}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!isEditing}
+                            >
                               <Trash className="h-4 w-4" />
                             </Button>
                           </div>
@@ -610,48 +709,78 @@ export default function ProductDetails() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Meta Title</Label>
-                      <Input disabled={!isEditing} placeholder="SEO optimized title" data-testid="input-meta-title" />
+                      <Input
+                        disabled={!isEditing}
+                        placeholder="SEO optimized title"
+                        data-testid="input-meta-title"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Meta Description</Label>
-                      <Textarea disabled={!isEditing} placeholder="SEO description" rows={3} data-testid="input-meta-description" />
+                      <Textarea
+                        disabled={!isEditing}
+                        placeholder="SEO description"
+                        rows={3}
+                        data-testid="input-meta-description"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Keywords</Label>
-                      <Input disabled={!isEditing} placeholder="keyword1, keyword2, keyword3" data-testid="input-keywords" />
+                      <Input
+                        disabled={!isEditing}
+                        placeholder="keyword1, keyword2, keyword3"
+                        data-testid="input-keywords"
+                      />
                     </div>
                   </div>
 
                   <Separator />
 
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Channel-Specific SEO</h3>
+                    <h3 className="text-lg font-semibold">
+                      Channel-Specific SEO
+                    </h3>
                     <Tabs defaultValue="website" className="w-full">
                       <TabsList>
                         <TabsTrigger value="website">Website</TabsTrigger>
                         <TabsTrigger value="amazon">Amazon</TabsTrigger>
-                        <TabsTrigger value="google">Google Shopping</TabsTrigger>
+                        <TabsTrigger value="google">
+                          Google Shopping
+                        </TabsTrigger>
                       </TabsList>
                       <TabsContent value="website" className="space-y-4">
                         <div className="space-y-2">
                           <Label>URL Slug</Label>
-                          <Input disabled={!isEditing} placeholder="product-url-slug" />
+                          <Input
+                            disabled={!isEditing}
+                            placeholder="product-url-slug"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Search Terms</Label>
-                          <Input disabled={!isEditing} placeholder="Internal search terms" />
+                          <Input
+                            disabled={!isEditing}
+                            placeholder="Internal search terms"
+                          />
                         </div>
                       </TabsContent>
                       <TabsContent value="amazon" className="space-y-4">
                         <div className="space-y-2">
                           <Label>Amazon Keywords</Label>
-                          <Textarea disabled={!isEditing} placeholder="Amazon-specific search terms" rows={3} />
+                          <Textarea
+                            disabled={!isEditing}
+                            placeholder="Amazon-specific search terms"
+                            rows={3}
+                          />
                         </div>
                       </TabsContent>
                       <TabsContent value="google" className="space-y-4">
                         <div className="space-y-2">
                           <Label>Product Category</Label>
-                          <Input disabled={!isEditing} placeholder="Google Shopping category" />
+                          <Input
+                            disabled={!isEditing}
+                            placeholder="Google Shopping category"
+                          />
                         </div>
                       </TabsContent>
                     </Tabs>
@@ -666,7 +795,11 @@ export default function ProductDetails() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Product Variations</CardTitle>
-                    <Button size="sm" disabled={!isEditing} data-testid="button-add-variant">
+                    <Button
+                      size="sm"
+                      disabled={!isEditing}
+                      data-testid="button-add-variant"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Variant
                     </Button>
@@ -675,7 +808,11 @@ export default function ProductDetails() {
                 <CardContent>
                   <div className="space-y-4">
                     {productVariants?.map((variant) => (
-                      <div key={variant.id} className="border rounded-lg p-4" data-testid={`variant-${variant.id}`}>
+                      <div
+                        key={variant.id}
+                        className="border rounded-lg p-4"
+                        data-testid={`variant-${variant.id}`}
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div className="space-y-2">
                             <Label>Variant Name</Label>
@@ -687,19 +824,29 @@ export default function ProductDetails() {
                           </div>
                           <div className="space-y-2">
                             <Label>Price</Label>
-                            <Input type="number" value={variant.price || ""} disabled={!isEditing} />
+                            <Input
+                              type="number"
+                              value={variant.price || ""}
+                              disabled={!isEditing}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>Inventory</Label>
-                            <Input type="number" value={variant.inventory || ""} disabled={!isEditing} />
+                            <Input
+                              type="number"
+                              value={variant.inventory || ""}
+                              disabled={!isEditing}
+                            />
                           </div>
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
-                          {Object.entries(variant.attributes).map(([key, value]) => (
-                            <Badge key={key} variant="secondary">
-                              {key}: {value}
-                            </Badge>
-                          ))}
+                          {Object.entries(variant.attributes).map(
+                            ([key, value]) => (
+                              <Badge key={key} variant="secondary">
+                                {key}: {value}
+                              </Badge>
+                            ),
+                          )}
                         </div>
                       </div>
                     ))}
@@ -714,7 +861,11 @@ export default function ProductDetails() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Kits and Bundles</CardTitle>
-                    <Button size="sm" disabled={!isEditing} data-testid="button-create-bundle">
+                    <Button
+                      size="sm"
+                      disabled={!isEditing}
+                      data-testid="button-create-bundle"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Create Bundle
                     </Button>
@@ -722,9 +873,13 @@ export default function ProductDetails() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-12">
-                    <Box className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Bundles Created</h3>
-                    <p className="text-muted-foreground mb-4">Create product bundles to offer complete solutions</p>
+                    <Box className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Bundles Created
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create product bundles to offer complete solutions
+                    </p>
                     <Button disabled={!isEditing}>
                       <Plus className="h-4 w-4 mr-2" />
                       Create Your First Bundle
@@ -747,30 +902,47 @@ export default function ProductDetails() {
                         <h3 className="font-semibold">Main Website</h3>
                         <Badge variant="default">Published</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">Last synced: 2 hours ago</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Last synced: 2 hours ago
+                      </p>
                       <div className="space-y-2">
                         <Button size="sm" variant="outline" className="w-full">
                           <ExternalLink className="h-4 w-4 mr-2" />
                           View Live
                         </Button>
-                        <Button size="sm" className="w-full" disabled={!isEditing}>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          disabled={!isEditing}
+                        >
                           Update
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold">Amazon</h3>
                         <Badge variant="secondary">Pending</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">Waiting for approval</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Waiting for approval
+                      </p>
                       <div className="space-y-2">
-                        <Button size="sm" variant="outline" className="w-full" disabled>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          disabled
+                        >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           View Live
                         </Button>
-                        <Button size="sm" className="w-full" disabled={!isEditing}>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          disabled={!isEditing}
+                        >
                           Publish
                         </Button>
                       </div>
@@ -781,13 +953,24 @@ export default function ProductDetails() {
                         <h3 className="font-semibold">Shopify</h3>
                         <Badge variant="destructive">Error</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">Sync failed - missing required fields</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Sync failed - missing required fields
+                      </p>
                       <div className="space-y-2">
-                        <Button size="sm" variant="outline" className="w-full" disabled>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          disabled
+                        >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           View Live
                         </Button>
-                        <Button size="sm" className="w-full" disabled={!isEditing}>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          disabled={!isEditing}
+                        >
                           Retry
                         </Button>
                       </div>
@@ -806,21 +989,35 @@ export default function ProductDetails() {
                 <CardContent>
                   <div className="space-y-4">
                     {auditHistory?.map((entry: any, index: number) => (
-                      <div key={index} className="flex items-start space-x-4 p-4 border rounded-lg" data-testid={`history-${index}`}>
+                      <div
+                        key={index}
+                        className="flex items-start space-x-4 p-4 border rounded-lg"
+                        data-testid={`history-${index}`}
+                      >
                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                           <Users className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium">{entry.userName}</span>
-                            <span className="text-sm text-muted-foreground">{entry.action}</span>
+                            <span className="font-medium">
+                              {entry.userName}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {entry.action}
+                            </span>
                             <Clock className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">{entry.timestamp}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {entry.timestamp}
+                            </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{entry.details}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {entry.details}
+                          </p>
                           {entry.changes && (
-                            <div className="mt-2 text-xs bg-gray-50 p-2 rounded">
-                              <pre>{JSON.stringify(entry.changes, null, 2)}</pre>
+                            <div className="mt-2 text-xs bg-muted/50 p-2 rounded">
+                              <pre>
+                                {JSON.stringify(entry.changes, null, 2)}
+                              </pre>
                             </div>
                           )}
                         </div>

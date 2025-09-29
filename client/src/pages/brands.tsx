@@ -10,9 +10,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Crown,
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Users,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -127,15 +151,21 @@ export default function Brands() {
   });
 
   const handleDeleteBrand = (brandId: number) => {
-    if (confirm("Are you sure you want to delete this brand? This action cannot be undone.")) {
+    if (
+      confirm(
+        "Are you sure you want to delete this brand? This action cannot be undone.",
+      )
+    ) {
       deleteBrandMutation.mutate(brandId);
     }
   };
 
-  const filteredBrands = (brands as any[])?.filter((brand: any) =>
-    brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    brand.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredBrands =
+    (brands as any[])?.filter(
+      (brand: any) =>
+        brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        brand.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+    ) || [];
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -144,21 +174,29 @@ export default function Brands() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
-      
+
       <div className="flex min-h-screen">
         <Sidebar />
-        
+
         {/* Main Content */}
         <main className="flex-1 p-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8" data-testid="brands-header">
+          <div
+            className="flex items-center justify-between mb-8"
+            data-testid="brands-header"
+          >
             <div>
               <h1 className="text-3xl font-bold mb-2">Brand Management</h1>
-              <p className="text-muted-foreground">Manage your brands and their storytelling content</p>
+              <p className="text-muted-foreground">
+                Manage your brands and their storytelling content
+              </p>
             </div>
-            <Dialog open={isRegistrationOpen} onOpenChange={setIsRegistrationOpen}>
+            <Dialog
+              open={isRegistrationOpen}
+              onOpenChange={setIsRegistrationOpen}
+            >
               <DialogTrigger asChild>
-                <Button 
+                <Button
                   className="gradient-primary text-white hover:opacity-90"
                   data-testid="button-create-brand"
                 >
@@ -170,12 +208,18 @@ export default function Brands() {
                 <DialogHeader>
                   <DialogTitle>Register New Brand</DialogTitle>
                   <DialogDescription>
-                    Add a new brand to your portfolio and start building your product catalog.
+                    Add a new brand to your portfolio and start building your
+                    product catalog.
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createBrandMutation.mutate(data))} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit((data) =>
+                      createBrandMutation.mutate(data),
+                    )}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="name"
@@ -183,13 +227,17 @@ export default function Brands() {
                         <FormItem>
                           <FormLabel>Brand Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter brand name" {...field} data-testid="input-brand-name" />
+                            <Input
+                              placeholder="Enter brand name"
+                              {...field}
+                              data-testid="input-brand-name"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="description"
@@ -197,13 +245,17 @@ export default function Brands() {
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Input placeholder="Brief description of your brand" {...field} data-testid="input-brand-description" />
+                            <Input
+                              placeholder="Brief description of your brand"
+                              {...field}
+                              data-testid="input-brand-description"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="website"
@@ -211,13 +263,16 @@ export default function Brands() {
                         <FormItem>
                           <FormLabel>Website (Optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://yourbrand.com" {...field} />
+                            <Input
+                              placeholder="https://yourbrand.com"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="foundedYear"
@@ -231,7 +286,7 @@ export default function Brands() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <DialogFooter>
                       <Button
                         type="button"
@@ -246,7 +301,9 @@ export default function Brands() {
                         className="gradient-primary text-white hover:opacity-90"
                         data-testid="button-submit-brand"
                       >
-                        {createBrandMutation.isPending ? "Registering..." : "Register Brand"}
+                        {createBrandMutation.isPending
+                          ? "Registering..."
+                          : "Register Brand"}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -256,7 +313,10 @@ export default function Brands() {
           </div>
 
           {/* Search and Filters */}
-          <div className="flex items-center space-x-4 mb-6" data-testid="search-filters">
+          <div
+            className="flex items-center space-x-4 mb-6"
+            data-testid="search-filters"
+          >
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -267,7 +327,11 @@ export default function Brands() {
                 data-testid="input-search-brands"
               />
             </div>
-            <Button variant="outline" size="sm" data-testid="button-filter-brands">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-filter-brands"
+            >
               <Filter className="mr-2 h-4 w-4" />
               Filter
             </Button>
@@ -299,10 +363,13 @@ export default function Brands() {
               ))}
             </div>
           ) : filteredBrands.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="brands-grid">
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              data-testid="brands-grid"
+            >
               {filteredBrands.map((brand: any) => (
-                <Card 
-                  key={brand.id} 
+                <Card
+                  key={brand.id}
                   className="bg-card border-border hover:border-primary/50 transition-colors group"
                   data-testid={`brand-card-${brand.id}`}
                 >
@@ -311,28 +378,40 @@ export default function Brands() {
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 gradient-primary rounded-lg flex items-center justify-center">
                           {brand.logoUrl ? (
-                            <img 
-                              src={brand.logoUrl} 
+                            <img
+                              src={brand.logoUrl}
                               alt={brand.name}
                               className="w-8 h-8 rounded object-cover"
                               onError={(e) => {
                                 // Fix corrupted URLs that might be missing domain
                                 const target = e.target as HTMLImageElement;
-                                if (target.src.includes('200x200?text=') && !target.src.includes('https://via.placeholder.com/')) {
-                                  target.src = `https://via.placeholder.com/${target.src.split('200x200?text=')[1] ? target.src : '200x200?text=' + encodeURIComponent(brand.name)}`;
+                                if (
+                                  target.src.includes("200x200?text=") &&
+                                  !target.src.includes(
+                                    "https://via.placeholder.com/",
+                                  )
+                                ) {
+                                  target.src = `https://via.placeholder.com/${target.src.split("200x200?text=")[1] ? target.src : "200x200?text=" + encodeURIComponent(brand.name)}`;
                                 } else {
                                   // Hide image and show fallback
-                                  target.style.display = 'none';
-                                  target.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
+                                  target.style.display = "none";
+                                  target.parentElement
+                                    ?.querySelector(".fallback-icon")
+                                    ?.classList.remove("hidden");
                                 }
                               }}
                             />
                           ) : null}
                           {/* Fallback icon */}
-                          <Crown className={`text-white h-5 w-5 ${brand.logoUrl ? 'hidden fallback-icon' : ''}`} />
+                          <Crown
+                            className={`text-white h-5 w-5 ${brand.logoUrl ? "hidden fallback-icon" : ""}`}
+                          />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-sm" data-testid={`text-brand-name-${brand.id}`}>
+                          <h3
+                            className="font-semibold text-sm"
+                            data-testid={`text-brand-name-${brand.id}`}
+                          >
                             {brand.name}
                           </h3>
                           <p className="text-xs text-muted-foreground">
@@ -341,14 +420,16 @@ export default function Brands() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge 
+                        <Badge
                           variant={brand.isActive ? "default" : "secondary"}
-                          className={brand.isActive ? "bg-green-500/10 text-green-400" : ""}
+                          className={
+                            brand.isActive ? "bg-success/10 text-success" : ""
+                          }
                         >
                           {brand.isActive ? "Active" : "Inactive"}
                         </Badge>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                           data-testid={`button-brand-menu-${brand.id}`}
@@ -360,32 +441,33 @@ export default function Brands() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground mb-4 line-clamp-3">
-                      {brand.description || brand.story || "No description available."}
+                      {brand.description ||
+                        brand.story ||
+                        "No description available."}
                     </p>
-                    
+
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                         <span className="flex items-center">
-                          <Users className="h-3 w-3 mr-1" />
-                          0 Products
+                          <Users className="h-3 w-3 mr-1" />0 Products
                         </span>
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {new Date(brand.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    
+
                     <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="flex-1 bg-primary/10 text-primary hover:bg-primary/20"
                         data-testid={`button-edit-brand-${brand.id}`}
                       >
                         <Edit className="mr-2 h-3 w-3" />
                         Edit Story
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDeleteBrand(brand.id)}
                         disabled={deleteBrandMutation.isPending}
@@ -404,13 +486,12 @@ export default function Brands() {
                 <Crown className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-30" />
                 <h3 className="text-lg font-medium mb-2">No brands found</h3>
                 <p className="text-muted-foreground mb-6">
-                  {searchQuery 
+                  {searchQuery
                     ? `No brands match "${searchQuery}". Try a different search term.`
-                    : "Start building your brand portfolio by registering your first brand."
-                  }
+                    : "Start building your brand portfolio by registering your first brand."}
                 </p>
                 {!searchQuery && (
-                  <Button 
+                  <Button
                     className="gradient-primary text-white"
                     onClick={() => setIsRegistrationOpen(true)}
                     data-testid="button-register-first-brand"

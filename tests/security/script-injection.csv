@@ -1,0 +1,2 @@
+name,price,sku
+<script>alert("XSS")</script>,10.00,XSS001

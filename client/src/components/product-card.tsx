@@ -38,7 +38,7 @@ export default function ProductCard({
 
   return (
     <Card
-      className="border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors group"
+      className="border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-[border-color] duration-[var(--motion-duration-fast)] group"
       data-testid={`product-card-${product.id}`}
     >
       {/* Product Image Placeholder */}
@@ -110,7 +110,7 @@ export default function ProductCard({
             {product.isVariant && (
               <Badge
                 variant="outline"
-                className="text-xs bg-primary/10 text-primary border-primary/20"
+                className="text-xs bg-info/10 text-info border-info/20"
               >
                 Variant
               </Badge>
@@ -125,7 +125,7 @@ export default function ProductCard({
         <div className="flex space-x-2">
           <Button
             size="sm"
-            className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 font-medium"
+            className="flex-1 bg-info/10 text-info hover:bg-info/20 font-medium transition-colors duration-[var(--motion-duration-fast)]"
             onClick={() => navigate(`/products/${product.id}/edit`)}
             data-testid={`button-edit-product-${product.id}`}
           >
@@ -135,7 +135,7 @@ export default function ProductCard({
           <Button
             variant="outline"
             size="sm"
-            className="hover:bg-muted/80"
+            className="hover:bg-muted/80 transition-colors duration-[var(--motion-duration-fast)]"
             data-testid={`button-share-product-${product.id}`}
           >
             <Share className="h-3 w-3" />
@@ -146,7 +146,7 @@ export default function ProductCard({
               size="sm"
               onClick={onDelete}
               disabled={isDeleting}
-              className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+              className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 transition-colors duration-[var(--motion-duration-fast)]"
               data-testid={`button-delete-product-${product.id}`}
             >
               <Trash2 className="h-3 w-3" />
@@ -155,7 +155,7 @@ export default function ProductCard({
           <Button
             variant="outline"
             size="sm"
-            className="hover:bg-muted/80"
+            className="hover:bg-muted/80 transition-colors duration-[var(--motion-duration-fast)]"
             data-testid={`button-more-product-${product.id}`}
           >
             <MoreHorizontal className="h-3 w-3" />

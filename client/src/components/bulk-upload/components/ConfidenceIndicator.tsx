@@ -1,24 +1,24 @@
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface ConfidenceIndicatorProps {
   confidence: number;
   showPercentage?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
-export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({ 
-  confidence, 
-  showPercentage = true, 
-  size = 'md',
-  className
+export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
+  confidence,
+  showPercentage = true,
+  size = "md",
+  className,
 }) => {
   const getColor = (conf: number) => {
-    if (conf >= 0.9) return "bg-green-500";
-    if (conf >= 0.7) return "bg-yellow-500";
-    return "bg-red-500";
+    if (conf >= 0.9) return "bg-success";
+    if (conf >= 0.7) return "bg-warning";
+    return "bg-destructive";
   };
 
   const getLabel = (conf: number) => {
@@ -29,12 +29,12 @@ export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
 
   const getSizeClasses = (size: string) => {
     switch (size) {
-      case 'sm':
-        return { dot: 'w-1.5 h-1.5', text: 'text-xs' };
-      case 'lg':
-        return { dot: 'w-3 h-3', text: 'text-sm' };
+      case "sm":
+        return { dot: "w-1.5 h-1.5", text: "text-xs" };
+      case "lg":
+        return { dot: "w-3 h-3", text: "text-sm" };
       default:
-        return { dot: 'w-2 h-2', text: 'text-xs' };
+        return { dot: "w-2 h-2", text: "text-xs" };
     }
   };
 
@@ -42,9 +42,13 @@ export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
-      <div className={cn("rounded-full", getColor(confidence), sizeClasses.dot)} />
+      <div
+        className={cn("rounded-full", getColor(confidence), sizeClasses.dot)}
+      />
       <span className={cn("text-muted-foreground", sizeClasses.text)}>
-        {showPercentage ? `${Math.round(confidence * 100)}%` : getLabel(confidence)}
+        {showPercentage
+          ? `${Math.round(confidence * 100)}%`
+          : getLabel(confidence)}
       </span>
     </div>
   );
