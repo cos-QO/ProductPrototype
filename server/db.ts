@@ -1,11 +1,10 @@
-import pg from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-const { Pool } = pg;
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@shared/schema";
 import { createMockDb, initializeSampleData } from "./mock-database";
 
-// Use PostgreSQL or mock database
-let pool: any;
+// Database client and connection
+let client: any;
 let db: any;
 
 const DATABASE_URL =
@@ -18,14 +17,10 @@ if (DATABASE_URL.includes("mock")) {
   // Initialize sample data on first load
   initializeSampleData();
 
-  // Create mock pool
-  pool = {
+  // Create mock client that mimics postgres-js interface
+  client = {
     query: () => Promise.resolve({ rows: [] }),
-    connect: () =>
-      Promise.resolve({
-        query: () => Promise.resolve({ rows: [] }),
-        release: () => Promise.resolve(),
-      }),
+    end: () => Promise.resolve(),
   };
 
   // Use the comprehensive mock database
@@ -35,11 +30,17 @@ if (DATABASE_URL.includes("mock")) {
     "🔌 Connecting to PostgreSQL:",
     DATABASE_URL.replace(/:[^:@]*@/, ":****@"),
   );
-  pool = new Pool({
-    connectionString: DATABASE_URL,
-    ssl: false,
+
+  // Critical: prepare: false is required for Supabase connection pooling
+  // This prevents prepared statement issues with Supabase transaction mode
+  client = postgres(DATABASE_URL, {
+    prepare: false, // Required for Supabase transaction mode pooling
+    max: 20, // Connection pool size
+    idle_timeout: 30, // Close idle connections after 30s
+    connect_timeout: 10, // Connection timeout in seconds
   });
-  db = drizzle(pool, { schema });
+
+  db = drizzle(client, { schema });
 }
 
-export { pool, db };
+export { client, db };
