@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import Navigation from "@/components/navigation";
-import Sidebar from "@/components/sidebar";
 import ProductCard from "@/components/product-card";
+import ProductListItem from "@/components/product-list-item";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,9 @@ import {
   Download,
   Upload,
   ExternalLink,
+  Grid3X3,
+  List,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -36,6 +38,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useLocation } from "wouter";
 import { BulkUploadWizard } from "@/components/bulk-upload";
 import type { ImportResults } from "@/components/bulk-upload/types";
@@ -51,6 +64,17 @@ export default function Products() {
   const [selectedImportBrand, setSelectedImportBrand] = useState<string>("");
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+
+  // View and sorting state
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    const saved = localStorage.getItem("products-view-mode");
+    return (saved as "grid" | "list") || "grid";
+  });
+  const [sortBy, setSortBy] = useState<"name" | "dateAdded">(() => {
+    const saved = localStorage.getItem("products-sort-by");
+    return (saved as "name" | "dateAdded") || "dateAdded";
+  });
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -171,6 +195,30 @@ export default function Products() {
     setProductToDelete(null);
   };
 
+  // Persist preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem("products-view-mode", viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem("products-sort-by", sortBy);
+  }, [sortBy]);
+
+  // Memoized handlers for performance
+  const handleViewModeChange = useCallback((value: string) => {
+    if (value && (value === "grid" || value === "list")) {
+      setViewMode(value);
+    }
+  }, []);
+
+  const handleSortChange = useCallback((value: string) => {
+    if (value === "name" || value === "dateAdded") {
+      setSortBy(value);
+      // Set appropriate default sort order
+      setSortOrder(value === "name" ? "asc" : "desc");
+    }
+  }, []);
+
   const handleBulkUploadComplete = (results: ImportResults) => {
     // Refresh products list
     queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -191,292 +239,421 @@ export default function Products() {
     setIsBulkUploadOpen(false);
   };
 
-  const filteredProducts =
-    (products as any[])?.filter((product: any) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.shortDescription
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Memoized filtered and sorted products
+  const filteredAndSortedProducts = useMemo(() => {
+    const filtered =
+      (products as any[])?.filter((product: any) => {
+        const matchesSearch =
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.shortDescription
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesBrand =
-        selectedBrand === "all" ||
-        product.brandId?.toString() === selectedBrand;
-      const matchesStatus =
-        statusFilter === "all" || product.status === statusFilter;
+        const matchesBrand =
+          selectedBrand === "all" ||
+          product.brandId?.toString() === selectedBrand;
+        const matchesStatus =
+          statusFilter === "all" || product.status === statusFilter;
 
-      return matchesSearch && matchesBrand && matchesStatus;
-    }) || [];
+        return matchesSearch && matchesBrand && matchesStatus;
+      }) || [];
+
+    // Sort products
+    return filtered.sort((a: any, b: any) => {
+      if (sortBy === "name") {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        return sortOrder === "asc"
+          ? aName.localeCompare(bName)
+          : bName.localeCompare(aName);
+      } else {
+        const aDate = new Date(a.createdAt).getTime();
+        const bDate = new Date(b.createdAt).getTime();
+        return sortOrder === "asc" ? aDate - bDate : bDate - aDate;
+      }
+    });
+  }, [products, searchQuery, selectedBrand, statusFilter, sortBy, sortOrder]);
 
   if (isLoading || !isAuthenticated) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-
-      <div className="flex min-h-screen">
-        <Sidebar />
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Header */}
-          <div
-            className="flex items-center justify-between mb-8"
-            data-testid="products-header"
-          >
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Product Management</h1>
-              <p className="text-muted-foreground">
-                Manage your product catalog and storytelling content
-              </p>
-            </div>
-            <div className="flex space-x-3">
-              <Dialog
-                open={importDialogOpen}
-                onOpenChange={setImportDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-import-kerouac">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Import from Kerouac
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Import Kerouac Products</DialogTitle>
-                    <DialogDescription>
-                      Import luxury Kerouac watches with detailed specifications
-                      from TheWatchAPI. This will add 3 sample Kerouac products
-                      to your selected brand.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="import-brand"
-                        className="text-sm font-medium"
-                      >
-                        Select Brand to Import To:
-                      </label>
-                      <Select
-                        value={selectedImportBrand}
-                        onValueChange={setSelectedImportBrand}
-                      >
-                        <SelectTrigger
-                          className="w-full"
-                          data-testid="select-import-brand"
-                        >
-                          <SelectValue placeholder="Choose a brand..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(brands as any[])?.map((brand: any) => (
-                            <SelectItem
-                              key={brand.id}
-                              value={brand.id.toString()}
-                            >
-                              {brand.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="text-sm text-muted-foreground">
-                      <p>
-                        <strong>Sample products include:</strong>
-                      </p>
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Kerouac Daytona 116500LN (Steel, 40mm)</li>
-                        <li>Kerouac Submariner 126610LV (Steel, 41mm)</li>
-                        <li>
-                          Kerouac Datejust 126234 (Steel/White Gold, 36mm)
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setImportDialogOpen(false)}
-                      data-testid="button-cancel-import"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (selectedImportBrand) {
-                          importKerouacMutation.mutate(selectedImportBrand);
-                        }
-                      }}
-                      disabled={
-                        !selectedImportBrand || importKerouacMutation.isPending
-                      }
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                      data-testid="button-confirm-import"
-                    >
-                      {importKerouacMutation.isPending
-                        ? "Importing..."
-                        : "Import Products"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                variant="outline"
-                data-testid="button-bulk-upload"
-                onClick={() => setIsBulkUploadOpen(true)}
-                className="hover:border-primary/50 transition-[border-color] duration-[var(--motion-duration-fast)]"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Bulk Upload
+    <div className="flex-1 p-6">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between mb-8"
+        data-testid="products-header"
+      >
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Product Management</h1>
+          <p className="text-muted-foreground">
+            Manage your product catalog and storytelling content
+          </p>
+        </div>
+        <div className="flex space-x-3">
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-import-kerouac">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Import from Kerouac
               </Button>
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                data-testid="button-create-product"
-                onClick={() => navigate("/products/new")}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Product
-              </Button>
-            </div>
-          </div>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Import Kerouac Products</DialogTitle>
+                <DialogDescription>
+                  Import luxury Kerouac watches with detailed specifications
+                  from TheWatchAPI. This will add 3 sample Kerouac products to
+                  your selected brand.
+                </DialogDescription>
+              </DialogHeader>
 
-          {/* Search and Filters */}
-          <div
-            className="flex items-center space-x-4 mb-6"
-            data-testid="search-filters"
-          >
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search products, SKUs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-products"
-              />
-            </div>
-
-            <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-              <SelectTrigger className="w-40" data-testid="select-brand-filter">
-                <SelectValue placeholder="All Brands" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Brands</SelectItem>
-                {(brands as any[])?.map((brand: any) => (
-                  <SelectItem key={brand.id} value={brand.id.toString()}>
-                    {brand.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger
-                className="w-32"
-                data-testid="select-status-filter"
-              >
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="review">Review</SelectItem>
-                <SelectItem value="live">Live</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="button-export-products"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
-
-          {/* Products Grid */}
-          {productsLoading ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="bg-card border-border animate-pulse">
-                  <div className="w-full h-48 bg-muted"></div>
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                      <div className="h-3 bg-muted rounded w-1/2"></div>
-                    </div>
-                    <div className="h-3 bg-muted rounded w-full"></div>
-                    <div className="h-3 bg-muted rounded w-5/6"></div>
-                    <div className="flex space-x-2">
-                      <div className="flex-1 h-8 bg-muted rounded"></div>
-                      <div className="h-8 w-8 bg-muted rounded"></div>
-                      <div className="h-8 w-8 bg-muted rounded"></div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : filteredProducts.length > 0 ? (
-            <div
-              className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-              data-testid="products-grid"
-            >
-              {filteredProducts.map((product: any) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onDelete={() => handleDeleteProduct(product.id)}
-                  isDeleting={deleteProductMutation.isPending}
-                />
-              ))}
-              <ConfirmationDialog
-                isOpen={!!productToDelete}
-                onClose={cancelDeleteProduct}
-                onConfirm={confirmDeleteProduct}
-                title="Delete Product"
-                description="Are you sure you want to delete this product? This action cannot be undone."
-                confirmText="Delete Product"
-                isLoading={deleteProductMutation.isPending}
-              />
-            </div>
-          ) : (
-            <Card className="bg-card border-border">
-              <CardContent className="text-center py-12">
-                <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-30" />
-                <h3 className="text-lg font-medium mb-2">No products found</h3>
-                <p className="text-muted-foreground mb-6">
-                  {searchQuery ||
-                  selectedBrand !== "all" ||
-                  statusFilter !== "all"
-                    ? "No products match your current filters. Try adjusting your search criteria."
-                    : "Start building your product catalog by adding your first product."}
-                </p>
-                {!searchQuery &&
-                  selectedBrand === "all" &&
-                  statusFilter === "all" && (
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                      data-testid="button-add-first-product"
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="import-brand" className="text-sm font-medium">
+                    Select Brand to Import To:
+                  </label>
+                  <Select
+                    value={selectedImportBrand}
+                    onValueChange={setSelectedImportBrand}
+                  >
+                    <SelectTrigger
+                      className="w-full"
+                      data-testid="select-import-brand"
                     >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Your First Product
-                    </Button>
-                  )}
-              </CardContent>
-            </Card>
-          )}
-        </main>
+                      <SelectValue placeholder="Choose a brand..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(brands as any[])?.map((brand: any) => (
+                        <SelectItem key={brand.id} value={brand.id.toString()}>
+                          {brand.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  <p>
+                    <strong>Sample products include:</strong>
+                  </p>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Kerouac Daytona 116500LN (Steel, 40mm)</li>
+                    <li>Kerouac Submariner 126610LV (Steel, 41mm)</li>
+                    <li>Kerouac Datejust 126234 (Steel/White Gold, 36mm)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setImportDialogOpen(false)}
+                  data-testid="button-cancel-import"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedImportBrand) {
+                      importKerouacMutation.mutate(selectedImportBrand);
+                    }
+                  }}
+                  disabled={
+                    !selectedImportBrand || importKerouacMutation.isPending
+                  }
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  data-testid="button-confirm-import"
+                >
+                  {importKerouacMutation.isPending
+                    ? "Importing..."
+                    : "Import Products"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Button
+            variant="outline"
+            data-testid="button-bulk-upload"
+            onClick={() => setIsBulkUploadOpen(true)}
+            className="hover:border-primary/50 transition-[border-color] duration-100"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Bulk Upload
+          </Button>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            data-testid="button-create-product"
+            onClick={() => navigate("/products/new")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
+      {/* Search and Filters */}
+      <div
+        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6"
+        data-testid="search-filters"
+      >
+        <div className="relative flex-1 w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search products, SKUs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+            data-testid="input-search-products"
+          />
+        </div>
+
+        <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+          <SelectTrigger
+            className="w-full sm:w-40"
+            data-testid="select-brand-filter"
+          >
+            <SelectValue placeholder="All Brands" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands</SelectItem>
+            {(brands as any[])?.map((brand: any) => (
+              <SelectItem key={brand.id} value={brand.id.toString()}>
+                {brand.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger
+            className="w-full sm:w-32"
+            data-testid="select-status-filter"
+          >
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="review">Review</SelectItem>
+            <SelectItem value="live">Live</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid="button-export-products"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export
+        </Button>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Sorting Controls */}
+          <Select value={sortBy} onValueChange={handleSortChange}>
+            <SelectTrigger
+              className="w-full sm:w-44"
+              data-testid="select-sort-by"
+              aria-label="Sort products by"
+            >
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dateAdded">Date Added (Newest)</SelectItem>
+              <SelectItem value="name">Name (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* View Toggle */}
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={handleViewModeChange}
+            className="border border-border rounded-md flex-shrink-0"
+            data-testid="toggle-view-mode"
+            aria-label="View mode selector"
+          >
+            <ToggleGroupItem
+              value="grid"
+              aria-label="Switch to grid view"
+              size="sm"
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="list"
+              aria-label="Switch to list view"
+              size="sm"
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+
+      {/* Products Display */}
+      {productsLoading ? (
+        // Loading state for both grid and list views
+        viewMode === "grid" ? (
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 auto-rows-max"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(345px, 1fr))",
+            }}
+          >
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card
+                key={i}
+                className="bg-card border-border animate-pulse min-w-[345px]"
+              >
+                <div className="w-full h-48 bg-muted"></div>
+                <div className="p-4 space-y-4">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                    <div className="h-3 bg-muted rounded w-1/2"></div>
+                  </div>
+                  <div className="h-3 bg-muted rounded w-full"></div>
+                  <div className="h-3 bg-muted rounded w-5/6"></div>
+                  <div className="flex space-x-2">
+                    <div className="flex-1 h-8 bg-muted rounded"></div>
+                    <div className="h-8 w-8 bg-muted rounded"></div>
+                    <div className="h-8 w-8 bg-muted rounded"></div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-border rounded-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16"></TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                  <TableHead className="hidden md:table-cell">Price</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <TableRow key={i} className="animate-pulse">
+                    <TableCell>
+                      <div className="w-12 h-12 bg-muted rounded"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="h-4 bg-muted rounded w-20"></div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="h-4 bg-muted rounded w-16"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-6 bg-muted rounded w-16"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-8 bg-muted rounded w-24"></div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
+      ) : filteredAndSortedProducts.length > 0 ? (
+        // Products display based on view mode
+        viewMode === "grid" ? (
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 auto-rows-max"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(345px, 1fr))",
+            }}
+            data-testid="products-grid"
+          >
+            {filteredAndSortedProducts.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onDelete={() => handleDeleteProduct(product.id)}
+                isDeleting={deleteProductMutation.isPending}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className="border border-border rounded-xl overflow-hidden"
+            data-testid="products-list"
+          >
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-16">Image</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedProducts.map((product: any) => (
+                  <ProductListItem
+                    key={product.id}
+                    product={product}
+                    onDelete={() => handleDeleteProduct(product.id)}
+                    isDeleting={deleteProductMutation.isPending}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="text-center py-12">
+            <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-30" />
+            <h3 className="text-lg font-medium mb-2">No products found</h3>
+            <p className="text-muted-foreground mb-6">
+              {searchQuery || selectedBrand !== "all" || statusFilter !== "all"
+                ? "No products match your current filters. Try adjusting your search criteria."
+                : "Start building your product catalog by adding your first product."}
+            </p>
+            {!searchQuery &&
+              selectedBrand === "all" &&
+              statusFilter === "all" && (
+                <Button
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  data-testid="button-add-first-product"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Product
+                </Button>
+              )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={!!productToDelete}
+        onClose={cancelDeleteProduct}
+        onConfirm={confirmDeleteProduct}
+        title="Delete Product"
+        description="Are you sure you want to delete this product? This action cannot be undone."
+        confirmText="Delete Product"
+        isLoading={deleteProductMutation.isPending}
+      />
       {/* Bulk Upload Wizard */}
       <BulkUploadWizard
         isOpen={isBulkUploadOpen}

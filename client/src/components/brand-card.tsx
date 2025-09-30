@@ -1,37 +1,32 @@
-import React, { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Box, Eye, Share, MoreHorizontal, Edit, Trash2 } from "lucide-react";
-import { useLocation } from "wouter";
+import { Crown, Users, Share, Edit, Trash2, Copy } from "lucide-react";
 
-interface ProductCardProps {
-  product: {
+interface BrandCardProps {
+  brand: {
     id: number;
     name: string;
-    shortDescription?: string;
+    description?: string;
     story?: string;
-    brandName?: string;
-    status: string;
-    sku?: string;
-    isVariant: boolean;
+    category?: string;
+    isActive: boolean;
     createdAt: string;
-    mediaAssets?: Array<{ url: string; assetType: string }>;
+    logoUrl?: string;
+    productCount?: number;
   };
+  onEdit?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
 }
 
-const ProductCard = memo(function ProductCard({
-  product,
+export default function BrandCard({
+  brand,
+  onEdit,
   onDelete,
   isDeleting,
-}: ProductCardProps) {
-  const [, navigate] = useLocation();
-
-  // Status badge function removed - now using StatusBadge component
-
+}: BrandCardProps) {
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
@@ -40,23 +35,23 @@ const ProductCard = memo(function ProductCard({
   return (
     <Card
       className="border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-[border-color] duration-100 group w-full min-w-[345px]"
-      data-testid={`product-card-${product.id}`}
+      data-testid={`brand-card-${brand.id}`}
     >
-      {/* Product Image Placeholder */}
+      {/* Brand Logo/Header */}
       <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center relative overflow-hidden">
-        {product.mediaAssets && product.mediaAssets.length > 0 ? (
+        {brand.logoUrl ? (
           <img
-            src={product.mediaAssets[0].url}
-            alt={product.name}
+            src={brand.logoUrl}
+            alt={brand.name}
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = `/placeholders/product-fallback.svg`;
+              e.currentTarget.src = `/placeholders/brand-fallback.svg`;
               e.currentTarget.classList.add("p-12");
             }}
           />
         ) : (
           <>
-            <Box className="h-16 w-16 text-muted-foreground opacity-30" />
+            <Crown className="h-16 w-16 text-muted-foreground opacity-30" />
             <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent"></div>
           </>
         )}
@@ -67,29 +62,29 @@ const ProductCard = memo(function ProductCard({
         <div className="space-y-1">
           <h3
             className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]"
-            title={product.name}
-            data-testid={`text-product-name-${product.id}`}
+            title={brand.name}
+            data-testid={`text-brand-name-${brand.id}`}
           >
-            {product.name}
+            {brand.name}
           </h3>
           <p
             className="text-xs text-muted-foreground"
-            data-testid={`text-product-brand-${product.id}`}
+            data-testid={`text-brand-category-${brand.id}`}
           >
-            {product.brandName || "Unknown Brand"}
+            {brand.category || "Uncategorized"}
           </p>
         </div>
 
         {/* Description - Fixed Height */}
         <p
           className="text-xs text-muted-foreground line-clamp-3 min-h-[3rem]"
-          data-testid={`text-product-description-${product.id}`}
+          data-testid={`text-brand-description-${brand.id}`}
         >
-          {product.story
-            ? truncateText(product.story, 120)
-            : product.shortDescription
-              ? truncateText(product.shortDescription, 120)
-              : "No description available. Add a compelling story to bring this product to life."}
+          {brand.story
+            ? truncateText(brand.story, 120)
+            : brand.description
+              ? truncateText(brand.description, 120)
+              : "No description available. Add a compelling story to bring this brand to life."}
         </p>
 
         {/* Metrics Row */}
@@ -97,30 +92,22 @@ const ProductCard = memo(function ProductCard({
           <div className="flex items-center space-x-3 text-xs text-muted-foreground">
             <span
               className="flex items-center"
-              data-testid={`text-product-views-${product.id}`}
+              data-testid={`text-brand-products-${brand.id}`}
             >
-              <Eye className="h-3 w-3 mr-1" />
-              {Math.floor(Math.random() * 2000) + 100} {/* Mock view count */}
+              <Users className="h-3 w-3 mr-1" />
+              {brand.productCount || 0} Products
             </span>
             <span
               className="flex items-center"
-              data-testid={`text-product-shares-${product.id}`}
+              data-testid={`text-brand-created-${brand.id}`}
             >
               <Share className="h-3 w-3 mr-1" />
-              {Math.floor(Math.random() * 100) + 1} {/* Mock share count */}
+              {new Date(brand.createdAt).toLocaleDateString()}
             </span>
           </div>
           <div className="flex items-center space-x-2">
-            {product.isVariant && (
-              <Badge
-                variant="outline"
-                className="text-xs bg-info/10 text-info border-info/20"
-              >
-                Variant
-              </Badge>
-            )}
             <StatusBadge
-              status={product.status}
+              status={brand.isActive ? "active" : "inactive"}
               className="text-xs capitalize"
             />
           </div>
@@ -130,24 +117,20 @@ const ProductCard = memo(function ProductCard({
         <div className="flex gap-2 pt-2">
           <Button
             size="sm"
-            variant={product.status === "draft" ? "outline" : "secondary"}
-            className={`flex-1 ${
-              product.status === "draft"
-                ? "border-primary text-primary hover:bg-primary/10 hover:text-primary"
-                : ""
-            }`}
-            onClick={() => navigate(`/products/${product.id}/edit`)}
-            data-testid={`button-edit-product-${product.id}`}
+            variant="outline"
+            className="flex-1 border-primary text-primary hover:bg-primary/10 hover:text-primary"
+            onClick={onEdit}
+            data-testid={`button-edit-brand-${brand.id}`}
           >
             <Edit className="mr-2 h-3 w-3" />
-            {product.status === "draft" ? "Continue Editing" : "Edit Content"}
+            Edit Story
           </Button>
           <Button
             variant="outline"
             size="sm"
-            data-testid={`button-share-product-${product.id}`}
+            data-testid={`button-duplicate-brand-${brand.id}`}
           >
-            <Share className="h-3 w-3" />
+            <Copy className="h-3 w-3" />
           </Button>
           {onDelete && (
             <Button
@@ -156,34 +139,25 @@ const ProductCard = memo(function ProductCard({
               onClick={onDelete}
               disabled={isDeleting}
               className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-              data-testid={`button-delete-product-${product.id}`}
+              data-testid={`button-delete-brand-${brand.id}`}
             >
               <Trash2 className="h-3 w-3" />
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid={`button-more-product-${product.id}`}
-          >
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
         </div>
 
         <div className="mt-3 pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            SKU:{" "}
+            Founded:{" "}
             <span
               className="font-mono"
-              data-testid={`text-product-sku-${product.id}`}
+              data-testid={`text-brand-founded-${brand.id}`}
             >
-              {product.sku || "NONE"}
+              {new Date(brand.createdAt).getFullYear()}
             </span>
           </p>
         </div>
       </CardContent>
     </Card>
   );
-});
-
-export default ProductCard;
+}

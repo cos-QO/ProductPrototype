@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -31,23 +32,26 @@ function Router() {
         // Show loading state - could add a loading component here
         <Route path="/" component={Landing} />
       ) : isAuthenticated ? (
-        // Authenticated routes
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route
-            path="/product-management"
-            component={ProductManagementDashboard}
-          />
-          <Route path="/bulk-edit" component={BulkEdit} />
-          <Route path="/brands" component={Brands} />
-          <Route path="/products" component={Products} />
-          <Route path="/products/new" component={ProductNew} />
-          <Route path="/products/:id/edit" component={ProductEdit} />
-          <Route path="/products/:id/view" component={ProductDetails} />
-          <Route path="/products/:id/manage" component={ProductDetails} />
-          <Route path="/design-system-test" component={DesignSystemTest} />
-        </>
+        // Authenticated routes wrapped with Layout
+        <Layout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route
+              path="/product-management"
+              component={ProductManagementDashboard}
+            />
+            <Route path="/bulk-edit" component={BulkEdit} />
+            <Route path="/brands" component={Brands} />
+            <Route path="/products" component={Products} />
+            <Route path="/products/new" component={ProductNew} />
+            <Route path="/products/:id/edit" component={ProductEdit} />
+            <Route path="/products/:id/view" component={ProductDetails} />
+            <Route path="/products/:id/manage" component={ProductDetails} />
+            <Route path="/design-system-test" component={DesignSystemTest} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
       ) : (
         // Not authenticated - show landing for protected routes
         <>
@@ -59,7 +63,6 @@ function Router() {
           <Route path="/products/:id/edit" component={Landing} />
         </>
       )}
-      <Route component={NotFound} />
     </Switch>
   );
 }

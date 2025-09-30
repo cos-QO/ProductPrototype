@@ -6,8 +6,6 @@ import { useRoute, useLocation } from "wouter";
 import { ChannelsTab } from "@/components/channels/ChannelsTab";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import Navigation from "@/components/navigation";
-import Sidebar from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -945,16 +943,10 @@ export default function ProductEdit() {
 
   if (productLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <Navigation />
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <div className="animate-pulse">
-              <div className="h-8 bg-muted rounded w-64 mb-4"></div>
-              <div className="h-96 bg-muted rounded"></div>
-            </div>
-          </main>
+      <div className="flex-1 p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-64 mb-4"></div>
+          <div className="h-96 bg-muted rounded"></div>
         </div>
       </div>
     );
@@ -962,1658 +954,1608 @@ export default function ProductEdit() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <Navigation />
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
-              <p className="text-muted-foreground mb-6">
-                The product you're looking for doesn't exist or you don't have
-                access to it.
-              </p>
-              <Button onClick={() => navigate("/products")}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Products
-              </Button>
-            </div>
-          </main>
+      <div className="flex-1 p-6">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
+          <p className="text-muted-foreground mb-6">
+            The product you're looking for doesn't exist or you don't have
+            access to it.
+          </p>
+          <Button onClick={() => navigate("/products")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Products
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
+    <div className="flex-1 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Enhanced Header */}
+        <div className="bg-card border rounded-lg p-6 mb-6">
+          {/* Breadcrumbs */}
+          <div className="flex items-center text-sm text-muted-foreground mb-4">
+            <span>Products</span>
+            <ChevronRight className="mx-2 h-4 w-4" />
+            <span>{product?.name || "Loading..."}</span>
+            <ChevronRight className="mx-2 h-4 w-4" />
+            <span className="text-foreground">Edit</span>
+          </div>
 
-      <div className="flex min-h-screen">
-        <Sidebar />
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Enhanced Header */}
-            <div className="bg-card border rounded-lg p-6 mb-6">
-              {/* Breadcrumbs */}
-              <div className="flex items-center text-sm text-muted-foreground mb-4">
-                <span>Products</span>
-                <ChevronRight className="mx-2 h-4 w-4" />
-                <span>{product?.name || "Loading..."}</span>
-                <ChevronRight className="mx-2 h-4 w-4" />
-                <span className="text-foreground">Edit</span>
+          {/* Product Identity */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                <Package className="h-8 w-8 text-muted-foreground" />
               </div>
-
-              {/* Product Identity */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                    <Package className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold">
-                      {product?.name || "Product"}
-                    </h1>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <span className="text-sm text-muted-foreground">
-                        SKU: {product?.sku || "Not set"}
-                      </span>
-                      <Badge
-                        variant={
-                          product?.status === "live"
-                            ? "default"
-                            : product?.status === "review"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {product?.status || "draft"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/products")}
-                    className="flex items-center"
-                    data-testid="button-back-to-products"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Products
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center"
-                    data-testid="button-preview-product"
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </Button>
-                  <Button
-                    type="submit"
-                    form="product-edit-form"
-                    className="flex items-center gradient-primary text-white hover:opacity-90"
-                    disabled={updateProductMutation.isPending}
-                    data-testid="button-save-product"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {updateProductMutation.isPending
-                      ? "Saving..."
-                      : "Save Changes"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Completion Progress */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
-                    Product Information Completeness
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {product?.name || "Product"}
+                </h1>
+                <div className="flex items-center space-x-4 mt-2">
+                  <span className="text-sm text-muted-foreground">
+                    SKU: {product?.sku || "Not set"}
                   </span>
-                  <span className="font-medium">{completionProgress}%</span>
+                  <Badge
+                    variant={
+                      product?.status === "live"
+                        ? "default"
+                        : product?.status === "review"
+                          ? "secondary"
+                          : "outline"
+                    }
+                  >
+                    {product?.status || "draft"}
+                  </Badge>
                 </div>
-                <Progress value={completionProgress} className="h-2" />
               </div>
             </div>
 
-            {/* Edit Form */}
-            <form
-              id="product-edit-form"
-              onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                console.log("Form validation errors:", errors);
-                toast({
-                  title: "Validation Error",
-                  description: "Please check the form for errors",
-                  variant: "destructive",
-                });
-              })}
-              className="space-y-6"
-            >
-              {/* Tabbed PIM Interface */}
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/products")}
+                className="flex items-center"
+                data-testid="button-back-to-products"
               >
-                <TabsList className="grid w-full grid-cols-7 mb-6">
-                  <TabsTrigger
-                    value="general"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-general"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">General</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="attributes"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-attributes"
-                  >
-                    <Layers className="h-4 w-4" />
-                    <span className="hidden sm:inline">Attributes</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="variants"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-variants"
-                  >
-                    <Package className="h-4 w-4" />
-                    <span className="hidden sm:inline">Variants</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="frames"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-frames"
-                  >
-                    <Image className="h-4 w-4" />
-                    <span className="hidden sm:inline">frames</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="geo"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-geo"
-                  >
-                    <Brain className="h-4 w-4" />
-                    <span className="hidden sm:inline">GEO</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="channels"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-channels"
-                  >
-                    <Globe className="h-4 w-4" />
-                    <span className="hidden sm:inline">Syndication</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="history"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-history"
-                  >
-                    <History className="h-4 w-4" />
-                    <span className="hidden sm:inline">History</span>
-                  </TabsTrigger>
-                </TabsList>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Products
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                data-testid="button-preview-product"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+              <Button
+                type="submit"
+                form="product-edit-form"
+                className="flex items-center gradient-primary text-white hover:opacity-90"
+                disabled={updateProductMutation.isPending}
+                data-testid="button-save-product"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {updateProductMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
 
-                {/* General Tab */}
-                <TabsContent value="general" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
-                      {/* Basic Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Basic Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="name">
-                              Product Name *{" "}
-                              <span className="text-xs text-muted-foreground">
-                                (max 255 chars)
-                              </span>
-                            </Label>
-                            <Input
-                              id="name"
-                              {...form.register("name")}
-                              onChange={(e) => {
-                                form.setValue("name", e.target.value, {
-                                  shouldValidate: true,
-                                });
-                                // Auto-generate slug only if slug is empty or matches generated pattern
-                                const currentSlug = form.watch("slug");
-                                if (
-                                  !currentSlug ||
-                                  currentSlug ===
-                                    generateSlug(form.watch("name") || "")
-                                ) {
-                                  form.setValue(
-                                    "slug",
-                                    generateSlug(e.target.value),
-                                    { shouldValidate: true },
-                                  );
-                                }
-                              }}
-                              placeholder="Enter product name"
-                              className={
-                                form.formState.errors.name
-                                  ? "border-destructive"
-                                  : ""
-                              }
-                              data-testid="input-product-name"
-                            />
-                            <div className="flex justify-between mt-1">
-                              <div>
-                                {form.formState.errors.name && (
-                                  <p className="text-sm text-destructive">
-                                    {form.formState.errors.name.message}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {form.watch("name")?.length || 0}/255
-                              </span>
-                            </div>
-                          </div>
+          {/* Completion Progress */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-muted-foreground">
+                Product Information Completeness
+              </span>
+              <span className="font-medium">{completionProgress}%</span>
+            </div>
+            <Progress value={completionProgress} className="h-2" />
+          </div>
+        </div>
 
-                          <div>
-                            <Label htmlFor="slug">
-                              URL Slug *{" "}
-                              <span className="text-xs text-muted-foreground">
-                                (lowercase, numbers, hyphens only)
-                              </span>
-                            </Label>
-                            <Input
-                              id="slug"
-                              {...form.register("slug")}
-                              onChange={(e) => {
-                                const cleanSlug = e.target.value
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9-]/g, "");
-                                form.setValue("slug", cleanSlug, {
-                                  shouldValidate: true,
-                                });
-                              }}
-                              placeholder="product-url-slug"
-                              className={
-                                form.formState.errors.slug
-                                  ? "border-destructive"
-                                  : ""
-                              }
-                              data-testid="input-product-slug"
-                            />
-                            <div className="flex justify-between mt-1">
-                              <div>
-                                {form.formState.errors.slug && (
-                                  <p className="text-sm text-destructive">
-                                    {form.formState.errors.slug.message}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {form.watch("slug")?.length || 0}/255
-                              </span>
-                            </div>
-                          </div>
+        {/* Edit Form */}
+        <form
+          id="product-edit-form"
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            console.log("Form validation errors:", errors);
+            toast({
+              title: "Validation Error",
+              description: "Please check the form for errors",
+              variant: "destructive",
+            });
+          })}
+          className="space-y-6"
+        >
+          {/* Tabbed PIM Interface */}
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-7 mb-6">
+              <TabsTrigger
+                value="general"
+                className="flex items-center space-x-2"
+                data-testid="tab-general"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">General</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="attributes"
+                className="flex items-center space-x-2"
+                data-testid="tab-attributes"
+              >
+                <Layers className="h-4 w-4" />
+                <span className="hidden sm:inline">Attributes</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="variants"
+                className="flex items-center space-x-2"
+                data-testid="tab-variants"
+              >
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Variants</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="frames"
+                className="flex items-center space-x-2"
+                data-testid="tab-frames"
+              >
+                <Image className="h-4 w-4" />
+                <span className="hidden sm:inline">frames</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="geo"
+                className="flex items-center space-x-2"
+                data-testid="tab-geo"
+              >
+                <Brain className="h-4 w-4" />
+                <span className="hidden sm:inline">GEO</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="channels"
+                className="flex items-center space-x-2"
+                data-testid="tab-channels"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="hidden sm:inline">Syndication</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="flex items-center space-x-2"
+                data-testid="tab-history"
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">History</span>
+              </TabsTrigger>
+            </TabsList>
 
-                          <div>
-                            <Label htmlFor="sku">
-                              SKU{" "}
-                              <span className="text-xs text-muted-foreground">
-                                (optional, max 100 chars)
-                              </span>
-                            </Label>
-                            <Input
-                              id="sku"
-                              {...form.register("sku")}
-                              onChange={(e) => {
-                                form.setValue("sku", e.target.value, {
-                                  shouldValidate: true,
-                                });
-                              }}
-                              placeholder="Product SKU"
-                              data-testid="input-product-sku"
-                            />
-                            <div className="flex justify-between mt-1">
-                              <div className="min-h-[1rem]">
-                                {" "}
-                                {/* Reserve space for errors */}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {form.watch("sku")?.length || 0}/100
-                              </span>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="shortDescription">
-                              Short Description{" "}
-                              <span className="text-xs text-muted-foreground">
-                                (max 1000 chars)
-                              </span>
-                            </Label>
-                            <Textarea
-                              id="shortDescription"
-                              {...form.register("shortDescription")}
-                              onChange={(e) => {
-                                form.setValue(
-                                  "shortDescription",
-                                  e.target.value,
-                                  { shouldValidate: true },
-                                );
-                              }}
-                              placeholder="Brief product description for listings and previews"
-                              rows={3}
-                              className={
-                                form.formState.errors.shortDescription
-                                  ? "border-destructive"
-                                  : ""
-                              }
-                              data-testid="textarea-short-description"
-                            />
-                            <div className="flex justify-between mt-1">
-                              <div>
-                                {form.formState.errors.shortDescription && (
-                                  <p className="text-sm text-destructive">
-                                    {
-                                      form.formState.errors.shortDescription
-                                        .message
-                                    }
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {form.watch("shortDescription")?.length || 0}
-                                /1000
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Detailed Content */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Detailed Content</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="longDescription">
-                              Long Description
-                            </Label>
-                            <Textarea
-                              id="longDescription"
-                              {...form.register("longDescription")}
-                              placeholder="Detailed product description with features and benefits"
-                              rows={6}
-                              data-testid="textarea-long-description"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="story">Product Story</Label>
-                            <Textarea
-                              id="story"
-                              {...form.register("story")}
-                              placeholder="Tell the story behind this product - inspiration, craftsmanship, heritage"
-                              rows={6}
-                              data-testid="textarea-product-story"
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Pricing Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Pricing</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="price">Price ($)</Label>
-                              <Input
-                                id="price"
-                                {...form.register("price")}
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                onChange={(e) => {
-                                  form.setValue(
-                                    "price",
-                                    formatPrice(e.target.value),
-                                    { shouldValidate: true },
-                                  );
-                                }}
-                                placeholder="29.99"
-                                className={
-                                  form.formState.errors.price
-                                    ? "border-destructive"
-                                    : ""
-                                }
-                                data-testid="input-price"
-                              />
-                              {form.formState.errors.price && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {form.formState.errors.price.message}
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <Label htmlFor="compareAtPrice">
-                                Compare At Price ($)
-                              </Label>
-                              <Input
-                                id="compareAtPrice"
-                                {...form.register("compareAtPrice")}
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                onChange={(e) => {
-                                  form.setValue(
-                                    "compareAtPrice",
-                                    formatPrice(e.target.value),
-                                    { shouldValidate: true },
-                                  );
-                                }}
-                                placeholder="39.99"
-                                className={
-                                  form.formState.errors.compareAtPrice
-                                    ? "border-destructive"
-                                    : ""
-                                }
-                                data-testid="input-compare-at-price"
-                              />
-                              {form.formState.errors.compareAtPrice && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {form.formState.errors.compareAtPrice.message}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Inventory Management */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                            <div>
-                              <Label htmlFor="stock">Stock Quantity</Label>
-                              <Input
-                                id="stock"
-                                {...form.register("stock", {
-                                  valueAsNumber: true,
-                                })}
-                                type="number"
-                                min="0"
-                                placeholder="100"
-                                data-testid="input-stock"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="lowStockThreshold">
-                                Low Stock Alert
-                              </Label>
-                              <Input
-                                id="lowStockThreshold"
-                                {...form.register("lowStockThreshold", {
-                                  valueAsNumber: true,
-                                })}
-                                type="number"
-                                min="0"
-                                placeholder="10"
-                                data-testid="input-low-stock-threshold"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className="space-y-6">
-                      {/* Publication Settings */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Publication</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="status">Status</Label>
-                            <Select
-                              value={form.watch("status")}
-                              onValueChange={(value) =>
-                                form.setValue("status", value as any, {
-                                  shouldValidate: true,
-                                })
-                              }
-                            >
-                              <SelectTrigger
-                                data-testid="select-product-status"
-                                className={
-                                  form.formState.errors.status
-                                    ? "border-destructive"
-                                    : ""
-                                }
-                              >
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="review">Review</SelectItem>
-                                <SelectItem value="live">Live</SelectItem>
-                                <SelectItem value="archived">
-                                  Archived
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {form.formState.errors.status && (
-                              <p className="text-sm text-destructive mt-1">
-                                {form.formState.errors.status.message}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="brandId">Brand *</Label>
-                            <Select
-                              value={form.watch("brandId")?.toString() || ""}
-                              onValueChange={(value) =>
-                                form.setValue("brandId", parseInt(value), {
-                                  shouldValidate: true,
-                                })
-                              }
-                            >
-                              <SelectTrigger
-                                data-testid="select-product-brand"
-                                className={
-                                  form.formState.errors.brandId
-                                    ? "border-destructive"
-                                    : ""
-                                }
-                              >
-                                <SelectValue
-                                  placeholder={
-                                    brands
-                                      ? "Select brand"
-                                      : "Loading brands..."
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {brands && brands.length > 0 ? (
-                                  (brands as any[]).map((brand: any) => (
-                                    <SelectItem
-                                      key={brand.id}
-                                      value={brand.id.toString()}
-                                    >
-                                      {brand.name}
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <SelectItem value="" disabled>
-                                    No brands available
-                                  </SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                            {form.formState.errors.brandId && (
-                              <p className="text-sm text-destructive mt-1">
-                                {form.formState.errors.brandId.message}
-                              </p>
-                            )}
-                            {!brands && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Loading brands...
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="isVariant"
-                              checked={form.watch("isVariant")}
-                              onCheckedChange={(checked) =>
-                                form.setValue("isVariant", checked)
-                              }
-                              data-testid="switch-is-variant"
-                            />
-                            <Label htmlFor="isVariant">Product Variant</Label>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Save Actions */}
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="space-y-3">
-                            <Button
-                              type="submit"
-                              className="w-full gradient-primary text-white hover:opacity-90"
-                              disabled={
-                                updateProductMutation.isPending ||
-                                !form.formState.isValid
-                              }
-                              data-testid="button-save-product"
-                            >
-                              <Save className="mr-2 h-4 w-4" />
-                              {updateProductMutation.isPending
-                                ? "Saving..."
-                                : "Save Changes"}
-                            </Button>
-
-                            {hasUnsavedChanges && (
-                              <p className="text-xs text-amber-600 text-center">
-                                You have unsaved changes
-                              </p>
-                            )}
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => navigate("/products")}
-                              disabled={updateProductMutation.isPending}
-                              data-testid="button-cancel-edit"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Product Info */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Product Info</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm text-muted-foreground">
-                          <div>
-                            <strong>Created:</strong>{" "}
-                            {new Date(product.createdAt).toLocaleDateString()}
-                          </div>
-                          <div>
-                            <strong>Updated:</strong>{" "}
-                            {new Date(product.updatedAt).toLocaleDateString()}
-                          </div>
-                          <div>
-                            <strong>ID:</strong> {product.id}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Attributes Tab */}
-                <TabsContent value="attributes" className="space-y-6">
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Basic Information */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Product Specifications</CardTitle>
+                      <CardTitle>Basic Information</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="weight">Weight</Label>
-                          <Input
-                            id="weight"
-                            {...form.register("weight")}
-                            placeholder="e.g. 250g"
-                            data-testid="input-weight"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="dimensions">Dimensions</Label>
-                          <Input
-                            id="dimensions"
-                            {...form.register("dimensions")}
-                            placeholder="e.g. 40mm x 12mm"
-                            data-testid="input-dimensions"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="material">Material</Label>
-                          <Input
-                            id="material"
-                            {...form.register("material")}
-                            placeholder="e.g. Stainless Steel"
-                            data-testid="input-material"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="color">Color</Label>
-                          <Input
-                            id="color"
-                            {...form.register("color")}
-                            placeholder="e.g. Black"
-                            data-testid="input-color"
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Variants Tab */}
-                <TabsContent value="variants" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Product Variants</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Package className="h-12 w-12 mx-auto mb-4" />
-                        <p>Variant management coming soon</p>
-                        <p className="text-sm">
-                          Manage color, size, and other product variations
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Frames Tab */}
-                <TabsContent value="frames" className="space-y-6">
-                  {/* Upload Zone */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Upload className="h-5 w-5" />
-                        Upload frames
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                          isDragOver
-                            ? "border-primary bg-primary/5"
-                            : "border-muted-foreground/25 hover:border-muted-foreground/50"
-                        }`}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                      >
-                        <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-lg font-medium mb-2">
-                          Drag and drop files here
-                        </p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Support for images, videos, and documents up to 10MB
-                          each
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            document.getElementById("media-upload")?.click()
+                      <div>
+                        <Label htmlFor="name">
+                          Product Name *{" "}
+                          <span className="text-xs text-muted-foreground">
+                            (max 255 chars)
+                          </span>
+                        </Label>
+                        <Input
+                          id="name"
+                          {...form.register("name")}
+                          onChange={(e) => {
+                            form.setValue("name", e.target.value, {
+                              shouldValidate: true,
+                            });
+                            // Auto-generate slug only if slug is empty or matches generated pattern
+                            const currentSlug = form.watch("slug");
+                            if (
+                              !currentSlug ||
+                              currentSlug ===
+                                generateSlug(form.watch("name") || "")
+                            ) {
+                              form.setValue(
+                                "slug",
+                                generateSlug(e.target.value),
+                                { shouldValidate: true },
+                              );
+                            }
+                          }}
+                          placeholder="Enter product name"
+                          className={
+                            form.formState.errors.name
+                              ? "border-destructive"
+                              : ""
                           }
-                          disabled={uploadMediaMutation.isPending}
-                        >
-                          {uploadMediaMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="mr-2 h-4 w-4" />
-                              Choose Files
-                            </>
-                          )}
-                        </Button>
-                        <input
-                          id="media-upload"
-                          type="file"
-                          multiple
-                          accept="image/*,video/*,.pdf"
-                          onChange={handleFileInput}
-                          className="hidden"
+                          data-testid="input-product-name"
+                        />
+                        <div className="flex justify-between mt-1">
+                          <div>
+                            {form.formState.errors.name && (
+                              <p className="text-sm text-destructive">
+                                {form.formState.errors.name.message}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {form.watch("name")?.length || 0}/255
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="slug">
+                          URL Slug *{" "}
+                          <span className="text-xs text-muted-foreground">
+                            (lowercase, numbers, hyphens only)
+                          </span>
+                        </Label>
+                        <Input
+                          id="slug"
+                          {...form.register("slug")}
+                          onChange={(e) => {
+                            const cleanSlug = e.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, "");
+                            form.setValue("slug", cleanSlug, {
+                              shouldValidate: true,
+                            });
+                          }}
+                          placeholder="product-url-slug"
+                          className={
+                            form.formState.errors.slug
+                              ? "border-destructive"
+                              : ""
+                          }
+                          data-testid="input-product-slug"
+                        />
+                        <div className="flex justify-between mt-1">
+                          <div>
+                            {form.formState.errors.slug && (
+                              <p className="text-sm text-destructive">
+                                {form.formState.errors.slug.message}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {form.watch("slug")?.length || 0}/255
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sku">
+                          SKU{" "}
+                          <span className="text-xs text-muted-foreground">
+                            (optional, max 100 chars)
+                          </span>
+                        </Label>
+                        <Input
+                          id="sku"
+                          {...form.register("sku")}
+                          onChange={(e) => {
+                            form.setValue("sku", e.target.value, {
+                              shouldValidate: true,
+                            });
+                          }}
+                          placeholder="Product SKU"
+                          data-testid="input-product-sku"
+                        />
+                        <div className="flex justify-between mt-1">
+                          <div className="min-h-[1rem]">
+                            {" "}
+                            {/* Reserve space for errors */}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {form.watch("sku")?.length || 0}/100
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="shortDescription">
+                          Short Description{" "}
+                          <span className="text-xs text-muted-foreground">
+                            (max 1000 chars)
+                          </span>
+                        </Label>
+                        <Textarea
+                          id="shortDescription"
+                          {...form.register("shortDescription")}
+                          onChange={(e) => {
+                            form.setValue("shortDescription", e.target.value, {
+                              shouldValidate: true,
+                            });
+                          }}
+                          placeholder="Brief product description for listings and previews"
+                          rows={3}
+                          className={
+                            form.formState.errors.shortDescription
+                              ? "border-destructive"
+                              : ""
+                          }
+                          data-testid="textarea-short-description"
+                        />
+                        <div className="flex justify-between mt-1">
+                          <div>
+                            {form.formState.errors.shortDescription && (
+                              <p className="text-sm text-destructive">
+                                {form.formState.errors.shortDescription.message}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {form.watch("shortDescription")?.length || 0}
+                            /1000
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Detailed Content */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Detailed Content</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="longDescription">
+                          Long Description
+                        </Label>
+                        <Textarea
+                          id="longDescription"
+                          {...form.register("longDescription")}
+                          placeholder="Detailed product description with features and benefits"
+                          rows={6}
+                          data-testid="textarea-long-description"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="story">Product Story</Label>
+                        <Textarea
+                          id="story"
+                          {...form.register("story")}
+                          placeholder="Tell the story behind this product - inspiration, craftsmanship, heritage"
+                          rows={6}
+                          data-testid="textarea-product-story"
                         />
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Media Gallery */}
+                  {/* Pricing Information */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileImage className="h-5 w-5" />
-                          frame Assets
-                        </div>
-                        <Badge variant="secondary">
-                          {mediaAssets.length}{" "}
-                          {mediaAssets.length === 1 ? "file" : "files"}
-                        </Badge>
-                      </CardTitle>
+                      <CardTitle>Pricing</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      {mediaAssets.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <FileImage className="h-12 w-12 mx-auto mb-4" />
-                          <p>No frames uploaded yet</p>
-                          <p className="text-sm">
-                            Upload some images, videos, or documents to get
-                            started
-                          </p>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="price">Price ($)</Label>
+                          <Input
+                            id="price"
+                            {...form.register("price")}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            onChange={(e) => {
+                              form.setValue(
+                                "price",
+                                formatPrice(e.target.value),
+                                { shouldValidate: true },
+                              );
+                            }}
+                            placeholder="29.99"
+                            className={
+                              form.formState.errors.price
+                                ? "border-destructive"
+                                : ""
+                            }
+                            data-testid="input-price"
+                          />
+                          {form.formState.errors.price && (
+                            <p className="text-sm text-destructive mt-1">
+                              {form.formState.errors.price.message}
+                            </p>
+                          )}
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {mediaAssets.map((asset) => (
-                            <div
-                              key={asset.id}
-                              className="relative group border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                            >
-                              {/* Media Preview */}
-                              <div className="aspect-square bg-muted flex items-center justify-center">
-                                {asset.mimeType?.startsWith("image/") ? (
-                                  <img
-                                    src={asset.url}
-                                    alt={asset.altText || asset.originalName}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target =
-                                        e.target as HTMLImageElement;
-                                      target.src =
-                                        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im04IDVhMyAzIDAgMCAwLTMgM3Y4YTMgMyAwIDAgMCAzIDNoOGEzIDMgMCAwIDAgMy0zVjhhMyAzIDAgMCAwLTMtM0g4em0tMSAzYTEgMSAwIDAgMSAxLTFoOGExIDEgMCAwIDEgMSAxdjguOTdMMTUuNjEgMTMuNGEyIDIgMCAwIDAtMi44MyAwTDkuNDEgMTcgNyA5djBaTTkgMTBhMSAxIDAgMSAxLTIgMCAxIDEgMCAwIDEgMiAwWiIgZmlsbD0iIzljYTNhZiIvPgo8L3N2Zz4K";
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="flex flex-col items-center justify-center p-4">
-                                    {getAssetTypeIcon(
-                                      asset.assetType,
-                                      asset.mimeType,
-                                    )}
-                                    <p className="text-xs text-center mt-2 truncate w-full">
-                                      {asset.originalName}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Media Info */}
-                              <div className="p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <Badge
-                                    variant={
-                                      asset.assetType === "hero"
-                                        ? "default"
-                                        : "secondary"
-                                    }
-                                  >
-                                    {asset.assetType}
-                                  </Badge>
-                                  <div className="flex gap-1">
-                                    <Dialog
-                                      open={editingMedia?.id === asset.id}
-                                      onOpenChange={(open) => {
-                                        if (!open) {
-                                          closeEditDialog();
-                                        }
-                                      }}
-                                    >
-                                      <DialogTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() => openEditDialog(asset)}
-                                        >
-                                          <Edit2 className="h-3 w-3" />
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>Edit frame</DialogTitle>
-                                          <DialogDescription>
-                                            Update the metadata and settings for
-                                            this frame asset.
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        {editingMedia?.id === asset.id && (
-                                          <div className="space-y-4">
-                                            <div>
-                                              <Label htmlFor="assetType">
-                                                Asset Type
-                                              </Label>
-                                              <Select
-                                                value={editForm.assetType}
-                                                onValueChange={(value) => {
-                                                  setEditForm((prev) => ({
-                                                    ...prev,
-                                                    assetType: value,
-                                                  }));
-                                                }}
-                                              >
-                                                <SelectTrigger>
-                                                  <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="hero">
-                                                    Hero
-                                                  </SelectItem>
-                                                  <SelectItem value="product">
-                                                    Product
-                                                  </SelectItem>
-                                                  <SelectItem value="lifestyle">
-                                                    Lifestyle
-                                                  </SelectItem>
-                                                  <SelectItem value="brand">
-                                                    Brand
-                                                  </SelectItem>
-                                                  <SelectItem value="video">
-                                                    Video
-                                                  </SelectItem>
-                                                  <SelectItem value="document">
-                                                    Document
-                                                  </SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-                                            {asset.mimeType?.startsWith(
-                                              "image/",
-                                            ) && (
-                                              <div>
-                                                <Label htmlFor="altText">
-                                                  Alt Text
-                                                </Label>
-                                                <Input
-                                                  id="altText"
-                                                  value={editForm.altText}
-                                                  onChange={(e) => {
-                                                    setEditForm((prev) => ({
-                                                      ...prev,
-                                                      altText: e.target.value,
-                                                    }));
-                                                  }}
-                                                  placeholder="Describe this image for accessibility"
-                                                />
-                                              </div>
-                                            )}
-                                            <div className="grid grid-cols-2 gap-4">
-                                              <div>
-                                                <Label>File Size</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                  {formatFileSize(
-                                                    asset.fileSize,
-                                                  )}
-                                                </p>
-                                              </div>
-                                              <div>
-                                                <Label>Type</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                  {asset.mimeType}
-                                                </p>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                        <DialogFooter>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={closeEditDialog}
-                                          >
-                                            Cancel
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            onClick={saveMediaChanges}
-                                            disabled={
-                                              updateMediaMutation.isPending
-                                            }
-                                          >
-                                            {updateMediaMutation.isPending ? (
-                                              <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Saving...
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Save className="mr-2 h-4 w-4" />
-                                                Save Changes
-                                              </>
-                                            )}
-                                          </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    </Dialog>
-
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-destructive hover:text-destructive"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>
-                                            Delete frame
-                                          </AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Are you sure you want to delete "
-                                            {asset.originalName}"? This action
-                                            cannot be undone.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>
-                                            Cancel
-                                          </AlertDialogCancel>
-                                          <AlertDialogAction
-                                            onClick={() =>
-                                              handleDeleteMedia(asset.id)
-                                            }
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          >
-                                            Delete
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {asset.originalName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatFileSize(asset.fileSize)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+                        <div>
+                          <Label htmlFor="compareAtPrice">
+                            Compare At Price ($)
+                          </Label>
+                          <Input
+                            id="compareAtPrice"
+                            {...form.register("compareAtPrice")}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            onChange={(e) => {
+                              form.setValue(
+                                "compareAtPrice",
+                                formatPrice(e.target.value),
+                                { shouldValidate: true },
+                              );
+                            }}
+                            placeholder="39.99"
+                            className={
+                              form.formState.errors.compareAtPrice
+                                ? "border-destructive"
+                                : ""
+                            }
+                            data-testid="input-compare-at-price"
+                          />
+                          {form.formState.errors.compareAtPrice && (
+                            <p className="text-sm text-destructive mt-1">
+                              {form.formState.errors.compareAtPrice.message}
+                            </p>
+                          )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Inventory Management */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                          <Label htmlFor="stock">Stock Quantity</Label>
+                          <Input
+                            id="stock"
+                            {...form.register("stock", {
+                              valueAsNumber: true,
+                            })}
+                            type="number"
+                            min="0"
+                            placeholder="100"
+                            data-testid="input-stock"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lowStockThreshold">
+                            Low Stock Alert
+                          </Label>
+                          <Input
+                            id="lowStockThreshold"
+                            {...form.register("lowStockThreshold", {
+                              valueAsNumber: true,
+                            })}
+                            type="number"
+                            min="0"
+                            placeholder="10"
+                            data-testid="input-low-stock-threshold"
+                          />
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
+                </div>
 
-                {/* GEO Tab - Phase 3.4 Enhanced Implementation */}
-                <TabsContent value="geo" className="space-y-6">
-                  {(() => {
-                    const watchedValues = form.watch();
-                    const seoScore = calculateSeoScore(watchedValues);
-                    const recommendations = getSeoRecommendations(
-                      watchedValues,
-                      seoScore,
-                    );
-                    const previewData = generatePreviewData(watchedValues);
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  {/* Publication Settings */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Publication</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={form.watch("status")}
+                          onValueChange={(value) =>
+                            form.setValue("status", value as any, {
+                              shouldValidate: true,
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            data-testid="select-product-status"
+                            className={
+                              form.formState.errors.status
+                                ? "border-destructive"
+                                : ""
+                            }
+                          >
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.status && (
+                          <p className="text-sm text-destructive mt-1">
+                            {form.formState.errors.status.message}
+                          </p>
+                        )}
+                      </div>
 
-                    return (
-                      <>
-                        {/* SEO Score Overview */}
+                      <div>
+                        <Label htmlFor="brandId">Brand *</Label>
+                        <Select
+                          value={form.watch("brandId")?.toString() || ""}
+                          onValueChange={(value) =>
+                            form.setValue("brandId", parseInt(value), {
+                              shouldValidate: true,
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            data-testid="select-product-brand"
+                            className={
+                              form.formState.errors.brandId
+                                ? "border-destructive"
+                                : ""
+                            }
+                          >
+                            <SelectValue
+                              placeholder={
+                                brands ? "Select brand" : "Loading brands..."
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {brands && brands.length > 0 ? (
+                              (brands as any[]).map((brand: any) => (
+                                <SelectItem
+                                  key={brand.id}
+                                  value={brand.id.toString()}
+                                >
+                                  {brand.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>
+                                No brands available
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.brandId && (
+                          <p className="text-sm text-destructive mt-1">
+                            {form.formState.errors.brandId.message}
+                          </p>
+                        )}
+                        {!brands && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Loading brands...
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="isVariant"
+                          checked={form.watch("isVariant")}
+                          onCheckedChange={(checked) =>
+                            form.setValue("isVariant", checked)
+                          }
+                          data-testid="switch-is-variant"
+                        />
+                        <Label htmlFor="isVariant">Product Variant</Label>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Save Actions */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        <Button
+                          type="submit"
+                          className="w-full gradient-primary text-white hover:opacity-90"
+                          disabled={
+                            updateProductMutation.isPending ||
+                            !form.formState.isValid
+                          }
+                          data-testid="button-save-product"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {updateProductMutation.isPending
+                            ? "Saving..."
+                            : "Save Changes"}
+                        </Button>
+
+                        {hasUnsavedChanges && (
+                          <p className="text-xs text-amber-600 text-center">
+                            You have unsaved changes
+                          </p>
+                        )}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => navigate("/products")}
+                          disabled={updateProductMutation.isPending}
+                          data-testid="button-cancel-edit"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Product Info */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Product Info</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm text-muted-foreground">
+                      <div>
+                        <strong>Created:</strong>{" "}
+                        {new Date(product.createdAt).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <strong>Updated:</strong>{" "}
+                        {new Date(product.updatedAt).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <strong>ID:</strong> {product.id}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Attributes Tab */}
+            <TabsContent value="attributes" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Product Specifications</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="weight">Weight</Label>
+                      <Input
+                        id="weight"
+                        {...form.register("weight")}
+                        placeholder="e.g. 250g"
+                        data-testid="input-weight"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dimensions">Dimensions</Label>
+                      <Input
+                        id="dimensions"
+                        {...form.register("dimensions")}
+                        placeholder="e.g. 40mm x 12mm"
+                        data-testid="input-dimensions"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="material">Material</Label>
+                      <Input
+                        id="material"
+                        {...form.register("material")}
+                        placeholder="e.g. Stainless Steel"
+                        data-testid="input-material"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="color">Color</Label>
+                      <Input
+                        id="color"
+                        {...form.register("color")}
+                        placeholder="e.g. Black"
+                        data-testid="input-color"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Variants Tab */}
+            <TabsContent value="variants" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Product Variants</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="h-12 w-12 mx-auto mb-4" />
+                    <p>Variant management coming soon</p>
+                    <p className="text-sm">
+                      Manage color, size, and other product variations
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Frames Tab */}
+            <TabsContent value="frames" className="space-y-6">
+              {/* Upload Zone */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload frames
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDragOver
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-lg font-medium mb-2">
+                      Drag and drop files here
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Support for images, videos, and documents up to 10MB each
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        document.getElementById("media-upload")?.click()
+                      }
+                      disabled={uploadMediaMutation.isPending}
+                    >
+                      {uploadMediaMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Choose Files
+                        </>
+                      )}
+                    </Button>
+                    <input
+                      id="media-upload"
+                      type="file"
+                      multiple
+                      accept="image/*,video/*,.pdf"
+                      onChange={handleFileInput}
+                      className="hidden"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Media Gallery */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileImage className="h-5 w-5" />
+                      frame Assets
+                    </div>
+                    <Badge variant="secondary">
+                      {mediaAssets.length}{" "}
+                      {mediaAssets.length === 1 ? "file" : "files"}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {mediaAssets.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileImage className="h-12 w-12 mx-auto mb-4" />
+                      <p>No frames uploaded yet</p>
+                      <p className="text-sm">
+                        Upload some images, videos, or documents to get started
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {mediaAssets.map((asset) => (
+                        <div
+                          key={asset.id}
+                          className="relative group border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          {/* Media Preview */}
+                          <div className="aspect-square bg-muted flex items-center justify-center">
+                            {asset.mimeType?.startsWith("image/") ? (
+                              <img
+                                src={asset.url}
+                                alt={asset.altText || asset.originalName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src =
+                                    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im04IDVhMyAzIDAgMCAwLTMgM3Y4YTMgMyAwIDAgMCAzIDNoOGEzIDMgMCAwIDAgMy0zVjhhMyAzIDAgMCAwLTMtM0g4em0tMSAzYTEgMSAwIDAgMSAxLTFoOGExIDEgMCAwIDEgMSAxdjguOTdMMTUuNjEgMTMuNGEyIDIgMCAwIDAtMi44MyAwTDkuNDEgMTcgNyA5djBaTTkgMTBhMSAxIDAgMSAxLTIgMCAxIDEgMCAwIDEgMiAwWiIgZmlsbD0iIzljYTNhZiIvPgo8L3N2Zz4K";
+                                }}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-4">
+                                {getAssetTypeIcon(
+                                  asset.assetType,
+                                  asset.mimeType,
+                                )}
+                                <p className="text-xs text-center mt-2 truncate w-full">
+                                  {asset.originalName}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Media Info */}
+                          <div className="p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge
+                                variant={
+                                  asset.assetType === "hero"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {asset.assetType}
+                              </Badge>
+                              <div className="flex gap-1">
+                                <Dialog
+                                  open={editingMedia?.id === asset.id}
+                                  onOpenChange={(open) => {
+                                    if (!open) {
+                                      closeEditDialog();
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => openEditDialog(asset)}
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Edit frame</DialogTitle>
+                                      <DialogDescription>
+                                        Update the metadata and settings for
+                                        this frame asset.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    {editingMedia?.id === asset.id && (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <Label htmlFor="assetType">
+                                            Asset Type
+                                          </Label>
+                                          <Select
+                                            value={editForm.assetType}
+                                            onValueChange={(value) => {
+                                              setEditForm((prev) => ({
+                                                ...prev,
+                                                assetType: value,
+                                              }));
+                                            }}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="hero">
+                                                Hero
+                                              </SelectItem>
+                                              <SelectItem value="product">
+                                                Product
+                                              </SelectItem>
+                                              <SelectItem value="lifestyle">
+                                                Lifestyle
+                                              </SelectItem>
+                                              <SelectItem value="brand">
+                                                Brand
+                                              </SelectItem>
+                                              <SelectItem value="video">
+                                                Video
+                                              </SelectItem>
+                                              <SelectItem value="document">
+                                                Document
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        {asset.mimeType?.startsWith(
+                                          "image/",
+                                        ) && (
+                                          <div>
+                                            <Label htmlFor="altText">
+                                              Alt Text
+                                            </Label>
+                                            <Input
+                                              id="altText"
+                                              value={editForm.altText}
+                                              onChange={(e) => {
+                                                setEditForm((prev) => ({
+                                                  ...prev,
+                                                  altText: e.target.value,
+                                                }));
+                                              }}
+                                              placeholder="Describe this image for accessibility"
+                                            />
+                                          </div>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <Label>File Size</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                              {formatFileSize(asset.fileSize)}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <Label>Type</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                              {asset.mimeType}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    <DialogFooter>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={closeEditDialog}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        onClick={saveMediaChanges}
+                                        disabled={updateMediaMutation.isPending}
+                                      >
+                                        {updateMediaMutation.isPending ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save Changes
+                                          </>
+                                        )}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Delete frame
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "
+                                        {asset.originalName}"? This action
+                                        cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() =>
+                                          handleDeleteMedia(asset.id)
+                                        }
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {asset.originalName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(asset.fileSize)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* GEO Tab - Phase 3.4 Enhanced Implementation */}
+            <TabsContent value="geo" className="space-y-6">
+              {(() => {
+                const watchedValues = form.watch();
+                const seoScore = calculateSeoScore(watchedValues);
+                const recommendations = getSeoRecommendations(
+                  watchedValues,
+                  seoScore,
+                );
+                const previewData = generatePreviewData(watchedValues);
+
+                return (
+                  <>
+                    {/* SEO Score Overview */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Brain className="h-5 w-5" />
+                            GEO Optimization
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              Score:
+                            </span>
+                            <Badge
+                              variant={
+                                seoScore >= 80
+                                  ? "default"
+                                  : seoScore >= 60
+                                    ? "secondary"
+                                    : "outline"
+                              }
+                              className={
+                                seoScore >= 80
+                                  ? "bg-success/10 text-success"
+                                  : seoScore >= 60
+                                    ? "bg-warning/10 text-warning"
+                                    : "bg-destructive/10 text-destructive"
+                              }
+                            >
+                              {seoScore}/100
+                            </Badge>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <Progress value={seoScore} className="h-3" />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div className="text-center">
+                              <div className="font-medium text-muted-foreground">
+                                Meta Tags
+                              </div>
+                              <div
+                                className={
+                                  watchedValues.metaTitle &&
+                                  watchedValues.metaDescription
+                                    ? "text-success"
+                                    : "text-destructive"
+                                }
+                              >
+                                {watchedValues.metaTitle &&
+                                watchedValues.metaDescription
+                                  ? "✓ Complete"
+                                  : "✗ Incomplete"}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-medium text-muted-foreground">
+                                Keywords
+                              </div>
+                              <div
+                                className={
+                                  watchedValues.focusKeywords
+                                    ? "text-success"
+                                    : "text-warning"
+                                }
+                              >
+                                {watchedValues.focusKeywords
+                                  ? "✓ Set"
+                                  : "⚠ Missing"}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-medium text-muted-foreground">
+                                Social Tags
+                              </div>
+                              <div
+                                className={
+                                  watchedValues.ogTitle &&
+                                  watchedValues.ogDescription
+                                    ? "text-success"
+                                    : "text-warning"
+                                }
+                              >
+                                {watchedValues.ogTitle &&
+                                watchedValues.ogDescription
+                                  ? "✓ Complete"
+                                  : "⚠ Incomplete"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left Column - SEO Fields */}
+                      <div className="space-y-6">
+                        {/* Basic SEO Fields */}
                         <Card>
                           <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Brain className="h-5 w-5" />
-                                GEO Optimization
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">
-                                  Score:
-                                </span>
-                                <Badge
-                                  variant={
-                                    seoScore >= 80
-                                      ? "default"
-                                      : seoScore >= 60
-                                        ? "secondary"
-                                        : "outline"
-                                  }
-                                  className={
-                                    seoScore >= 80
-                                      ? "bg-success/10 text-success"
-                                      : seoScore >= 60
-                                        ? "bg-warning/10 text-warning"
-                                        : "bg-destructive/10 text-destructive"
-                                  }
-                                >
-                                  {seoScore}/100
-                                </Badge>
-                              </div>
-                            </CardTitle>
+                            <CardTitle>Basic GEO</CardTitle>
                           </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              <Progress value={seoScore} className="h-3" />
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div className="text-center">
-                                  <div className="font-medium text-muted-foreground">
-                                    Meta Tags
-                                  </div>
-                                  <div
-                                    className={
-                                      watchedValues.metaTitle &&
-                                      watchedValues.metaDescription
-                                        ? "text-success"
-                                        : "text-destructive"
-                                    }
-                                  >
-                                    {watchedValues.metaTitle &&
-                                    watchedValues.metaDescription
-                                      ? "✓ Complete"
-                                      : "✗ Incomplete"}
-                                  </div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="font-medium text-muted-foreground">
-                                    Keywords
-                                  </div>
-                                  <div
-                                    className={
-                                      watchedValues.focusKeywords
+                          <CardContent className="space-y-4">
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <Label htmlFor="metaTitle">Meta Title *</Label>
+                                <span
+                                  className={`text-xs ${
+                                    (watchedValues.metaTitle?.length || 0) > 60
+                                      ? "text-destructive"
+                                      : (watchedValues.metaTitle?.length ||
+                                            0) >= 30
                                         ? "text-success"
                                         : "text-warning"
-                                    }
-                                  >
-                                    {watchedValues.focusKeywords
-                                      ? "✓ Set"
-                                      : "⚠ Missing"}
-                                  </div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="font-medium text-muted-foreground">
-                                    Social Tags
-                                  </div>
-                                  <div
-                                    className={
-                                      watchedValues.ogTitle &&
-                                      watchedValues.ogDescription
-                                        ? "text-success"
-                                        : "text-warning"
-                                    }
-                                  >
-                                    {watchedValues.ogTitle &&
-                                    watchedValues.ogDescription
-                                      ? "✓ Complete"
-                                      : "⚠ Incomplete"}
-                                  </div>
+                                  }`}
+                                >
+                                  {watchedValues.metaTitle?.length || 0}/60
+                                </span>
+                              </div>
+                              <Input
+                                id="metaTitle"
+                                {...form.register("metaTitle")}
+                                onChange={(e) => {
+                                  form.setValue("metaTitle", e.target.value, {
+                                    shouldValidate: true,
+                                  });
+                                }}
+                                placeholder="Compelling title for search results"
+                                className={
+                                  form.formState.errors.metaTitle
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="input-meta-title"
+                              />
+                              <div className="flex justify-between mt-1">
+                                <div>
+                                  {form.formState.errors.metaTitle && (
+                                    <p className="text-sm text-destructive">
+                                      {form.formState.errors.metaTitle.message}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <Label htmlFor="metaDescription">
+                                  Meta Description *
+                                </Label>
+                                <span
+                                  className={`text-xs ${
+                                    (watchedValues.metaDescription?.length ||
+                                      0) > 160
+                                      ? "text-destructive"
+                                      : (watchedValues.metaDescription
+                                            ?.length || 0) >= 120
+                                        ? "text-success"
+                                        : "text-warning"
+                                  }`}
+                                >
+                                  {watchedValues.metaDescription?.length || 0}
+                                  /160
+                                </span>
+                              </div>
+                              <Textarea
+                                id="metaDescription"
+                                {...form.register("metaDescription")}
+                                onChange={(e) => {
+                                  form.setValue(
+                                    "metaDescription",
+                                    e.target.value,
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                placeholder="Compelling description that appears in search results"
+                                rows={3}
+                                className={
+                                  form.formState.errors.metaDescription
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="textarea-meta-description"
+                              />
+                              {form.formState.errors.metaDescription && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {
+                                    form.formState.errors.metaDescription
+                                      .message
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="focusKeywords">
+                                Focus Keywords
+                              </Label>
+                              <Input
+                                id="focusKeywords"
+                                {...form.register("focusKeywords")}
+                                onChange={(e) => {
+                                  form.setValue(
+                                    "focusKeywords",
+                                    e.target.value,
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                placeholder="primary keyword, secondary keyword"
+                                data-testid="input-focus-keywords"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Comma-separated keywords to target in search
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="canonicalUrl">
+                                Canonical URL
+                              </Label>
+                              <Input
+                                id="canonicalUrl"
+                                {...form.register("canonicalUrl")}
+                                onChange={(e) => {
+                                  form.setValue(
+                                    "canonicalUrl",
+                                    e.target.value,
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                placeholder="https://example.com/products/product-slug"
+                                className={
+                                  form.formState.errors.canonicalUrl
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="input-canonical-url"
+                              />
+                              {form.formState.errors.canonicalUrl && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {form.formState.errors.canonicalUrl.message}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Prevents duplicate content issues
+                              </p>
                             </div>
                           </CardContent>
                         </Card>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Left Column - SEO Fields */}
-                          <div className="space-y-6">
-                            {/* Basic SEO Fields */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>Basic GEO</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="metaTitle">
-                                      Meta Title *
-                                    </Label>
-                                    <span
-                                      className={`text-xs ${
-                                        (watchedValues.metaTitle?.length || 0) >
-                                        60
-                                          ? "text-destructive"
-                                          : (watchedValues.metaTitle?.length ||
-                                                0) >= 30
-                                            ? "text-success"
-                                            : "text-warning"
-                                      }`}
-                                    >
-                                      {watchedValues.metaTitle?.length || 0}/60
-                                    </span>
-                                  </div>
-                                  <Input
-                                    id="metaTitle"
-                                    {...form.register("metaTitle")}
-                                    onChange={(e) => {
-                                      form.setValue(
-                                        "metaTitle",
-                                        e.target.value,
-                                        {
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    placeholder="Compelling title for search results"
-                                    className={
-                                      form.formState.errors.metaTitle
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="input-meta-title"
-                                  />
-                                  <div className="flex justify-between mt-1">
-                                    <div>
-                                      {form.formState.errors.metaTitle && (
-                                        <p className="text-sm text-destructive">
-                                          {
-                                            form.formState.errors.metaTitle
-                                              .message
-                                          }
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="metaDescription">
-                                      Meta Description *
-                                    </Label>
-                                    <span
-                                      className={`text-xs ${
-                                        (watchedValues.metaDescription
-                                          ?.length || 0) > 160
-                                          ? "text-destructive"
-                                          : (watchedValues.metaDescription
-                                                ?.length || 0) >= 120
-                                            ? "text-success"
-                                            : "text-warning"
-                                      }`}
-                                    >
-                                      {watchedValues.metaDescription?.length ||
-                                        0}
-                                      /160
-                                    </span>
-                                  </div>
-                                  <Textarea
-                                    id="metaDescription"
-                                    {...form.register("metaDescription")}
-                                    onChange={(e) => {
-                                      form.setValue(
-                                        "metaDescription",
-                                        e.target.value,
-                                        {
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    placeholder="Compelling description that appears in search results"
-                                    rows={3}
-                                    className={
-                                      form.formState.errors.metaDescription
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="textarea-meta-description"
-                                  />
-                                  {form.formState.errors.metaDescription && (
-                                    <p className="text-sm text-destructive mt-1">
-                                      {
-                                        form.formState.errors.metaDescription
-                                          .message
-                                      }
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div>
-                                  <Label htmlFor="focusKeywords">
-                                    Focus Keywords
-                                  </Label>
-                                  <Input
-                                    id="focusKeywords"
-                                    {...form.register("focusKeywords")}
-                                    onChange={(e) => {
-                                      form.setValue(
-                                        "focusKeywords",
-                                        e.target.value,
-                                        {
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    placeholder="primary keyword, secondary keyword"
-                                    data-testid="input-focus-keywords"
-                                  />
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Comma-separated keywords to target in search
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <Label htmlFor="canonicalUrl">
-                                    Canonical URL
-                                  </Label>
-                                  <Input
-                                    id="canonicalUrl"
-                                    {...form.register("canonicalUrl")}
-                                    onChange={(e) => {
-                                      form.setValue(
-                                        "canonicalUrl",
-                                        e.target.value,
-                                        {
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    placeholder="https://example.com/products/product-slug"
-                                    className={
-                                      form.formState.errors.canonicalUrl
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="input-canonical-url"
-                                  />
-                                  {form.formState.errors.canonicalUrl && (
-                                    <p className="text-sm text-destructive mt-1">
-                                      {
-                                        form.formState.errors.canonicalUrl
-                                          .message
-                                      }
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Prevents duplicate content issues
-                                  </p>
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            {/* Open Graph Tags */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>Social Media (Open Graph)</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="ogTitle">
-                                      Open Graph Title
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">
-                                      {watchedValues.ogTitle?.length || 0}/60
-                                    </span>
-                                  </div>
-                                  <Input
-                                    id="ogTitle"
-                                    {...form.register("ogTitle")}
-                                    onChange={(e) => {
-                                      form.setValue("ogTitle", e.target.value, {
-                                        shouldValidate: true,
-                                      });
-                                    }}
-                                    placeholder="Title for social media sharing"
-                                    className={
-                                      form.formState.errors.ogTitle
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="input-og-title"
-                                  />
-                                  {form.formState.errors.ogTitle && (
-                                    <p className="text-sm text-destructive mt-1">
-                                      {form.formState.errors.ogTitle.message}
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="ogDescription">
-                                      Open Graph Description
-                                    </Label>
-                                    <span className="text-xs text-muted-foreground">
-                                      {watchedValues.ogDescription?.length || 0}
-                                      /160
-                                    </span>
-                                  </div>
-                                  <Textarea
-                                    id="ogDescription"
-                                    {...form.register("ogDescription")}
-                                    onChange={(e) => {
-                                      form.setValue(
-                                        "ogDescription",
-                                        e.target.value,
-                                        {
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    placeholder="Description for social media sharing"
-                                    rows={3}
-                                    className={
-                                      form.formState.errors.ogDescription
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="textarea-og-description"
-                                  />
-                                  {form.formState.errors.ogDescription && (
-                                    <p className="text-sm text-destructive mt-1">
-                                      {
-                                        form.formState.errors.ogDescription
-                                          .message
-                                      }
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div>
-                                  <Label htmlFor="ogImage">
-                                    Open Graph Image URL
-                                  </Label>
-                                  <Input
-                                    id="ogImage"
-                                    {...form.register("ogImage")}
-                                    onChange={(e) => {
-                                      form.setValue("ogImage", e.target.value, {
-                                        shouldValidate: true,
-                                      });
-                                    }}
-                                    placeholder="https://example.com/image.jpg"
-                                    className={
-                                      form.formState.errors.ogImage
-                                        ? "border-destructive"
-                                        : ""
-                                    }
-                                    data-testid="input-og-image"
-                                  />
-                                  {form.formState.errors.ogImage && (
-                                    <p className="text-sm text-destructive mt-1">
-                                      {form.formState.errors.ogImage.message}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Recommended: 1200x630px image
-                                  </p>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-
-                          {/* Right Column - Previews and Recommendations */}
-                          <div className="space-y-6">
-                            {/* Search Preview */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>Search Preview</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="border rounded-lg p-4 bg-muted/30">
-                                  <div className="space-y-1">
-                                    <div className="text-primary text-lg font-medium hover:underline cursor-pointer">
-                                      {previewData.google.title}
-                                    </div>
-                                    <div className="text-success text-sm">
-                                      {previewData.google.displayUrl}
-                                    </div>
-                                    <div className="text-muted-foreground text-sm">
-                                      {previewData.google.description}
-                                    </div>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Preview of how this will appear in Google
-                                  search results
+                        {/* Open Graph Tags */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Social Media (Open Graph)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <Label htmlFor="ogTitle">
+                                  Open Graph Title
+                                </Label>
+                                <span className="text-xs text-muted-foreground">
+                                  {watchedValues.ogTitle?.length || 0}/60
+                                </span>
+                              </div>
+                              <Input
+                                id="ogTitle"
+                                {...form.register("ogTitle")}
+                                onChange={(e) => {
+                                  form.setValue("ogTitle", e.target.value, {
+                                    shouldValidate: true,
+                                  });
+                                }}
+                                placeholder="Title for social media sharing"
+                                className={
+                                  form.formState.errors.ogTitle
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="input-og-title"
+                              />
+                              {form.formState.errors.ogTitle && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {form.formState.errors.ogTitle.message}
                                 </p>
-                              </CardContent>
-                            </Card>
+                              )}
+                            </div>
 
-                            {/* Social Media Preview */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>Social Media Preview</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="border rounded-lg p-4 bg-muted/30">
-                                  <div className="aspect-video bg-muted rounded mb-3 flex items-center justify-center text-muted-foreground text-sm">
-                                    {previewData.social.image !==
-                                    "/placeholder-og-image.jpg" ? (
-                                      <img
-                                        src={previewData.social.image}
-                                        alt="OG Preview"
-                                        className="w-full h-full object-cover rounded"
-                                        onError={(e) => {
-                                          (
-                                            e.target as HTMLImageElement
-                                          ).style.display = "none";
-                                          (
-                                            e.target as HTMLImageElement
-                                          ).nextElementSibling!.textContent =
-                                            "Image preview unavailable";
-                                        }}
-                                      />
-                                    ) : (
-                                      "No image set"
-                                    )}
-                                    <span className="hidden">
-                                      Image preview unavailable
-                                    </span>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="font-semibold text-sm">
-                                      {previewData.social.title}
-                                    </div>
-                                    <div className="text-muted-foreground text-sm">
-                                      {previewData.social.description}
-                                    </div>
-                                    <div className="text-muted-foreground text-xs uppercase">
-                                      {window.location.hostname}
-                                    </div>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Preview for Facebook, Twitter, and other
-                                  social platforms
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <Label htmlFor="ogDescription">
+                                  Open Graph Description
+                                </Label>
+                                <span className="text-xs text-muted-foreground">
+                                  {watchedValues.ogDescription?.length || 0}
+                                  /160
+                                </span>
+                              </div>
+                              <Textarea
+                                id="ogDescription"
+                                {...form.register("ogDescription")}
+                                onChange={(e) => {
+                                  form.setValue(
+                                    "ogDescription",
+                                    e.target.value,
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                placeholder="Description for social media sharing"
+                                rows={3}
+                                className={
+                                  form.formState.errors.ogDescription
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="textarea-og-description"
+                              />
+                              {form.formState.errors.ogDescription && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {form.formState.errors.ogDescription.message}
                                 </p>
-                              </CardContent>
-                            </Card>
+                              )}
+                            </div>
 
-                            {/* SEO Recommendations */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>GEO Recommendations</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                {recommendations.length === 0 ? (
-                                  <div className="text-center py-4 text-success">
-                                    <div className="flex items-center justify-center gap-2 mb-2">
-                                      <div className="w-6 h-6 bg-success/10 rounded-full flex items-center justify-center">
-                                        ✓
-                                      </div>
-                                      <span className="font-medium">
-                                        Great job!
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                      Your GEO setup looks good
-                                    </p>
-                                  </div>
+                            <div>
+                              <Label htmlFor="ogImage">
+                                Open Graph Image URL
+                              </Label>
+                              <Input
+                                id="ogImage"
+                                {...form.register("ogImage")}
+                                onChange={(e) => {
+                                  form.setValue("ogImage", e.target.value, {
+                                    shouldValidate: true,
+                                  });
+                                }}
+                                placeholder="https://example.com/image.jpg"
+                                className={
+                                  form.formState.errors.ogImage
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                                data-testid="input-og-image"
+                              />
+                              {form.formState.errors.ogImage && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {form.formState.errors.ogImage.message}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Recommended: 1200x630px image
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Right Column - Previews and Recommendations */}
+                      <div className="space-y-6">
+                        {/* Search Preview */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Search Preview</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="border rounded-lg p-4 bg-muted/30">
+                              <div className="space-y-1">
+                                <div className="text-primary text-lg font-medium hover:underline cursor-pointer">
+                                  {previewData.google.title}
+                                </div>
+                                <div className="text-success text-sm">
+                                  {previewData.google.displayUrl}
+                                </div>
+                                <div className="text-muted-foreground text-sm">
+                                  {previewData.google.description}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Preview of how this will appear in Google search
+                              results
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Social Media Preview */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Social Media Preview</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="border rounded-lg p-4 bg-muted/30">
+                              <div className="aspect-video bg-muted rounded mb-3 flex items-center justify-center text-muted-foreground text-sm">
+                                {previewData.social.image !==
+                                "/placeholder-og-image.jpg" ? (
+                                  <img
+                                    src={previewData.social.image}
+                                    alt="OG Preview"
+                                    className="w-full h-full object-cover rounded"
+                                    onError={(e) => {
+                                      (
+                                        e.target as HTMLImageElement
+                                      ).style.display = "none";
+                                      (
+                                        e.target as HTMLImageElement
+                                      ).nextElementSibling!.textContent =
+                                        "Image preview unavailable";
+                                    }}
+                                  />
                                 ) : (
-                                  <div className="space-y-3">
-                                    {recommendations.map((rec, index) => (
-                                      <div
-                                        key={index}
-                                        className={`flex gap-3 p-3 rounded-lg ${
-                                          rec.type === "error"
-                                            ? "bg-destructive/5 border border-destructive/20"
-                                            : rec.type === "warning"
-                                              ? "bg-warning/5 border border-warning/20"
-                                              : "bg-info/5 border border-info/20"
+                                  "No image set"
+                                )}
+                                <span className="hidden">
+                                  Image preview unavailable
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="font-semibold text-sm">
+                                  {previewData.social.title}
+                                </div>
+                                <div className="text-muted-foreground text-sm">
+                                  {previewData.social.description}
+                                </div>
+                                <div className="text-muted-foreground text-xs uppercase">
+                                  {window.location.hostname}
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Preview for Facebook, Twitter, and other social
+                              platforms
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* SEO Recommendations */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>GEO Recommendations</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {recommendations.length === 0 ? (
+                              <div className="text-center py-4 text-success">
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                  <div className="w-6 h-6 bg-success/10 rounded-full flex items-center justify-center">
+                                    ✓
+                                  </div>
+                                  <span className="font-medium">
+                                    Great job!
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Your GEO setup looks good
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {recommendations.map((rec, index) => (
+                                  <div
+                                    key={index}
+                                    className={`flex gap-3 p-3 rounded-lg ${
+                                      rec.type === "error"
+                                        ? "bg-destructive/5 border border-destructive/20"
+                                        : rec.type === "warning"
+                                          ? "bg-warning/5 border border-warning/20"
+                                          : "bg-info/5 border border-info/20"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                        rec.type === "error"
+                                          ? "bg-destructive/20 text-destructive"
+                                          : rec.type === "warning"
+                                            ? "bg-warning/20 text-warning"
+                                            : "bg-info/20 text-info"
+                                      }`}
+                                    >
+                                      {rec.type === "error"
+                                        ? "!"
+                                        : rec.type === "warning"
+                                          ? "⚠"
+                                          : "i"}
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium">
+                                        {rec.message}
+                                      </p>
+                                      <Badge
+                                        variant="outline"
+                                        className={`mt-1 text-xs ${
+                                          rec.priority === "high"
+                                            ? "border-destructive/30 text-destructive"
+                                            : rec.priority === "medium"
+                                              ? "border-warning/30 text-warning"
+                                              : "border-info/30 text-info"
                                         }`}
                                       >
-                                        <div
-                                          className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                                            rec.type === "error"
-                                              ? "bg-destructive/20 text-destructive"
-                                              : rec.type === "warning"
-                                                ? "bg-warning/20 text-warning"
-                                                : "bg-info/20 text-info"
-                                          }`}
-                                        >
-                                          {rec.type === "error"
-                                            ? "!"
-                                            : rec.type === "warning"
-                                              ? "⚠"
-                                              : "i"}
-                                        </div>
-                                        <div className="flex-1">
-                                          <p className="text-sm font-medium">
-                                            {rec.message}
-                                          </p>
-                                          <Badge
-                                            variant="outline"
-                                            className={`mt-1 text-xs ${
-                                              rec.priority === "high"
-                                                ? "border-destructive/30 text-destructive"
-                                                : rec.priority === "medium"
-                                                  ? "border-warning/30 text-warning"
-                                                  : "border-info/30 text-info"
-                                            }`}
-                                          >
-                                            {rec.priority} priority
-                                          </Badge>
-                                        </div>
-                                      </div>
-                                    ))}
+                                        {rec.priority} priority
+                                      </Badge>
+                                    </div>
                                   </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </TabsContent>
-
-                {/* Channels Tab */}
-                <TabsContent value="channels" className="space-y-6">
-                  <ChannelsTab productId={productId} product={product} />
-                </TabsContent>
-
-                {/* History Tab */}
-                <TabsContent value="history" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Change History</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <History className="h-12 w-12 mx-auto mb-4" />
-                        <p>Change tracking coming soon</p>
-                        <p className="text-sm">
-                          View detailed audit trail of all product modifications
-                        </p>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </form>
-          </div>
-        </main>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Channels Tab */}
+            <TabsContent value="channels" className="space-y-6">
+              <ChannelsTab productId={productId} product={product} />
+            </TabsContent>
+
+            {/* History Tab */}
+            <TabsContent value="history" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <History className="h-12 w-12 mx-auto mb-4" />
+                    <p>Change tracking coming soon</p>
+                    <p className="text-sm">
+                      View detailed audit trail of all product modifications
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </form>
       </div>
     </div>
   );

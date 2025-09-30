@@ -6,8 +6,6 @@ import { useLocation } from "wouter";
 import { SyndicationDashboard } from "@/components/syndication-dashboard";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import Navigation from "@/components/navigation";
-import Sidebar from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,566 +228,552 @@ export default function ProductNew() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-
-      <div className="flex min-h-screen">
-        <Sidebar />
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Enhanced Header */}
-            <div className="bg-card border rounded-lg p-6 mb-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/products")}
-                    className="flex items-center"
-                    data-testid="button-back-to-products"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Products
-                  </Button>
-                  <div>
-                    <h1 className="text-2xl font-bold">Create New Product</h1>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      Fill out product details and settings
-                    </div>
-                  </div>
+    <div className="flex-1 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Enhanced Header */}
+        <div className="bg-card border rounded-lg p-6 mb-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/products")}
+                className="flex items-center"
+                data-testid="button-back-to-products"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Products
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Create New Product</h1>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  Fill out product details and settings
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-3">
-                  <Button
-                    type="submit"
-                    form="product-new-form"
-                    className="flex items-center gradient-primary text-white hover:opacity-90"
-                    disabled={createProductMutation.isPending}
-                    data-testid="button-save-product"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {createProductMutation.isPending
-                      ? "Saving..."
-                      : "Create Product"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Completion Progress */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
-                    Product Information Completeness
-                  </span>
-                  <span className="font-medium">{completionProgress}%</span>
-                </div>
-                <Progress value={completionProgress} className="h-2" />
               </div>
             </div>
 
-            {/* New Form */}
-            <form
-              id="product-new-form"
-              onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                console.log("Form validation errors:", errors);
-                toast({
-                  title: "Validation Error",
-                  description: "Please check the form for errors",
-                  variant: "destructive",
-                });
-              })}
-              className="space-y-6"
-            >
-              {/* Tabbed PIM Interface */}
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              <Button
+                type="submit"
+                form="product-new-form"
+                className="flex items-center gradient-primary text-white hover:opacity-90"
+                disabled={createProductMutation.isPending}
+                data-testid="button-save-product"
               >
-                <TabsList className="grid w-full grid-cols-7 mb-6">
-                  <TabsTrigger
-                    value="general"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-general"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">General</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="attributes"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-attributes"
-                  >
-                    <Layers className="h-4 w-4" />
-                    <span className="hidden sm:inline">Attributes</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="variants"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-variants"
-                  >
-                    <Package className="h-4 w-4" />
-                    <span className="hidden sm:inline">Variants</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="frames"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-frames"
-                  >
-                    <Image className="h-4 w-4" />
-                    <span className="hidden sm:inline">frames</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="geo"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-geo"
-                  >
-                    <Brain className="h-4 w-4" />
-                    <span className="hidden sm:inline">GEO</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="channels"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-channels"
-                  >
-                    <Globe className="h-4 w-4" />
-                    <span className="hidden sm:inline">Syndication</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="history"
-                    className="flex items-center space-x-2"
-                    data-testid="tab-history"
-                  >
-                    <History className="h-4 w-4" />
-                    <span className="hidden sm:inline">History</span>
-                  </TabsTrigger>
-                </TabsList>
+                <Save className="mr-2 h-4 w-4" />
+                {createProductMutation.isPending
+                  ? "Saving..."
+                  : "Create Product"}
+              </Button>
+            </div>
+          </div>
 
-                {/* General Tab */}
-                <TabsContent value="general" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
-                      {/* Basic Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Basic Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="name">Product Name *</Label>
-                            <Input
-                              id="name"
-                              {...form.register("name")}
-                              onChange={(e) => {
-                                form.setValue("name", e.target.value);
-                                if (!form.watch("slug")) {
-                                  form.setValue(
-                                    "slug",
-                                    generateSlug(e.target.value),
-                                  );
-                                }
-                              }}
-                              placeholder="Enter product name"
-                              data-testid="input-product-name"
-                            />
-                            {form.formState.errors.name && (
-                              <p className="text-sm text-destructive mt-1">
-                                {form.formState.errors.name.message}
-                              </p>
-                            )}
-                          </div>
+          {/* Completion Progress */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-muted-foreground">
+                Product Information Completeness
+              </span>
+              <span className="font-medium">{completionProgress}%</span>
+            </div>
+            <Progress value={completionProgress} className="h-2" />
+          </div>
+        </div>
 
-                          <div>
-                            <Label htmlFor="slug">URL Slug *</Label>
-                            <Input
-                              id="slug"
-                              {...form.register("slug")}
-                              placeholder="product-url-slug"
-                              data-testid="input-product-slug"
-                            />
-                            {form.formState.errors.slug && (
-                              <p className="text-sm text-destructive mt-1">
-                                {form.formState.errors.slug.message}
-                              </p>
-                            )}
-                          </div>
+        {/* New Form */}
+        <form
+          id="product-new-form"
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            console.log("Form validation errors:", errors);
+            toast({
+              title: "Validation Error",
+              description: "Please check the form for errors",
+              variant: "destructive",
+            });
+          })}
+          className="space-y-6"
+        >
+          {/* Tabbed PIM Interface */}
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-7 mb-6">
+              <TabsTrigger
+                value="general"
+                className="flex items-center space-x-2"
+                data-testid="tab-general"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">General</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="attributes"
+                className="flex items-center space-x-2"
+                data-testid="tab-attributes"
+              >
+                <Layers className="h-4 w-4" />
+                <span className="hidden sm:inline">Attributes</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="variants"
+                className="flex items-center space-x-2"
+                data-testid="tab-variants"
+              >
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Variants</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="frames"
+                className="flex items-center space-x-2"
+                data-testid="tab-frames"
+              >
+                <Image className="h-4 w-4" />
+                <span className="hidden sm:inline">frames</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="geo"
+                className="flex items-center space-x-2"
+                data-testid="tab-geo"
+              >
+                <Brain className="h-4 w-4" />
+                <span className="hidden sm:inline">GEO</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="channels"
+                className="flex items-center space-x-2"
+                data-testid="tab-channels"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="hidden sm:inline">Syndication</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="flex items-center space-x-2"
+                data-testid="tab-history"
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">History</span>
+              </TabsTrigger>
+            </TabsList>
 
-                          <div>
-                            <Label htmlFor="sku">SKU</Label>
-                            <Input
-                              id="sku"
-                              {...form.register("sku")}
-                              placeholder="Product SKU"
-                              data-testid="input-product-sku"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="shortDescription">
-                              Short Description
-                            </Label>
-                            <Textarea
-                              id="shortDescription"
-                              {...form.register("shortDescription")}
-                              placeholder="Brief product description"
-                              rows={3}
-                              data-testid="textarea-short-description"
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Detailed Content */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Detailed Content</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="longDescription">
-                              Long Description
-                            </Label>
-                            <Textarea
-                              id="longDescription"
-                              {...form.register("longDescription")}
-                              placeholder="Detailed product description with features and benefits"
-                              rows={6}
-                              data-testid="textarea-long-description"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="story">Product Story</Label>
-                            <Textarea
-                              id="story"
-                              {...form.register("story")}
-                              placeholder="Tell the story behind this product - inspiration, craftsmanship, heritage"
-                              rows={6}
-                              data-testid="textarea-product-story"
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Pricing Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Pricing</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="price">Price</Label>
-                              <Input
-                                id="price"
-                                {...form.register("price")}
-                                placeholder="29.99"
-                                data-testid="input-price"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="compareAtPrice">
-                                Compare At Price
-                              </Label>
-                              <Input
-                                id="compareAtPrice"
-                                {...form.register("compareAtPrice")}
-                                placeholder="39.99"
-                                data-testid="input-compare-at-price"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className="space-y-6">
-                      {/* Publication Settings */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Publication</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label htmlFor="status">Status</Label>
-                            <Select
-                              value={form.watch("status")}
-                              onValueChange={(value) =>
-                                form.setValue("status", value as any)
-                              }
-                            >
-                              <SelectTrigger
-                                id="status"
-                                data-testid="select-product-status"
-                              >
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="review">Review</SelectItem>
-                                <SelectItem value="live">Live</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="archived">
-                                  Archived
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="brandId">Brand *</Label>
-                            <Select
-                              value={form.watch("brandId")?.toString() || ""}
-                              onValueChange={(value) =>
-                                form.setValue("brandId", parseInt(value))
-                              }
-                            >
-                              <SelectTrigger
-                                id="brandId"
-                                data-testid="select-product-brand"
-                              >
-                                <SelectValue placeholder="Select brand" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(brands as any[])?.map((brand: any) => (
-                                  <SelectItem
-                                    key={brand.id}
-                                    value={brand.id.toString()}
-                                  >
-                                    {brand.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {form.formState.errors.brandId && (
-                              <p className="text-sm text-destructive mt-1">
-                                {form.formState.errors.brandId.message}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="isVariant"
-                              checked={form.watch("isVariant")}
-                              onCheckedChange={(checked) =>
-                                form.setValue("isVariant", checked)
-                              }
-                              data-testid="switch-is-variant"
-                            />
-                            <Label htmlFor="isVariant">Product Variant</Label>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Save Actions */}
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="space-y-3">
-                            <Button
-                              type="submit"
-                              className="w-full gradient-primary text-white hover:opacity-90"
-                              disabled={createProductMutation.isPending}
-                              data-testid="button-save-product"
-                            >
-                              <Save className="mr-2 h-4 w-4" />
-                              {createProductMutation.isPending
-                                ? "Creating..."
-                                : "Create Product"}
-                            </Button>
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => navigate("/products")}
-                              disabled={createProductMutation.isPending}
-                              data-testid="button-cancel-edit"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </TabsContent>
-                {/* Attributes Tab */}
-                <TabsContent value="attributes" className="space-y-6">
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Basic Information */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Product Specifications</CardTitle>
+                      <CardTitle>Basic Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="name">Product Name *</Label>
+                        <Input
+                          id="name"
+                          {...form.register("name")}
+                          onChange={(e) => {
+                            form.setValue("name", e.target.value);
+                            if (!form.watch("slug")) {
+                              form.setValue(
+                                "slug",
+                                generateSlug(e.target.value),
+                              );
+                            }
+                          }}
+                          placeholder="Enter product name"
+                          data-testid="input-product-name"
+                        />
+                        {form.formState.errors.name && (
+                          <p className="text-sm text-destructive mt-1">
+                            {form.formState.errors.name.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="slug">URL Slug *</Label>
+                        <Input
+                          id="slug"
+                          {...form.register("slug")}
+                          placeholder="product-url-slug"
+                          data-testid="input-product-slug"
+                        />
+                        {form.formState.errors.slug && (
+                          <p className="text-sm text-destructive mt-1">
+                            {form.formState.errors.slug.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sku">SKU</Label>
+                        <Input
+                          id="sku"
+                          {...form.register("sku")}
+                          placeholder="Product SKU"
+                          data-testid="input-product-sku"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="shortDescription">
+                          Short Description
+                        </Label>
+                        <Textarea
+                          id="shortDescription"
+                          {...form.register("shortDescription")}
+                          placeholder="Brief product description"
+                          rows={3}
+                          data-testid="textarea-short-description"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Detailed Content */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Detailed Content</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="longDescription">
+                          Long Description
+                        </Label>
+                        <Textarea
+                          id="longDescription"
+                          {...form.register("longDescription")}
+                          placeholder="Detailed product description with features and benefits"
+                          rows={6}
+                          data-testid="textarea-long-description"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="story">Product Story</Label>
+                        <Textarea
+                          id="story"
+                          {...form.register("story")}
+                          placeholder="Tell the story behind this product - inspiration, craftsmanship, heritage"
+                          rows={6}
+                          data-testid="textarea-product-story"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Pricing Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Pricing</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="weight">Weight</Label>
+                          <Label htmlFor="price">Price</Label>
                           <Input
-                            id="weight"
-                            {...form.register("weight")}
-                            placeholder="e.g. 250g"
-                            data-testid="input-weight"
+                            id="price"
+                            {...form.register("price")}
+                            placeholder="29.99"
+                            data-testid="input-price"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="dimensions">Dimensions</Label>
+                          <Label htmlFor="compareAtPrice">
+                            Compare At Price
+                          </Label>
                           <Input
-                            id="dimensions"
-                            {...form.register("dimensions")}
-                            placeholder="e.g. 40mm x 12mm"
-                            data-testid="input-dimensions"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="material">Material</Label>
-                          <Input
-                            id="material"
-                            {...form.register("material")}
-                            placeholder="e.g. Stainless Steel"
-                            data-testid="input-material"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="color">Color</Label>
-                          <Input
-                            id="color"
-                            {...form.register("color")}
-                            placeholder="e.g. Black"
-                            data-testid="input-color"
+                            id="compareAtPrice"
+                            {...form.register("compareAtPrice")}
+                            placeholder="39.99"
+                            data-testid="input-compare-at-price"
                           />
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
+                </div>
 
-                {/* frames Tab */}
-                <TabsContent value="frames" className="space-y-6">
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  {/* Publication Settings */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Digital Assets</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Image className="h-12 w-12 mx-auto mb-4" />
-                        <p>frames management coming soon</p>
-                        <p className="text-sm">
-                          Upload and manage product images, videos, and
-                          documents
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* GEO Tab */}
-                <TabsContent value="geo" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Generative Engine Optimization</CardTitle>
+                      <CardTitle>Publication</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <Label htmlFor="metaTitle">Meta Title</Label>
-                        <Input
-                          id="metaTitle"
-                          {...form.register("metaTitle")}
-                          placeholder="GEO-optimized title"
-                          data-testid="input-meta-title"
-                        />
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={form.watch("status")}
+                          onValueChange={(value) =>
+                            form.setValue("status", value as any)
+                          }
+                        >
+                          <SelectTrigger
+                            id="status"
+                            data-testid="select-product-status"
+                          >
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+
                       <div>
-                        <Label htmlFor="metaDescription">
-                          Meta Description
-                        </Label>
-                        <Textarea
-                          id="metaDescription"
-                          {...form.register("metaDescription")}
-                          placeholder="Brief description for generative engines"
-                          rows={3}
-                          data-testid="textarea-meta-description"
+                        <Label htmlFor="brandId">Brand *</Label>
+                        <Select
+                          value={form.watch("brandId")?.toString() || ""}
+                          onValueChange={(value) =>
+                            form.setValue("brandId", parseInt(value))
+                          }
+                        >
+                          <SelectTrigger
+                            id="brandId"
+                            data-testid="select-product-brand"
+                          >
+                            <SelectValue placeholder="Select brand" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(brands as any[])?.map((brand: any) => (
+                              <SelectItem
+                                key={brand.id}
+                                value={brand.id.toString()}
+                              >
+                                {brand.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.brandId && (
+                          <p className="text-sm text-destructive mt-1">
+                            {form.formState.errors.brandId.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="isVariant"
+                          checked={form.watch("isVariant")}
+                          onCheckedChange={(checked) =>
+                            form.setValue("isVariant", checked)
+                          }
+                          data-testid="switch-is-variant"
                         />
-                      </div>
-                      <div>
-                        <Label htmlFor="keywords">Keywords</Label>
-                        <Input
-                          id="keywords"
-                          {...form.register("keywords")}
-                          placeholder="keyword1, keyword2, keyword3"
-                          data-testid="input-keywords"
-                        />
+                        <Label htmlFor="isVariant">Product Variant</Label>
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
 
-                {/* Variants Tab */}
-                <TabsContent value="variants" className="space-y-6">
+                  {/* Save Actions */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Product Variants</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Package className="h-12 w-12 mx-auto mb-4" />
-                        <p>Variant management coming soon</p>
-                        <p className="text-sm">
-                          Manage color, size, and other product variations
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        <Button
+                          type="submit"
+                          className="w-full gradient-primary text-white hover:opacity-90"
+                          disabled={createProductMutation.isPending}
+                          data-testid="button-save-product"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {createProductMutation.isPending
+                            ? "Creating..."
+                            : "Create Product"}
+                        </Button>
 
-                {/* Channels Tab */}
-                <TabsContent value="channels" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Syndication Channels</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Globe className="h-12 w-12 mx-auto mb-4" />
-                        <p>
-                          Syndication configuration will be available after
-                          creating the product
-                        </p>
-                        <p className="text-sm">
-                          Save this product first to configure syndication
-                          channel availability
-                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => navigate("/products")}
+                          disabled={createProductMutation.isPending}
+                          data-testid="button-cancel-edit"
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
+                </div>
+              </div>
+            </TabsContent>
+            {/* Attributes Tab */}
+            <TabsContent value="attributes" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Product Specifications</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="weight">Weight</Label>
+                      <Input
+                        id="weight"
+                        {...form.register("weight")}
+                        placeholder="e.g. 250g"
+                        data-testid="input-weight"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dimensions">Dimensions</Label>
+                      <Input
+                        id="dimensions"
+                        {...form.register("dimensions")}
+                        placeholder="e.g. 40mm x 12mm"
+                        data-testid="input-dimensions"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="material">Material</Label>
+                      <Input
+                        id="material"
+                        {...form.register("material")}
+                        placeholder="e.g. Stainless Steel"
+                        data-testid="input-material"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="color">Color</Label>
+                      <Input
+                        id="color"
+                        {...form.register("color")}
+                        placeholder="e.g. Black"
+                        data-testid="input-color"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                {/* History Tab */}
-                <TabsContent value="history" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Change History</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <History className="h-12 w-12 mx-auto mb-4" />
-                        <p>Change tracking coming soon</p>
-                        <p className="text-sm">
-                          View detailed audit trail of all product modifications
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </form>
-          </div>
-        </main>
+            {/* frames Tab */}
+            <TabsContent value="frames" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Digital Assets</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Image className="h-12 w-12 mx-auto mb-4" />
+                    <p>frames management coming soon</p>
+                    <p className="text-sm">
+                      Upload and manage product images, videos, and documents
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* GEO Tab */}
+            <TabsContent value="geo" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Generative Engine Optimization</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="metaTitle">Meta Title</Label>
+                    <Input
+                      id="metaTitle"
+                      {...form.register("metaTitle")}
+                      placeholder="GEO-optimized title"
+                      data-testid="input-meta-title"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="metaDescription">Meta Description</Label>
+                    <Textarea
+                      id="metaDescription"
+                      {...form.register("metaDescription")}
+                      placeholder="Brief description for generative engines"
+                      rows={3}
+                      data-testid="textarea-meta-description"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="keywords">Keywords</Label>
+                    <Input
+                      id="keywords"
+                      {...form.register("keywords")}
+                      placeholder="keyword1, keyword2, keyword3"
+                      data-testid="input-keywords"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Variants Tab */}
+            <TabsContent value="variants" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Product Variants</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="h-12 w-12 mx-auto mb-4" />
+                    <p>Variant management coming soon</p>
+                    <p className="text-sm">
+                      Manage color, size, and other product variations
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Channels Tab */}
+            <TabsContent value="channels" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Syndication Channels</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Globe className="h-12 w-12 mx-auto mb-4" />
+                    <p>
+                      Syndication configuration will be available after creating
+                      the product
+                    </p>
+                    <p className="text-sm">
+                      Save this product first to configure syndication channel
+                      availability
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* History Tab */}
+            <TabsContent value="history" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <History className="h-12 w-12 mx-auto mb-4" />
+                    <p>Change tracking coming soon</p>
+                    <p className="text-sm">
+                      View detailed audit trail of all product modifications
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </form>
       </div>
     </div>
   );

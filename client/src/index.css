@@ -195,6 +195,62 @@
   transition-duration: var(--motion-duration-default);
 }
 
+/* Responsive Container Utilities */
+.container-responsive {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+}
+
+/* Grid System Utilities */
+.grid-responsive {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    gap: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    gap: var(--space-6);
+  }
+}
+
+/* Card Layout Improvements */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .card-grid {
+    gap: var(--space-6);
+  }
+}
+
 .transition-fast {
   transition-timing-function: var(--motion-default);
   transition-duration: var(--motion-duration-fast);

@@ -158,7 +158,7 @@ export default function BrandRegistrationForm() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-primary hover:text-primary/80 transition-colors duration-[var(--motion-duration-fast)]"
+            className="text-primary hover:text-primary/80 transition-colors duration-100"
             data-testid="button-view-all-brands"
           >
             View All <span className="ml-1">→</span>
@@ -252,7 +252,7 @@ export default function BrandRegistrationForm() {
             <div className="space-y-2">
               <label className="block text-sm font-medium">Brand Logo</label>
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-[var(--motion-duration-fast)] cursor-pointer ${
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-100 cursor-pointer ${
                   dragActive
                     ? "border-info bg-info/5"
                     : "border-border hover:border-info/50"

@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Navigation from "@/components/navigation";
-import Sidebar from "@/components/sidebar";
 import BulkEditInterface from "@/components/bulk-edit-interface";
 
 export default function BulkEdit() {
@@ -29,21 +27,18 @@ export default function BulkEdit() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-      
-      <div className="flex min-h-screen">
-        <Sidebar />
-        
-        <main className="flex-1 p-6">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2" data-testid="bulk-edit-title">Bulk Product Editor</h1>
-            <p className="text-muted-foreground">Edit multiple products at once across brands, categories, or individual selections</p>
-          </div>
-
-          <BulkEditInterface />
-        </main>
+    <div className="flex-1 p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2" data-testid="bulk-edit-title">
+          Bulk Product Editor
+        </h1>
+        <p className="text-muted-foreground">
+          Edit multiple products at once across brands, categories, or
+          individual selections
+        </p>
       </div>
+
+      <BulkEditInterface />
     </div>
   );
 }
