@@ -3,8 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Box, Eye, Share, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import {
+  Box,
+  Eye,
+  Share,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  DollarSign,
+  Package,
+} from "lucide-react";
 import { useLocation } from "wouter";
+import { formatPrice, formatStock } from "@/lib/utils";
 
 interface ProductCardProps {
   product: {
@@ -17,6 +27,10 @@ interface ProductCardProps {
     sku?: string;
     isVariant: boolean;
     createdAt: string;
+    price?: number | null;
+    compareAtPrice?: number | null;
+    stock?: number | null;
+    lowStockThreshold?: number | null;
     mediaAssets?: Array<{ url: string; assetType: string }>;
   };
   onDelete?: () => void;
@@ -39,7 +53,7 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <Card
-      className="border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-[border-color] duration-100 group w-full min-w-[345px]"
+      className="border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-[border-color] duration-100 group w-full min-w-80"
       data-testid={`product-card-${product.id}`}
     >
       {/* Product Image Placeholder */}
@@ -66,7 +80,7 @@ const ProductCard = memo(function ProductCard({
         {/* Header Section */}
         <div className="space-y-1">
           <h3
-            className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]"
+            className="font-semibold text-sm line-clamp-2 min-h-10"
             title={product.name}
             data-testid={`text-product-name-${product.id}`}
           >
@@ -82,7 +96,7 @@ const ProductCard = memo(function ProductCard({
 
         {/* Description - Fixed Height */}
         <p
-          className="text-xs text-muted-foreground line-clamp-3 min-h-[3rem]"
+          className="text-xs text-muted-foreground line-clamp-3 min-h-12"
           data-testid={`text-product-description-${product.id}`}
         >
           {product.story
@@ -91,6 +105,62 @@ const ProductCard = memo(function ProductCard({
               ? truncateText(product.shortDescription, 120)
               : "No description available. Add a compelling story to bring this product to life."}
         </p>
+
+        {/* Price and Stock Information */}
+        <div className="space-y-2">
+          {/* Price Display */}
+          <div className="flex items-center space-x-2">
+            <DollarSign className="h-3 w-3 text-muted-foreground" />
+            <div className="flex items-center space-x-2">
+              <span
+                className="font-semibold text-sm"
+                data-testid={`text-product-price-${product.id}`}
+              >
+                {formatPrice(product.price)}
+              </span>
+              {product.compareAtPrice &&
+                product.compareAtPrice > (product.price || 0) && (
+                  <span
+                    className="text-xs text-muted-foreground line-through"
+                    data-testid={`text-product-compare-price-${product.id}`}
+                  >
+                    {formatPrice(product.compareAtPrice)}
+                  </span>
+                )}
+            </div>
+          </div>
+
+          {/* Stock Display */}
+          <div className="flex items-center space-x-2">
+            <Package className="h-3 w-3 text-muted-foreground" />
+            <span
+              className={`text-xs font-medium ${
+                formatStock(product.stock, product.lowStockThreshold).color
+              }`}
+              data-testid={`text-product-stock-${product.id}`}
+            >
+              {formatStock(product.stock, product.lowStockThreshold).text}
+            </span>
+            {formatStock(product.stock, product.lowStockThreshold).status ===
+              "low-stock" && (
+              <Badge
+                variant="outline"
+                className="text-xs bg-warning/10 text-warning border-warning/20"
+              >
+                Low Stock
+              </Badge>
+            )}
+            {formatStock(product.stock, product.lowStockThreshold).status ===
+              "out-of-stock" && (
+              <Badge
+                variant="outline"
+                className="text-xs bg-destructive/10 text-destructive border-destructive/20"
+              >
+                Out of Stock
+              </Badge>
+            )}
+          </div>
+        </div>
 
         {/* Metrics Row */}
         <div className="flex items-center justify-between">

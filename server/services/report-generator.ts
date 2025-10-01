@@ -3,17 +3,18 @@
  * Automated generation of analytics reports for different stakeholders
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
-import { format } from 'date-fns';
-import AutomationAnalyticsService from './automation-analytics';
-import { WebSocketService } from './websocket-service';
+import { promises as fs } from "fs";
+import path from "path";
+import { format } from "date-fns";
+// Temporarily disabled due to SQL errors
+// import AutomationAnalyticsService from './automation-analytics';
+import { WebSocketService } from "./websocket-service";
 
 export interface ReportConfig {
-  type: 'executive' | 'technical' | 'operational' | 'cost';
-  frequency: 'daily' | 'weekly' | 'monthly';
+  type: "executive" | "technical" | "operational" | "cost";
+  frequency: "daily" | "weekly" | "monthly";
   recipients: string[];
-  format: 'html' | 'pdf' | 'json';
+  format: "html" | "pdf" | "json";
   includeCharts: boolean;
   customSections?: string[];
 }
@@ -30,28 +31,33 @@ export interface ReportSchedule {
 
 export interface GeneratedReport {
   id: string;
-  type: ReportConfig['type'];
+  type: ReportConfig["type"];
   generatedAt: Date;
   timeRange: string;
   filePath: string;
   size: number;
   recipients: string[];
-  status: 'generating' | 'completed' | 'failed' | 'sent';
+  status: "generating" | "completed" | "failed" | "sent";
 }
 
 export class ReportGenerator {
-  private analyticsService: AutomationAnalyticsService;
+  // Temporarily disabled due to SQL errors
+  // private analyticsService: AutomationAnalyticsService;
   private wsService: WebSocketService;
   private reportSchedules: Map<string, ReportSchedule> = new Map();
   private reportsDirectory: string;
   private schedulerInterval: NodeJS.Timeout | null = null;
 
-  constructor(analyticsService: AutomationAnalyticsService, wsService: WebSocketService) {
-    this.analyticsService = analyticsService;
+  constructor(
+    analyticsService: any, // Temporarily disabled type
+    wsService: WebSocketService,
+  ) {
+    // this.analyticsService = analyticsService;
     this.wsService = wsService;
-    this.reportsDirectory = path.join(process.cwd(), 'generated-reports');
+    this.reportsDirectory = path.join(process.cwd(), "generated-reports");
     this.initializeReportsDirectory();
-    this.startScheduler();
+    // Temporarily disabled to prevent SQL errors
+    // this.startScheduler();
   }
 
   /**
@@ -61,7 +67,7 @@ export class ReportGenerator {
     try {
       await fs.mkdir(this.reportsDirectory, { recursive: true });
     } catch (error) {
-      console.error('Failed to create reports directory:', error);
+      console.error("Failed to create reports directory:", error);
     }
   }
 
@@ -69,10 +75,10 @@ export class ReportGenerator {
    * Generate a report
    */
   async generateReport(
-    type: ReportConfig['type'],
-    timeRange: '7d' | '30d' | '90d' = '30d',
-    format: 'html' | 'json' = 'html',
-    customOptions?: Partial<ReportConfig>
+    type: ReportConfig["type"],
+    timeRange: "7d" | "30d" | "90d" = "30d",
+    format: "html" | "json" = "html",
+    customOptions?: Partial<ReportConfig>,
   ): Promise<GeneratedReport> {
     const reportId = `${type}-${Date.now()}`;
     const timestamp = new Date();
@@ -82,54 +88,55 @@ export class ReportGenerator {
       type,
       generatedAt: timestamp,
       timeRange,
-      filePath: '',
+      filePath: "",
       size: 0,
       recipients: customOptions?.recipients || [],
-      status: 'generating'
+      status: "generating",
     };
 
     try {
       // Broadcast generation start
-      this.wsService.broadcast('report-generation-started', {
+      this.wsService.broadcast("report-generation-started", {
         reportId,
         type,
-        timestamp: timestamp.toISOString()
+        timestamp: timestamp.toISOString(),
       });
 
       // Generate report content
       const reportContent = await this.generateReportContent(type, timeRange);
-      
-      // Format and save report
-      const formattedContent = format === 'html' 
-        ? await this.formatAsHTML(reportContent, type)
-        : JSON.stringify(reportContent, null, 2);
 
-      const fileName = `${type}-report-${format(timestamp, 'yyyy-MM-dd-HH-mm')}.${format}`;
+      // Format and save report
+      const formattedContent =
+        format === "html"
+          ? await this.formatAsHTML(reportContent, type)
+          : JSON.stringify(reportContent, null, 2);
+
+      const fileName = `${type}-report-${format(timestamp, "yyyy-MM-dd-HH-mm")}.${format}`;
       const filePath = path.join(this.reportsDirectory, fileName);
 
-      await fs.writeFile(filePath, formattedContent, 'utf8');
-      
+      await fs.writeFile(filePath, formattedContent, "utf8");
+
       const stats = await fs.stat(filePath);
-      
+
       report.filePath = filePath;
       report.size = stats.size;
-      report.status = 'completed';
+      report.status = "completed";
 
       // Broadcast completion
-      this.wsService.broadcast('report-generation-completed', {
+      this.wsService.broadcast("report-generation-completed", {
         reportId,
         filePath: fileName,
         size: stats.size,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return report;
     } catch (error) {
-      report.status = 'failed';
-      this.wsService.broadcast('report-generation-failed', {
+      report.status = "failed";
+      this.wsService.broadcast("report-generation-failed", {
         reportId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       });
       throw error;
     }
@@ -138,14 +145,22 @@ export class ReportGenerator {
   /**
    * Generate report content based on type
    */
-  private async generateReportContent(type: ReportConfig['type'], timeRange: '7d' | '30d' | '90d') {
-    const [metrics, businessImpact, trends, costBreakdown, recommendations] = await Promise.all([
-      this.analyticsService.getAutomationMetrics(timeRange === '7d' ? '7d' : '30d'),
-      this.analyticsService.getBusinessImpact(timeRange),
-      this.analyticsService.getTrendData(timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90),
-      this.analyticsService.getCostBreakdown(timeRange),
-      this.analyticsService.getOptimizationRecommendations()
-    ]);
+  private async generateReportContent(
+    type: ReportConfig["type"],
+    timeRange: "7d" | "30d" | "90d",
+  ) {
+    const [metrics, businessImpact, trends, costBreakdown, recommendations] =
+      await Promise.all([
+        this.analyticsService.getAutomationMetrics(
+          timeRange === "7d" ? "7d" : "30d",
+        ),
+        this.analyticsService.getBusinessImpact(timeRange),
+        this.analyticsService.getTrendData(
+          timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90,
+        ),
+        this.analyticsService.getCostBreakdown(timeRange),
+        this.analyticsService.getOptimizationRecommendations(),
+      ]);
 
     const baseContent = {
       reportType: type,
@@ -156,23 +171,23 @@ export class ReportGenerator {
         costSavings: businessImpact.costSavings,
         timeSaved: metrics.timeSavings.savedHours,
         qualityScore: metrics.errorReduction.qualityScore,
-        systemHealth: metrics.systemHealth.status
+        systemHealth: metrics.systemHealth.status,
       },
       metrics,
       businessImpact,
       trends,
       costBreakdown,
-      recommendations
+      recommendations,
     };
 
     switch (type) {
-      case 'executive':
+      case "executive":
         return this.generateExecutiveReport(baseContent);
-      case 'technical':
+      case "technical":
         return this.generateTechnicalReport(baseContent);
-      case 'operational':
+      case "operational":
         return this.generateOperationalReport(baseContent);
-      case 'cost':
+      case "cost":
         return this.generateCostReport(baseContent);
       default:
         return baseContent;
@@ -183,27 +198,35 @@ export class ReportGenerator {
    * Generate executive summary report
    */
   private async generateExecutiveReport(baseContent: any) {
-    const executiveSummary = await this.analyticsService.generateExecutiveSummary('30d');
-    
+    const executiveSummary =
+      await this.analyticsService.generateExecutiveSummary("30d");
+
     return {
       ...baseContent,
       executiveSummary: {
-        title: 'Automation Analytics Executive Summary',
+        title: "Automation Analytics Executive Summary",
         keyAchievements: executiveSummary.keyAchievements,
         businessValue: {
           costSavings: `$${baseContent.businessImpact.costSavings.toLocaleString()}`,
           timeToMarket: `${baseContent.businessImpact.timeToMarket}% improvement`,
           qualityImprovement: `${baseContent.businessImpact.qualityImprovement}% increase`,
-          roi: `${baseContent.metrics.costEfficiency.roi.toFixed(0)}% return on investment`
+          roi: `${baseContent.metrics.costEfficiency.roi.toFixed(0)}% return on investment`,
         },
-        strategicRecommendations: baseContent.recommendations.automationOpportunities.slice(0, 3),
-        nextSteps: executiveSummary.nextSteps
+        strategicRecommendations:
+          baseContent.recommendations.automationOpportunities.slice(0, 3),
+        nextSteps: executiveSummary.nextSteps,
       },
       charts: {
-        automationProgress: this.generateChartData('automationProgress', baseContent.trends),
-        costSavings: this.generateChartData('costSavings', baseContent.trends),
-        businessImpact: this.generateChartData('businessImpact', baseContent.trends)
-      }
+        automationProgress: this.generateChartData(
+          "automationProgress",
+          baseContent.trends,
+        ),
+        costSavings: this.generateChartData("costSavings", baseContent.trends),
+        businessImpact: this.generateChartData(
+          "businessImpact",
+          baseContent.trends,
+        ),
+      },
     };
   }
 
@@ -214,28 +237,34 @@ export class ReportGenerator {
     return {
       ...baseContent,
       technicalDetails: {
-        title: 'Technical Performance Analysis',
+        title: "Technical Performance Analysis",
         systemPerformance: {
           uptime: `${baseContent.metrics.systemHealth.uptime}%`,
           performance: `${baseContent.metrics.systemHealth.performance}%`,
           resourceUsage: `${baseContent.metrics.systemHealth.resourceUsage}%`,
-          bottlenecks: baseContent.metrics.userSatisfaction.bottlenecks
+          bottlenecks: baseContent.metrics.userSatisfaction.bottlenecks,
         },
         automationEffectiveness: {
           automationAccuracy: `${baseContent.metrics.errorReduction.automationAccuracy}%`,
           errorReduction: `${baseContent.metrics.errorReduction.errorReduction}%`,
-          processingSpeed: `${baseContent.metrics.timeSavings.productivity}% faster`
+          processingSpeed: `${baseContent.metrics.timeSavings.productivity}% faster`,
         },
         optimizationRecommendations: {
           performance: baseContent.recommendations.performanceOptimization,
-          cost: baseContent.recommendations.costOptimization
+          cost: baseContent.recommendations.costOptimization,
         },
         trendAnalysis: {
-          performanceTrend: this.analyzeTrend(baseContent.trends, 'performance'),
-          errorTrend: this.analyzeTrend(baseContent.trends, 'errors'),
-          automationTrend: this.analyzeTrend(baseContent.trends, 'automationRate')
-        }
-      }
+          performanceTrend: this.analyzeTrend(
+            baseContent.trends,
+            "performance",
+          ),
+          errorTrend: this.analyzeTrend(baseContent.trends, "errors"),
+          automationTrend: this.analyzeTrend(
+            baseContent.trends,
+            "automationRate",
+          ),
+        },
+      },
     };
   }
 
@@ -246,25 +275,26 @@ export class ReportGenerator {
     return {
       ...baseContent,
       operationalMetrics: {
-        title: 'Operational Dashboard Report',
+        title: "Operational Dashboard Report",
         currentStatus: {
           automationRate: `${baseContent.metrics.automationRate.current}%`,
           trend: baseContent.metrics.automationRate.trend,
-          weekOverWeek: `${baseContent.metrics.automationRate.weekOverWeek}%`
+          weekOverWeek: `${baseContent.metrics.automationRate.weekOverWeek}%`,
         },
         productivity: {
           timeSaved: `${baseContent.metrics.timeSavings.savedHours} hours`,
           efficiency: `${baseContent.metrics.timeSavings.productivity}%`,
-          processingCapacity: 'Scaled to handle increased volume'
+          processingCapacity: "Scaled to handle increased volume",
         },
         qualityMetrics: {
           qualityScore: `${baseContent.metrics.errorReduction.qualityScore}%`,
           userSatisfaction: `${baseContent.metrics.userSatisfaction.feedbackScore}%`,
-          approvalTime: `${baseContent.metrics.userSatisfaction.approvalTime} minutes`
+          approvalTime: `${baseContent.metrics.userSatisfaction.approvalTime} minutes`,
         },
         alerts: this.generateSystemAlerts(baseContent.metrics),
-        recommendations: baseContent.recommendations.automationOpportunities.slice(0, 5)
-      }
+        recommendations:
+          baseContent.recommendations.automationOpportunities.slice(0, 5),
+      },
     };
   }
 
@@ -275,39 +305,54 @@ export class ReportGenerator {
     return {
       ...baseContent,
       costAnalysis: {
-        title: 'Cost Analysis and Optimization Report',
-        totalCosts: Object.values(baseContent.costBreakdown).reduce((sum: number, cost: any) => sum + cost, 0),
+        title: "Cost Analysis and Optimization Report",
+        totalCosts: Object.values(baseContent.costBreakdown).reduce(
+          (sum: number, cost: any) => sum + cost,
+          0,
+        ),
         costBreakdown: baseContent.costBreakdown,
         savings: {
           totalSavings: baseContent.businessImpact.costSavings,
           roi: `${baseContent.metrics.costEfficiency.roi}%`,
-          paybackPeriod: this.calculatePaybackPeriod(baseContent.costBreakdown, baseContent.businessImpact.costSavings)
+          paybackPeriod: this.calculatePaybackPeriod(
+            baseContent.costBreakdown,
+            baseContent.businessImpact.costSavings,
+          ),
         },
         optimization: {
-          immediate: baseContent.recommendations.costOptimization.filter((r: any) => r.effort === 'low'),
-          shortTerm: baseContent.recommendations.costOptimization.filter((r: any) => r.effort === 'medium'),
-          longTerm: baseContent.recommendations.costOptimization.filter((r: any) => r.effort === 'high')
+          immediate: baseContent.recommendations.costOptimization.filter(
+            (r: any) => r.effort === "low",
+          ),
+          shortTerm: baseContent.recommendations.costOptimization.filter(
+            (r: any) => r.effort === "medium",
+          ),
+          longTerm: baseContent.recommendations.costOptimization.filter(
+            (r: any) => r.effort === "high",
+          ),
         },
         trends: {
-          costTrend: this.analyzeTrend(baseContent.trends, 'costs'),
+          costTrend: this.analyzeTrend(baseContent.trends, "costs"),
           savingsTrend: baseContent.trends.map((t: any) => ({
             date: t.date,
-            savings: Math.max(0, 100 - t.costs)
-          }))
-        }
-      }
+            savings: Math.max(0, 100 - t.costs),
+          })),
+        },
+      },
     };
   }
 
   /**
    * Format report as HTML
    */
-  private async formatAsHTML(content: any, type: ReportConfig['type']): Promise<string> {
+  private async formatAsHTML(
+    content: any,
+    type: ReportConfig["type"],
+  ): Promise<string> {
     const title = {
-      executive: 'Executive Summary Report',
-      technical: 'Technical Performance Report',
-      operational: 'Operational Dashboard Report',
-      cost: 'Cost Analysis Report'
+      executive: "Executive Summary Report",
+      technical: "Technical Performance Report",
+      operational: "Operational Dashboard Report",
+      cost: "Cost Analysis Report",
     }[type];
 
     const html = `
@@ -316,7 +361,7 @@ export class ReportGenerator {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} - ${format(new Date(), 'MMM dd, yyyy')}</title>
+    <title>${title} - ${format(new Date(), "MMM dd, yyyy")}</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -391,14 +436,14 @@ export class ReportGenerator {
 <body>
     <div class="header">
         <h1>${title}</h1>
-        <p>Generated on ${format(new Date(), 'MMMM dd, yyyy \'at\' HH:mm')}</p>
+        <p>Generated on ${format(new Date(), "MMMM dd, yyyy 'at' HH:mm")}</p>
         <p>Reporting Period: ${content.timeRange} | System: QueenOne ProductPrototype</p>
     </div>
 
     <div class="card">
         <h2>Key Metrics</h2>
         <div class="metric">
-            <div class="metric-value ${content.metrics.automationRate.current >= 60 ? 'success' : 'warning'}">
+            <div class="metric-value ${content.metrics.automationRate.current >= 60 ? "success" : "warning"}">
                 ${content.metrics.automationRate.current.toFixed(1)}%
             </div>
             <div class="metric-label">Automation Rate</div>
@@ -416,26 +461,31 @@ export class ReportGenerator {
             <div class="metric-label">Time Saved</div>
         </div>
         <div class="metric">
-            <div class="metric-value ${content.metrics.errorReduction.qualityScore >= 90 ? 'success' : 'warning'}">
+            <div class="metric-value ${content.metrics.errorReduction.qualityScore >= 90 ? "success" : "warning"}">
                 ${content.metrics.errorReduction.qualityScore.toFixed(0)}%
             </div>
             <div class="metric-label">Quality Score</div>
         </div>
     </div>
 
-    ${type === 'executive' ? this.generateExecutiveHTML(content) : ''}
-    ${type === 'technical' ? this.generateTechnicalHTML(content) : ''}
-    ${type === 'operational' ? this.generateOperationalHTML(content) : ''}
-    ${type === 'cost' ? this.generateCostHTML(content) : ''}
+    ${type === "executive" ? this.generateExecutiveHTML(content) : ""}
+    ${type === "technical" ? this.generateTechnicalHTML(content) : ""}
+    ${type === "operational" ? this.generateOperationalHTML(content) : ""}
+    ${type === "cost" ? this.generateCostHTML(content) : ""}
 
     <div class="card">
         <h2>Recommendations</h2>
-        ${content.recommendations.automationOpportunities.slice(0, 3).map((rec: any) => `
+        ${content.recommendations.automationOpportunities
+          .slice(0, 3)
+          .map(
+            (rec: any) => `
             <div class="recommendation">
                 <h4>${rec.area}</h4>
                 <p>Potential automation: ${rec.potentialAutomation}% | Complexity: ${rec.complexity} | Priority: ${rec.priority}</p>
             </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
     </div>
 
     <div class="footer">
@@ -452,14 +502,14 @@ export class ReportGenerator {
    * Generate HTML for executive report
    */
   private generateExecutiveHTML(content: any): string {
-    if (!content.executiveSummary) return '';
+    if (!content.executiveSummary) return "";
 
     return `
     <div class="card">
         <h2>Executive Summary</h2>
         <h3>Key Achievements</h3>
         <ul>
-            ${content.executiveSummary.keyAchievements.map((achievement: string) => `<li>${achievement}</li>`).join('')}
+            ${content.executiveSummary.keyAchievements.map((achievement: string) => `<li>${achievement}</li>`).join("")}
         </ul>
         
         <h3>Business Value</h3>
@@ -478,7 +528,7 @@ export class ReportGenerator {
         
         <h3>Next Steps</h3>
         <ul>
-            ${content.executiveSummary.nextSteps.map((step: string) => `<li>${step}</li>`).join('')}
+            ${content.executiveSummary.nextSteps.map((step: string) => `<li>${step}</li>`).join("")}
         </ul>
     </div>`;
   }
@@ -487,7 +537,7 @@ export class ReportGenerator {
    * Generate HTML for technical report
    */
   private generateTechnicalHTML(content: any): string {
-    if (!content.technicalDetails) return '';
+    if (!content.technicalDetails) return "";
 
     return `
     <div class="card">
@@ -519,7 +569,7 @@ export class ReportGenerator {
    * Generate HTML for operational report
    */
   private generateOperationalHTML(content: any): string {
-    if (!content.operationalMetrics) return '';
+    if (!content.operationalMetrics) return "";
 
     return `
     <div class="card">
@@ -544,7 +594,7 @@ export class ReportGenerator {
    * Generate HTML for cost report
    */
   private generateCostHTML(content: any): string {
-    if (!content.costAnalysis) return '';
+    if (!content.costAnalysis) return "";
 
     return `
     <div class="card">
@@ -567,35 +617,45 @@ export class ReportGenerator {
 
   // Helper methods
   private generateChartData(type: string, trends: any[]) {
-    return trends.map(t => ({
+    return trends.map((t) => ({
       date: t.date,
-      value: type === 'automationProgress' ? t.automationRate :
-             type === 'costSavings' ? Math.max(0, 100 - t.costs) :
-             type === 'businessImpact' ? t.userSatisfaction : t.performance
+      value:
+        type === "automationProgress"
+          ? t.automationRate
+          : type === "costSavings"
+            ? Math.max(0, 100 - t.costs)
+            : type === "businessImpact"
+              ? t.userSatisfaction
+              : t.performance,
     }));
   }
 
   private analyzeTrend(trends: any[], field: string) {
-    if (trends.length < 2) return 'stable';
+    if (trends.length < 2) return "stable";
     const first = trends[0][field];
     const last = trends[trends.length - 1][field];
     const change = ((last - first) / first) * 100;
-    return change > 5 ? 'improving' : change < -5 ? 'declining' : 'stable';
+    return change > 5 ? "improving" : change < -5 ? "declining" : "stable";
   }
 
   private generateSystemAlerts(metrics: any) {
     const alerts = [];
-    if (metrics.systemHealth.status === 'critical') {
-      alerts.push('Critical system issue detected');
+    if (metrics.systemHealth.status === "critical") {
+      alerts.push("Critical system issue detected");
     }
     if (metrics.userSatisfaction.bottlenecks.length > 0) {
-      alerts.push(`${metrics.userSatisfaction.bottlenecks.length} bottlenecks identified`);
+      alerts.push(
+        `${metrics.userSatisfaction.bottlenecks.length} bottlenecks identified`,
+      );
     }
     return alerts;
   }
 
   private calculatePaybackPeriod(costBreakdown: any, savings: number): string {
-    const totalInvestment = costBreakdown.llmApiCosts + costBreakdown.computeResources + costBreakdown.infrastructure;
+    const totalInvestment =
+      costBreakdown.llmApiCosts +
+      costBreakdown.computeResources +
+      costBreakdown.infrastructure;
     const monthsToPayback = totalInvestment / (savings / 12);
     return `${Math.ceil(monthsToPayback)} months`;
   }
@@ -603,7 +663,7 @@ export class ReportGenerator {
   /**
    * Schedule a report
    */
-  scheduleReport(schedule: Omit<ReportSchedule, 'id'>): string {
+  scheduleReport(schedule: Omit<ReportSchedule, "id">): string {
     const id = `schedule-${Date.now()}`;
     const fullSchedule: ReportSchedule = { id, ...schedule };
     this.reportSchedules.set(id, fullSchedule);
@@ -618,31 +678,31 @@ export class ReportGenerator {
 
     this.schedulerInterval = setInterval(async () => {
       const now = new Date();
-      
+
       for (const [id, schedule] of this.reportSchedules) {
         if (schedule.enabled && schedule.nextRun <= now) {
           try {
             await this.generateReport(
               schedule.config.type,
-              schedule.config.frequency === 'daily' ? '7d' : '30d',
+              schedule.config.frequency === "daily" ? "7d" : "30d",
               schedule.config.format,
-              schedule.config
+              schedule.config,
             );
-            
+
             // Update next run time
             const nextRun = new Date(now);
             switch (schedule.config.frequency) {
-              case 'daily':
+              case "daily":
                 nextRun.setDate(nextRun.getDate() + 1);
                 break;
-              case 'weekly':
+              case "weekly":
                 nextRun.setDate(nextRun.getDate() + 7);
                 break;
-              case 'monthly':
+              case "monthly":
                 nextRun.setMonth(nextRun.getMonth() + 1);
                 break;
             }
-            
+
             schedule.nextRun = nextRun;
             schedule.lastRun = now;
           } catch (error) {

@@ -71,6 +71,20 @@
       "when": 1758741337488,
       "tag": "0009_shocking_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1759330665384,
+      "tag": "0010_sad_the_renegades",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1759335996119,
+      "tag": "0011_omniscient_magus",
+      "breakpoints": true
     }
   ]
 }

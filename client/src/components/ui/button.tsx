@@ -1,11 +1,12 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transform active:scale-95 hover:scale-105",
   {
     variants: {
       variant: {
@@ -46,17 +47,73 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  loading?: boolean;
+  success?: boolean;
+  loadingText?: string;
+  successText?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      success = false,
+      loadingText,
+      successText,
+      children,
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
+
+    // Determine button state
+    const isDisabled = disabled || loading;
+    const showSuccess = success && !loading;
+
+    // Determine button content
+    const getButtonContent = () => {
+      if (loading) {
+        return (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {loadingText || children}
+          </>
+        );
+      }
+
+      if (showSuccess) {
+        return (
+          <>
+            <Check className="mr-2 h-4 w-4 text-green-500" />
+            {successText || children}
+          </>
+        );
+      }
+
+      return children;
+    };
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size }),
+          loading && "cursor-not-allowed",
+          showSuccess &&
+            "bg-green-600 hover:bg-green-600 text-white border-green-600",
+          className,
+        )}
         ref={ref}
+        disabled={isDisabled}
         {...props}
-      />
+      >
+        {getButtonContent()}
+      </Comp>
     );
   },
 );

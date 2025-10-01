@@ -9,6 +9,7 @@ import ProductListItem from "@/components/product-list-item";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,10 @@ import {
   Grid3X3,
   List,
   ArrowUpDown,
+  X,
+  FilterX,
+  Calendar,
+  Tag,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,7 +52,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useLocation } from "wouter";
 import { BulkUploadWizard } from "@/components/bulk-upload";
@@ -60,6 +64,14 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priceRange, setPriceRange] = useState<{ min?: number; max?: number }>(
+    {},
+  );
+  const [stockFilter, setStockFilter] = useState<string>("all"); // all, in-stock, low-stock, out-of-stock
+  const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedImportBrand, setSelectedImportBrand] = useState<string>("");
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
@@ -195,6 +207,27 @@ export default function Products() {
     setProductToDelete(null);
   };
 
+  // Calculate active filters count
+  useEffect(() => {
+    let count = 0;
+    if (searchQuery.trim()) count++;
+    if (selectedBrand !== "all") count++;
+    if (statusFilter !== "all") count++;
+    if (stockFilter !== "all") count++;
+    if (categoryFilter !== "all") count++;
+    if (priceRange.min !== undefined || priceRange.max !== undefined) count++;
+    if (dateRange.start || dateRange.end) count++;
+    setActiveFiltersCount(count);
+  }, [
+    searchQuery,
+    selectedBrand,
+    statusFilter,
+    stockFilter,
+    categoryFilter,
+    priceRange,
+    dateRange,
+  ]);
+
   // Persist preferences to localStorage
   useEffect(() => {
     localStorage.setItem("products-view-mode", viewMode);
@@ -239,24 +272,87 @@ export default function Products() {
     setIsBulkUploadOpen(false);
   };
 
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery("");
+    setSelectedBrand("all");
+    setStatusFilter("all");
+    setStockFilter("all");
+    setCategoryFilter("all");
+    setPriceRange({});
+    setDateRange({});
+  }, []);
+
   // Memoized filtered and sorted products
   const filteredAndSortedProducts = useMemo(() => {
     const filtered =
       (products as any[])?.filter((product: any) => {
+        // Multi-field search
         const matchesSearch =
+          !searchQuery.trim() ||
           product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.shortDescription
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+          product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.longDescription
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          product.story?.toLowerCase().includes(searchQuery.toLowerCase());
 
+        // Brand filter
         const matchesBrand =
           selectedBrand === "all" ||
           product.brandId?.toString() === selectedBrand;
+
+        // Status filter
         const matchesStatus =
           statusFilter === "all" || product.status === statusFilter;
 
-        return matchesSearch && matchesBrand && matchesStatus;
+        // Stock filter
+        const matchesStock = (() => {
+          if (stockFilter === "all") return true;
+          const stock = product.stock || 0;
+          const lowThreshold = product.lowStockThreshold || 10;
+
+          switch (stockFilter) {
+            case "in-stock":
+              return stock > lowThreshold;
+            case "low-stock":
+              return stock > 0 && stock <= lowThreshold;
+            case "out-of-stock":
+              return stock === 0;
+            default:
+              return true;
+          }
+        })();
+
+        // Price range filter
+        const matchesPrice = (() => {
+          if (!priceRange.min && !priceRange.max) return true;
+          const price = (product.price || 0) / 100; // Convert from cents
+          const minMatch = !priceRange.min || price >= priceRange.min;
+          const maxMatch = !priceRange.max || price <= priceRange.max;
+          return minMatch && maxMatch;
+        })();
+
+        // Date range filter
+        const matchesDate = (() => {
+          if (!dateRange.start && !dateRange.end) return true;
+          const productDate = new Date(product.createdAt);
+          const startMatch = !dateRange.start || productDate >= dateRange.start;
+          const endMatch = !dateRange.end || productDate <= dateRange.end;
+          return startMatch && endMatch;
+        })();
+
+        return (
+          matchesSearch &&
+          matchesBrand &&
+          matchesStatus &&
+          matchesStock &&
+          matchesPrice &&
+          matchesDate
+        );
       }) || [];
 
     // Sort products
@@ -273,7 +369,18 @@ export default function Products() {
         return sortOrder === "asc" ? aDate - bDate : bDate - aDate;
       }
     });
-  }, [products, searchQuery, selectedBrand, statusFilter, sortBy, sortOrder]);
+  }, [
+    products,
+    searchQuery,
+    selectedBrand,
+    statusFilter,
+    stockFilter,
+    categoryFilter,
+    priceRange,
+    dateRange,
+    sortBy,
+    sortOrder,
+  ]);
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -396,68 +503,265 @@ export default function Products() {
       </div>
 
       {/* Search and Filters */}
-      <div
-        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6"
-        data-testid="search-filters"
-      >
-        <div className="relative flex-1 w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search products, SKUs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-products"
-          />
+      <div className="flex flex-col gap-4 mb-6" data-testid="search-filters">
+        {/* Primary Search Row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="relative flex-1 w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search products, descriptions, SKUs, stories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-search-products"
+            />
+          </div>
+
+          {/* Quick Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={showAdvancedFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+
+            {activeFiltersCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <FilterX className="h-4 w-4" />
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
 
-        <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-          <SelectTrigger
-            className="w-full sm:w-40"
-            data-testid="select-brand-filter"
+        {/* Active Filters Display */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">
+              Active filters:
+            </span>
+            {searchQuery.trim() && (
+              <Badge variant="outline" className="gap-1">
+                Search: "{searchQuery.slice(0, 20)}
+                {searchQuery.length > 20 ? "..." : ""}"
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {selectedBrand !== "all" && (
+              <Badge variant="outline" className="gap-1">
+                Brand:{" "}
+                {(brands as any[])?.find(
+                  (b) => b.id.toString() === selectedBrand,
+                )?.name || selectedBrand}
+                <button
+                  onClick={() => setSelectedBrand("all")}
+                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {statusFilter !== "all" && (
+              <Badge variant="outline" className="gap-1">
+                Status: {statusFilter}
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {stockFilter !== "all" && (
+              <Badge variant="outline" className="gap-1">
+                Stock: {stockFilter.replace("-", " ")}
+                <button
+                  onClick={() => setStockFilter("all")}
+                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <Card className="p-4 bg-muted/20">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {/* Brand Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Brand</label>
+                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                  <SelectTrigger data-testid="select-brand-filter">
+                    <SelectValue placeholder="All Brands" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Brands</SelectItem>
+                    {(brands as any[])?.map((brand: any) => (
+                      <SelectItem key={brand.id} value={brand.id.toString()}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger data-testid="select-status-filter">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Stock Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Stock Level
+                </label>
+                <Select value={stockFilter} onValueChange={setStockFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Stock" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stock</SelectItem>
+                    <SelectItem value="in-stock">In Stock</SelectItem>
+                    <SelectItem value="low-stock">Low Stock</SelectItem>
+                    <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price Range Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Price Range
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={priceRange.min || ""}
+                    onChange={(e) =>
+                      setPriceRange((prev) => ({
+                        ...prev,
+                        min: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                  <span className="self-center text-muted-foreground">-</span>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={priceRange.max || ""}
+                    onChange={(e) =>
+                      setPriceRange((prev) => ({
+                        ...prev,
+                        max: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Date Range Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Date Created
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="date"
+                    value={
+                      dateRange.start
+                        ? dateRange.start.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setDateRange((prev) => ({
+                        ...prev,
+                        start: e.target.value
+                          ? new Date(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                  <span className="self-center text-muted-foreground">-</span>
+                  <Input
+                    type="date"
+                    value={
+                      dateRange.end
+                        ? dateRange.end.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setDateRange((prev) => ({
+                        ...prev,
+                        end: e.target.value
+                          ? new Date(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Action Row with Sorting and View Controls */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="button-export-products"
           >
-            <SelectValue placeholder="All Brands" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Brands</SelectItem>
-            {(brands as any[])?.map((brand: any) => (
-              <SelectItem key={brand.id} value={brand.id.toString()}>
-                {brand.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger
-            className="w-full sm:w-32"
-            data-testid="select-status-filter"
-          >
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="review">Review</SelectItem>
-            <SelectItem value="live">Live</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          data-testid="button-export-products"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </Button>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Sorting Controls */}
           <Select value={sortBy} onValueChange={handleSortChange}>
             <SelectTrigger
-              className="w-full sm:w-44"
+              className="w-44"
               data-testid="select-sort-by"
               aria-label="Sort products by"
             >

@@ -69,6 +69,7 @@ export const products: any = pgTable("products", {
   longDescription: text("long_description"),
   story: text("story"),
   brandId: integer("brand_id").references(() => brands.id),
+  categoryId: integer("category_id").references(() => categories.id),
   parentId: integer("parent_id").references(() => products.id), // for variants
   sku: varchar("sku", { length: 100 }).unique(),
   gtin: varchar("gtin", { length: 20 }),
@@ -119,6 +120,30 @@ export const mediaAssets = pgTable("media_assets", {
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Categories table for hierarchical product organization
+export const categories: any = pgTable(
+  "categories",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 255 }).unique().notNull(),
+    description: text("description"),
+    parentId: integer("parent_id").references((): any => categories.id),
+    brandId: integer("brand_id").references(() => brands.id), // null for global categories
+    sortOrder: integer("sort_order").default(0),
+    isActive: boolean("is_active").default(true),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`), // Custom attributes, display settings
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_categories_parent_id").on(table.parentId),
+    index("idx_categories_brand_id").on(table.brandId),
+    index("idx_categories_slug").on(table.slug),
+    index("idx_categories_active").on(table.isActive),
+  ],
+);
 
 // Product families/bundles table
 export const productFamilies = pgTable("product_families", {
@@ -414,9 +439,18 @@ export const testExecutions = pgTable("test_executions", {
     .default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
   scenario: jsonb("scenario").notNull(),
-  status: varchar("status", { length: 20 }).default("pending"),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, passed, failed, skipped
   results: jsonb("results"),
   performanceMetrics: jsonb("performance_metrics"),
+
+  // Analytics fields required by automation-analytics.ts
+  automationLevel: varchar("automation_level", { length: 20 }).default(
+    "manual",
+  ), // manual, partial, full
+  testType: varchar("test_type", { length: 50 }).default("integration"), // unit, integration, e2e, performance
+  executionTime: integer("execution_time"), // milliseconds
+  errorCount: integer("error_count").default(0),
+
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -588,6 +622,7 @@ export const brandsRelations = relations(brands, ({ one, many }) => ({
     references: [users.id],
   }),
   products: many(products),
+  categories: many(categories),
   mediaAssets: many(mediaAssets),
   productFamilies: many(productFamilies),
   retailers: many(brandRetailers),
@@ -597,6 +632,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   brand: one(brands, {
     fields: [products.brandId],
     references: [brands.id],
+  }),
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
   }),
   parent: one(products, {
     fields: [products.parentId],
@@ -639,6 +678,22 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
     fields: [mediaAssets.uploadedBy],
     references: [users.id],
   }),
+}));
+
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+    relationName: "categoryHierarchy",
+  }),
+  children: many(categories, {
+    relationName: "categoryHierarchy",
+  }),
+  brand: one(brands, {
+    fields: [categories.brandId],
+    references: [brands.id],
+  }),
+  products: many(products),
 }));
 
 export const productFamiliesRelations = relations(
@@ -1911,6 +1966,12 @@ export const insertMediaAssetSchema = createInsertSchema(mediaAssets).omit({
   createdAt: true,
 });
 
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertProductFamilySchema = createInsertSchema(
   productFamilies,
 ).omit({
@@ -2201,6 +2262,8 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = z.infer<typeof insertMediaAssetSchema>;
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type ProductFamily = typeof productFamilies.$inferSelect;
 export type InsertProductFamily = z.infer<typeof insertProductFamilySchema>;
 export type ProductAttribute = typeof productAttributes.$inferSelect;
@@ -2325,8 +2388,9 @@ export type InsertReportGenerations = z.infer<
 export type TestStatus =
   | "pending"
   | "running"
-  | "completed"
+  | "passed"
   | "failed"
+  | "skipped"
   | "cancelled";
 export type TestType =
   | "unit"
@@ -2335,6 +2399,8 @@ export type TestType =
   | "performance"
   | "stress"
   | "edge_case";
+
+export type AutomationLevel = "manual" | "partial" | "full";
 
 // Workflow automation types
 export interface FieldMapping {

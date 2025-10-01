@@ -2,6 +2,7 @@ import {
   users,
   brands,
   products,
+  categories,
   mediaAssets,
   productAttributes,
   productFamilies,
@@ -17,6 +18,8 @@ import {
   type InsertBrand,
   type Product,
   type InsertProduct,
+  type Category,
+  type InsertCategory,
   type MediaAsset,
   type InsertMediaAsset,
   type ProductFamily,
@@ -44,6 +47,16 @@ export interface IStorage {
   getBrand(id: number): Promise<Brand | undefined>;
   updateBrand(id: number, updates: Partial<InsertBrand>): Promise<Brand>;
   deleteBrand(id: number): Promise<void>;
+
+  // Category operations
+  createCategory(category: InsertCategory): Promise<Category>;
+  getCategories(brandId?: number): Promise<Category[]>;
+  getCategoryById(id: number): Promise<Category | undefined>;
+  updateCategory(
+    id: number,
+    updates: Partial<InsertCategory>,
+  ): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
 
   // Product operations
   createProduct(product: InsertProduct): Promise<Product>;
@@ -183,6 +196,62 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBrand(id: number): Promise<void> {
     await db.delete(brands).where(eq(brands.id, id));
+  }
+
+  // Category operations
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db
+      .insert(categories)
+      .values(category)
+      .returning();
+    return newCategory as Category;
+  }
+
+  async getCategories(brandId?: number): Promise<Category[]> {
+    let query = db.select().from(categories);
+
+    if (brandId) {
+      query = query.where(eq(categories.brandId, brandId));
+    }
+
+    return await query.orderBy(asc(categories.sortOrder), asc(categories.name));
+  }
+
+  async getCategoryById(id: number): Promise<Category | undefined> {
+    const [category] = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id));
+    return category;
+  }
+
+  async updateCategory(
+    id: number,
+    updates: Partial<InsertCategory>,
+  ): Promise<Category | undefined> {
+    const [updatedCategory] = await db
+      .update(categories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+      .returning();
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    try {
+      // First, update any products that use this category to have no category
+      await db
+        .update(products)
+        .set({ categoryId: null })
+        .where(eq(products.categoryId, id));
+
+      // Then delete the category
+      const result = await db.delete(categories).where(eq(categories.id, id));
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      return false;
+    }
   }
 
   // Product operations

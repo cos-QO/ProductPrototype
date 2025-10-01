@@ -7,6 +7,9 @@ import BrandRegistrationForm from "@/components/brand-registration-form";
 import ProductCard from "@/components/product-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MetricsTrendChart } from "@/components/dashboard/MetricsTrendChart";
+import { ConnectionStatusIndicator } from "@/components/dashboard/ConnectionStatusIndicator";
+import { DataQualityWidget } from "@/components/dashboard/DataQualityWidget";
 import {
   Crown,
   Box,
@@ -21,6 +24,10 @@ import {
   TrendingDown,
   Users,
   Code,
+  Folder,
+  Images,
+  Video,
+  FileText,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -42,14 +49,29 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ["/api/dashboard/stats"],
-    retry: false,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
   });
 
-  const { data: recentProducts, isLoading: productsLoading } = useQuery({
+  const {
+    data: recentProducts,
+    isLoading: productsLoading,
+    error: productsError,
+  } = useQuery({
     queryKey: ["/api/products"],
-    retry: false,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
   });
 
   if (isLoading || !isAuthenticated) {
@@ -63,10 +85,10 @@ export default function Dashboard() {
         <div className="gradient-primary p-6 md:p-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
           <div className="relative z-10">
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <h1 className="text-3xl font-bold text-white mb-2">
               Achieve Hexellence
             </h1>
-            <p className="text-xl text-white/80 mb-6">
+            <p className="text-lg text-white/80 mb-6">
               Every product has a story. Let's tell yours.
             </p>
             <div className="flex justify-center space-x-4">
@@ -108,10 +130,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <h3
-                className="text-3xl font-bold text-foreground mb-1"
+                className="text-2xl font-bold text-foreground mb-1"
                 data-testid="text-brands-count"
               >
-                {statsLoading ? "..." : (stats as any)?.totalBrands || 0}
+                {statsLoading ? (
+                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
+                ) : statsError ? (
+                  <span className="text-destructive text-sm">Error</span>
+                ) : (
+                  (stats as any)?.totalBrands || 0
+                )}
               </h3>
               <p className="text-muted-foreground text-sm">Active Brands</p>
             </CardContent>
@@ -129,10 +157,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <h3
-                className="text-3xl font-bold text-foreground mb-1"
+                className="text-2xl font-bold text-foreground mb-1"
                 data-testid="text-products-count"
               >
-                {statsLoading ? "..." : (stats as any)?.totalProducts || 0}
+                {statsLoading ? (
+                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
+                ) : statsError ? (
+                  <span className="text-destructive text-sm">Error</span>
+                ) : (
+                  (stats as any)?.totalProducts || 0
+                )}
               </h3>
               <p className="text-muted-foreground text-sm">Total Products</p>
             </CardContent>
@@ -150,10 +184,16 @@ export default function Dashboard() {
                 </div>
               </div>
               <h3
-                className="text-3xl font-bold text-foreground mb-1"
+                className="text-2xl font-bold text-foreground mb-1"
                 data-testid="text-syncs-count"
               >
-                {statsLoading ? "..." : (stats as any)?.apiSyncsToday || 0}
+                {statsLoading ? (
+                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
+                ) : statsError ? (
+                  <span className="text-destructive text-sm">Error</span>
+                ) : (
+                  (stats as any)?.apiSyncsToday || 0
+                )}
               </h3>
               <p className="text-muted-foreground text-sm">API Syncs/Day</p>
             </CardContent>
@@ -171,18 +211,32 @@ export default function Dashboard() {
                 </div>
               </div>
               <h3
-                className="text-3xl font-bold text-foreground mb-1"
+                className="text-2xl font-bold text-foreground mb-1"
                 data-testid="text-time-to-market"
               >
-                {statsLoading
-                  ? "..."
-                  : `${(stats as any)?.avgTimeToMarket || 8.2}h`}
+                {statsLoading ? (
+                  <div className="animate-pulse bg-muted rounded h-8 w-16"></div>
+                ) : statsError ? (
+                  <span className="text-destructive text-sm">Error</span>
+                ) : (
+                  `${(stats as any)?.avgTimeToMarket || 8.2}h`
+                )}
               </h3>
               <p className="text-muted-foreground text-sm">
                 Avg Time to Market
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Metrics Trend Chart */}
+        <div className="mb-8 max-w-6xl mx-auto">
+          <MetricsTrendChart />
+        </div>
+
+        {/* Data Quality Widget */}
+        <div className="mb-8 max-w-6xl mx-auto">
+          <DataQualityWidget />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 max-w-6xl mx-auto">
@@ -333,8 +387,100 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Categories & Media Management */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 max-w-6xl mx-auto">
+          {/* Categories Overview */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">Categories</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:text-primary/80"
+                  onClick={() => (window.location.href = "/categories")}
+                >
+                  Manage <span className="ml-1">→</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center py-6">
+                <Folder className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">Organize Products</h3>
+                <p className="text-muted-foreground mb-4">
+                  Create hierarchical categories to organize your product
+                  catalog.
+                </p>
+                <Button
+                  className="bg-primary/10 text-primary hover:bg-primary/20"
+                  onClick={() => (window.location.href = "/categories")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Categories
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Media Library Quick Access */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">Media Library</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:text-primary/80"
+                  onClick={() => (window.location.href = "/media")}
+                >
+                  Browse All <span className="ml-1">→</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <Images className="h-6 w-6 text-success" />
+                  </div>
+                  <p className="text-sm font-medium">Images</p>
+                  <p className="text-xs text-muted-foreground">Ready to use</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-info/10 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <Video className="h-6 w-6 text-info" />
+                  </div>
+                  <p className="text-sm font-medium">Videos</p>
+                  <p className="text-xs text-muted-foreground">High quality</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <FileText className="h-6 w-6 text-warning" />
+                  </div>
+                  <p className="text-sm font-medium">Documents</p>
+                  <p className="text-xs text-muted-foreground">Organized</p>
+                </div>
+              </div>
+
+              <Button
+                className="w-full bg-primary/10 text-primary hover:bg-primary/20"
+                onClick={() => (window.location.href = "/media")}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Media
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* API & Syndication Dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
+          {/* Real-time Connection Status */}
+          <div className="lg:col-span-2 mb-4">
+            <ConnectionStatusIndicator showDetails={true} />
+          </div>
+
           {/* API Status */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-4">
