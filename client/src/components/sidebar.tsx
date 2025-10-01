@@ -116,17 +116,18 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "w-64 bg-card border-r border-border p-6 z-50",
-          "lg:block lg:relative lg:translate-x-0",
-          "fixed top-0 left-0 h-full transition-transform duration-300 ease-in-out lg:transition-none",
+          "w-64 bg-card border-r border-border z-50",
+          // Desktop: static in layout, full height of container
+          "hidden lg:flex lg:flex-col lg:h-full lg:overflow-hidden",
+          // Mobile: fixed overlay
+          "fixed top-0 left-0 h-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:transition-none",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          "lg:block", // Always visible on desktop
-          isOpen ? "block" : "hidden lg:block", // Show/hide based on state on mobile, always show on desktop
+          isOpen ? "block" : "hidden lg:flex",
         )}
         data-testid="sidebar"
       >
         {/* Mobile close button */}
-        <div className="lg:hidden flex justify-end mb-4">
+        <div className="lg:hidden flex justify-end mb-4 p-6 pb-0">
           <button
             onClick={onClose}
             className="p-2 text-muted-foreground hover:text-primary transition-colors duration-200"
@@ -135,51 +136,55 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="space-y-8">
-          {navigation.map((section) => (
-            <div key={section.section}>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                {section.section}
-              </h3>
-              <nav className="space-y-2">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => onClose?.()} // Close mobile menu when link is clicked
-                      className={cn(
-                        "flex items-center space-x-3 text-sm font-medium px-3 py-2 transition-colors duration-100 relative",
-                        item.current
-                          ? "bg-info/10 text-info rounded-r-lg"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-100 rounded-lg",
-                      )}
-                      data-testid={`link-sidebar-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      {item.current && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-info rounded-none" />
-                      )}
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                      {item.badge && (
-                        <span
-                          className={cn(
-                            "ml-auto text-xs px-2 py-1 rounded-full",
-                            item.current
-                              ? "bg-accent text-accent-foreground"
-                              : "bg-muted/60 text-muted-foreground",
-                          )}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          ))}
+
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto p-6 lg:pt-6">
+          <div className="space-y-8">
+            {navigation.map((section) => (
+              <div key={section.section}>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                  {section.section}
+                </h3>
+                <nav className="space-y-2">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => onClose?.()} // Close mobile menu when link is clicked
+                        className={cn(
+                          "flex items-center space-x-3 text-sm font-medium px-3 py-2 transition-colors duration-100 relative",
+                          item.current
+                            ? "bg-info/10 text-info rounded-r-lg"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-100 rounded-lg",
+                        )}
+                        data-testid={`link-sidebar-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {item.current && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-info rounded-none" />
+                        )}
+                        <Icon className="h-4 w-4" />
+                        <span>{item.name}</span>
+                        {item.badge && (
+                          <span
+                            className={cn(
+                              "ml-auto text-xs px-2 py-1 rounded-full",
+                              item.current
+                                ? "bg-accent text-accent-foreground"
+                                : "bg-muted/60 text-muted-foreground",
+                            )}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            ))}
+          </div>
         </div>
       </aside>
     </>

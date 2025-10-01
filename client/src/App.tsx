@@ -27,6 +27,7 @@ function Router() {
       {/* Public routes - always accessible */}
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/design-system-test" component={DesignSystemTest} />
 
       {isLoading ? (
         // Show loading state - could add a loading component here
@@ -48,7 +49,6 @@ function Router() {
             <Route path="/products/:id/edit" component={ProductEdit} />
             <Route path="/products/:id/view" component={ProductDetails} />
             <Route path="/products/:id/manage" component={ProductDetails} />
-            <Route path="/design-system-test" component={DesignSystemTest} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

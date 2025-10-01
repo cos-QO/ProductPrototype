@@ -22,11 +22,11 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background text-foreground">
       <Navigation onMenuToggle={handleMenuToggle} />
 
-      <div className="flex min-h-screen">
+      <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar isOpen={isMobileMenuOpen} onClose={handleMenuClose} />
 
-        {/* Main Content */}
-        <main className="flex-1 w-full">{children}</main>
+        {/* Main Content - scrollable area */}
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

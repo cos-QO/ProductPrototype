@@ -212,10 +212,141 @@ export function ComponentShowcase() {
     validateTokenSystem(),
   );
 
+  // Design system export/import functionality
+  const exportDesignSystemAsJSON = () => {
+    const designSystemData = {
+      tokens: {
+        colors: tokenResolver.getAllTokens(),
+        typography: componentVersion,
+        spacing: migrationUtils.getSpacingTokens?.() || {},
+        components: migrationUtils.getComponentTokens?.() || {},
+      },
+      validation: systemValidation,
+      metadata: {
+        exportDate: new Date().toISOString(),
+        version: componentVersion.tokenSystemVersion,
+        enhancedMode: migrationUtils.isEnhancedMode(),
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(designSystemData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `design-system-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDesignSystemAsPDF = () => {
+    // Add print styles and open print dialog for PDF export
+    const printStyles = document.createElement("style");
+    printStyles.textContent = `
+      @media print {
+        .print\\:hidden { display: none !important; }
+        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        * { box-shadow: none !important; }
+      }
+    `;
+    document.head.appendChild(printStyles);
+
+    // Open print dialog
+    window.print();
+
+    // Clean up
+    setTimeout(() => {
+      document.head.removeChild(printStyles);
+    }, 1000);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === "application/json") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target?.result as string);
+          console.log("Design system data imported:", importedData);
+          // Here you could apply the imported tokens
+          alert(
+            "Design system JSON imported successfully! Check console for details.",
+          );
+        } catch (error) {
+          alert("Error parsing JSON file. Please check the file format.");
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      alert("Please select a valid JSON file.");
+    }
+    // Reset input
+    if (event.target) {
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Design System Component Showcase</h1>
+
+        {/* Design System Controls */}
+        <Card className="w-full print:hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Design System Controls
+            </CardTitle>
+            <CardDescription>
+              Export, import, and manage your design system configuration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              <Button
+                onClick={exportDesignSystemAsJSON}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download as JSON
+              </Button>
+
+              <Button
+                onClick={exportDesignSystemAsPDF}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export as PDF
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="design-system-upload"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    document.getElementById("design-system-upload")?.click()
+                  }
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload JSON
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="p-4 bg-muted rounded-lg">
           <h3 className="font-semibold mb-2">System Status</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
