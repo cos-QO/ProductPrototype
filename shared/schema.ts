@@ -608,6 +608,118 @@ export const approvalMetrics = pgTable(
   ],
 );
 
+// Analytics table for storing product performance metrics
+// Following established patterns: integer for prices/revenue, decimal for rates, timestamps
+export const productAnalytics = pgTable(
+  "product_analytics",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .references(() => products.id)
+      .notNull(),
+
+    // Core Business Metrics (following existing decimal patterns)
+    buyRate: decimal("buy_rate", { precision: 5, scale: 4 }).default(sql`0`), // 0.0000 to 1.0000 (0% to 100%)
+    expectedBuyRate: decimal("expected_buy_rate", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`),
+
+    // Financial Metrics (following price integer pattern - stored in cents)
+    revenue: integer("revenue").default(0), // Total revenue in cents
+    margin: decimal("margin", { precision: 5, scale: 4 }).default(sql`0`), // Margin percentage 0-1
+
+    // Volume & Engagement
+    volume: integer("volume").default(0), // Units sold
+    totalViews: integer("total_views").default(0), // Product page views
+    uniqueVisitors: integer("unique_visitors").default(0), // Unique visitors
+
+    // Traffic Source Breakdown (individual counters for flexibility)
+    trafficAds: integer("traffic_ads").default(0), // Ad campaign traffic
+    trafficEmails: integer("traffic_emails").default(0), // Email campaign traffic
+    trafficText: integer("traffic_text").default(0), // SMS/text campaign traffic
+    trafficStore: integer("traffic_store").default(0), // In-store referral traffic
+    trafficOrganic: integer("traffic_organic").default(0), // SEO/organic traffic
+    trafficSocial: integer("traffic_social").default(0), // Social media traffic
+    trafficDirect: integer("traffic_direct").default(0), // Direct traffic
+    trafficReferral: integer("traffic_referral").default(0), // Referral traffic
+
+    // Customer Behavior Metrics
+    returnRate: decimal("return_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Return rate 0-1
+    reorderRate: decimal("reorder_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Reorder rate 0-1
+    reviewRate: decimal("review_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Review rate 0-1
+    rebuyRate: decimal("rebuy_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Rebuy rate 0-1
+
+    // Advanced Analytics (for future gauge charts)
+    conversionRate: decimal("conversion_rate", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`), // View to purchase conversion
+    averageOrderValue: integer("average_order_value").default(0), // AOV in cents
+    cartAbandonmentRate: decimal("cart_abandonment_rate", {
+      precision: 5,
+      scale: 4,
+    }).default(sql`0`),
+
+    // Performance Scoring (0-100 integer scores for gauges)
+    performanceScore: integer("performance_score").default(0), // Overall 0-100 score
+    trendScore: integer("trend_score").default(0), // Trending performance 0-100
+    competitiveScore: integer("competitive_score").default(0), // vs competition 0-100
+
+    // Time Period & Metadata
+    periodStart: date("period_start").notNull(), // Analytics period start
+    periodEnd: date("period_end").notNull(), // Analytics period end
+    reportingPeriod: varchar("reporting_period", { length: 20 }).default(
+      "monthly",
+    ), // daily, weekly, monthly, quarterly
+
+    // Data Quality & Processing
+    dataQuality: decimal("data_quality", { precision: 3, scale: 2 }).default(
+      sql`1.00`,
+    ), // 0-1 quality score
+    confidenceLevel: decimal("confidence_level", {
+      precision: 3,
+      scale: 2,
+    }).default(sql`0.95`), // Statistical confidence
+    calculatedAt: timestamp("calculated_at").defaultNow(), // When metrics were calculated
+
+    // Standard Timestamps (following existing pattern)
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    // Performance Indexes (critical for dashboard queries)
+    index("idx_product_analytics_product_id").on(table.productId),
+    index("idx_product_analytics_period").on(
+      table.periodStart,
+      table.periodEnd,
+    ),
+    index("idx_product_analytics_reporting_period").on(table.reportingPeriod),
+    index("idx_product_analytics_calculated_at").on(table.calculatedAt),
+    index("idx_product_analytics_performance_score").on(table.performanceScore),
+
+    // Composite indexes for common query patterns
+    index("idx_product_analytics_product_period").on(
+      table.productId,
+      table.periodStart,
+      table.periodEnd,
+    ),
+    index("idx_product_analytics_scores").on(
+      table.performanceScore,
+      table.trendScore,
+      table.competitiveScore,
+    ),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedBrands: many(brands),
@@ -653,6 +765,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   syndications: many(productSyndications),
   syndicationLogs: many(syndicationLogs),
+  analytics: many(productAnalytics),
 }));
 
 export const productAttributesRelations = relations(
@@ -660,6 +773,17 @@ export const productAttributesRelations = relations(
   ({ one }) => ({
     product: one(products, {
       fields: [productAttributes.productId],
+      references: [products.id],
+    }),
+  }),
+);
+
+// Product Analytics Relations
+export const productAnalyticsRelations = relations(
+  productAnalytics,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productAnalytics.productId],
       references: [products.id],
     }),
   }),
@@ -1961,6 +2085,52 @@ export const insertProductSchema = createInsertSchema(products).omit({
   updatedAt: true,
 });
 
+// Product Analytics Schemas
+export const insertProductAnalyticsSchema = createInsertSchema(
+  productAnalytics,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  calculatedAt: true,
+});
+
+export const selectProductAnalyticsSchema =
+  createInsertSchema(productAnalytics);
+
+// Enhanced validation with business rules
+export const analyticsValidationSchema = insertProductAnalyticsSchema
+  .extend({
+    // Ensure rates are between 0 and 1
+    buyRate: z.number().min(0).max(1).optional(),
+    expectedBuyRate: z.number().min(0).max(1).optional(),
+    returnRate: z.number().min(0).max(1).optional(),
+    reorderRate: z.number().min(0).max(1).optional(),
+    reviewRate: z.number().min(0).max(1).optional(),
+    rebuyRate: z.number().min(0).max(1).optional(),
+    conversionRate: z.number().min(0).max(1).optional(),
+    cartAbandonmentRate: z.number().min(0).max(1).optional(),
+    margin: z.number().min(0).max(1).optional(),
+
+    // Ensure scores are 0-100
+    performanceScore: z.number().min(0).max(100).optional(),
+    trendScore: z.number().min(0).max(100).optional(),
+    competitiveScore: z.number().min(0).max(100).optional(),
+
+    // Ensure revenue/values are non-negative
+    revenue: z.number().min(0).optional(),
+    volume: z.number().min(0).optional(),
+    averageOrderValue: z.number().min(0).optional(),
+
+    // Period validation
+    periodStart: z.date(),
+    periodEnd: z.date(),
+  })
+  .refine((data) => data.periodEnd >= data.periodStart, {
+    message: "Period end must be after period start",
+    path: ["periodEnd"],
+  });
+
 export const insertMediaAssetSchema = createInsertSchema(mediaAssets).omit({
   id: true,
   createdAt: true,
@@ -2260,6 +2430,11 @@ export type Brand = typeof brands.$inferSelect;
 export type InsertBrand = z.infer<typeof insertBrandSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type ProductAnalytics = typeof productAnalytics.$inferSelect;
+export type InsertProductAnalytics = z.infer<
+  typeof insertProductAnalyticsSchema
+>;
+export type AnalyticsValidation = z.infer<typeof analyticsValidationSchema>;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = z.infer<typeof insertMediaAssetSchema>;
 export type Category = typeof categories.$inferSelect;

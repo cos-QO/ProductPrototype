@@ -12,6 +12,7 @@ import {
   syndicationChannels,
   productSyndications,
   syndicationLogs,
+  productAnalytics,
   type User,
   type UpsertUser,
   type Brand,
@@ -32,6 +33,8 @@ import {
   type InsertProductSyndication,
   type SyndicationLog,
   type InsertSyndicationLog,
+  type ProductAnalytics,
+  type InsertProductAnalytics,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, like, and, or, count, sql, gte } from "drizzle-orm";
@@ -138,6 +141,34 @@ export interface IStorage {
   // Search operations
   searchProducts(query: string): Promise<Product[]>;
   searchBrands(query: string): Promise<Brand[]>;
+
+  // Analytics operations
+  createProductAnalytics(
+    analytics: InsertProductAnalytics,
+  ): Promise<ProductAnalytics>;
+  getProductAnalytics(
+    productId: number,
+    options?: {
+      period?: string;
+      limit?: number;
+      latest?: boolean;
+    },
+  ): Promise<ProductAnalytics[]>;
+  getLatestProductAnalytics(
+    productId: number,
+  ): Promise<ProductAnalytics | undefined>;
+  updateProductAnalytics(
+    id: number,
+    updates: Partial<InsertProductAnalytics>,
+  ): Promise<ProductAnalytics>;
+  deleteProductAnalytics(id: number): Promise<void>;
+  getAnalyticsSummary(productId: number): Promise<{
+    gaugeMetrics: any;
+    scores: any;
+    traffic: any;
+    financial: any;
+    period: any;
+  } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -748,6 +779,138 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(brands.createdAt))
       .limit(20);
+  }
+
+  // Analytics operations
+  async createProductAnalytics(
+    analytics: InsertProductAnalytics,
+  ): Promise<ProductAnalytics> {
+    const [result] = await db
+      .insert(productAnalytics)
+      .values(analytics)
+      .returning();
+    return result;
+  }
+
+  async getProductAnalytics(
+    productId: number,
+    options: {
+      period?: string;
+      limit?: number;
+      latest?: boolean;
+    } = {},
+  ): Promise<ProductAnalytics[]> {
+    const { period = "monthly", limit = 12, latest = false } = options;
+
+    let query = db
+      .select()
+      .from(productAnalytics)
+      .where(
+        and(
+          eq(productAnalytics.productId, productId),
+          eq(productAnalytics.reportingPeriod, period),
+        ),
+      )
+      .orderBy(desc(productAnalytics.periodStart));
+
+    if (latest) {
+      query = query.limit(1);
+    } else if (limit) {
+      query = query.limit(limit);
+    }
+
+    return await query;
+  }
+
+  async getLatestProductAnalytics(
+    productId: number,
+  ): Promise<ProductAnalytics | undefined> {
+    const [result] = await db
+      .select()
+      .from(productAnalytics)
+      .where(eq(productAnalytics.productId, productId))
+      .orderBy(desc(productAnalytics.calculatedAt))
+      .limit(1);
+
+    return result;
+  }
+
+  async updateProductAnalytics(
+    id: number,
+    updates: Partial<InsertProductAnalytics>,
+  ): Promise<ProductAnalytics> {
+    const [result] = await db
+      .update(productAnalytics)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(productAnalytics.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteProductAnalytics(id: number): Promise<void> {
+    await db.delete(productAnalytics).where(eq(productAnalytics.id, id));
+  }
+
+  async getAnalyticsSummary(productId: number): Promise<{
+    gaugeMetrics: any;
+    scores: any;
+    traffic: any;
+    financial: any;
+    period: any;
+  } | null> {
+    const latestAnalytics = await this.getLatestProductAnalytics(productId);
+
+    if (!latestAnalytics) {
+      return null;
+    }
+
+    // Quick summary for gauge charts - convert decimals to percentages
+    const summary = {
+      gaugeMetrics: {
+        buyRate: Math.round(Number(latestAnalytics.buyRate) * 100),
+        expectedBuyRate: Math.round(
+          Number(latestAnalytics.expectedBuyRate) * 100,
+        ),
+        conversionRate: Math.round(
+          Number(latestAnalytics.conversionRate) * 100,
+        ),
+        returnRate: Math.round(Number(latestAnalytics.returnRate) * 100),
+        reorderRate: Math.round(Number(latestAnalytics.reorderRate) * 100),
+        reviewRate: Math.round(Number(latestAnalytics.reviewRate) * 100),
+        rebuyRate: Math.round(Number(latestAnalytics.rebuyRate) * 100),
+      },
+      scores: {
+        performance: latestAnalytics.performanceScore,
+        trend: latestAnalytics.trendScore,
+        competitive: latestAnalytics.competitiveScore,
+      },
+      traffic: {
+        ads: latestAnalytics.trafficAds,
+        emails: latestAnalytics.trafficEmails,
+        text: latestAnalytics.trafficText,
+        store: latestAnalytics.trafficStore,
+        organic: latestAnalytics.trafficOrganic,
+        social: latestAnalytics.trafficSocial,
+        direct: latestAnalytics.trafficDirect,
+        referral: latestAnalytics.trafficReferral,
+      },
+      financial: {
+        revenue: latestAnalytics.revenue,
+        margin: Math.round(Number(latestAnalytics.margin) * 100),
+        volume: latestAnalytics.volume,
+        averageOrderValue: latestAnalytics.averageOrderValue,
+      },
+      period: {
+        start: latestAnalytics.periodStart,
+        end: latestAnalytics.periodEnd,
+        reportingPeriod: latestAnalytics.reportingPeriod,
+      },
+    };
+
+    return summary;
   }
 }
 

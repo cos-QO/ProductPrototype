@@ -9,6 +9,8 @@ import {
   insertCategorySchema,
   insertSyndicationChannelSchema,
   insertProductSyndicationSchema,
+  insertProductAnalyticsSchema,
+  analyticsValidationSchema,
   mediaAssets,
 } from "@shared/schema";
 import multer from "multer";
@@ -474,6 +476,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching product:", error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
+  });
+
+  // Product Analytics Routes
+  // GET /api/products/:id/analytics - Retrieve analytics data
+  app.get("/api/products/:id/analytics", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { period = "monthly", limit = 12 } = req.query;
+
+      const analytics = await storage.getProductAnalytics(parseInt(id), {
+        period: period as string,
+        limit: parseInt(limit as string) || 12,
+      });
+
+      // Calculate derived metrics
+      const metricsWithCalculations = analytics.map((record) => ({
+        ...record,
+        // Convert cents to dollars for display
+        revenueFormatted: (record.revenue / 100).toFixed(2),
+        averageOrderValueFormatted: (record.averageOrderValue / 100).toFixed(2),
+
+        // Calculate traffic distribution
+        totalTraffic:
+          record.trafficAds +
+          record.trafficEmails +
+          record.trafficText +
+          record.trafficStore +
+          record.trafficOrganic +
+          record.trafficSocial +
+          record.trafficDirect +
+          record.trafficReferral,
+
+        // Performance indicators
+        isPerformingWell: record.performanceScore >= 70,
+        isTrending: record.trendScore >= 70,
+        isCompetitive: record.competitiveScore >= 60,
+      }));
+
+      res.json({
+        success: true,
+        data: metricsWithCalculations,
+        meta: {
+          productId: parseInt(id),
+          period,
+          recordCount: analytics.length,
+          calculatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Analytics fetch error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch analytics data",
+        message: error.message,
+      });
+    }
+  });
+
+  // GET /api/products/:id/analytics/summary - Quick metrics for dashboard
+  app.get(
+    "/api/products/:id/analytics/summary",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const summary = await storage.getAnalyticsSummary(parseInt(id));
+
+        if (!summary) {
+          return res.json({
+            success: true,
+            data: null,
+            message: "No analytics data available",
+          });
+        }
+
+        res.json({
+          success: true,
+          data: summary,
+          meta: {
+            productId: parseInt(id),
+            lastUpdated: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error("Analytics summary error:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to fetch analytics summary",
+          message: error.message,
+        });
+      }
+    },
+  );
+
+  // POST /api/products/:id/analytics (Development/Seeding only)
+  app.post(
+    "/api/products/:id/analytics",
+    isAuthenticated,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const analyticsData = analyticsValidationSchema.parse({
+          ...req.body,
+          productId: parseInt(id),
+        });
+
+        const newAnalytics =
+          await storage.createProductAnalytics(analyticsData);
+
+        res.status(201).json({
+          success: true,
+          data: newAnalytics,
+          message: "Analytics data created successfully",
+        });
+      } catch (error) {
+        console.error("Analytics creation error:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to create analytics data",
+          message: error.message,
+        });
+      }
+    },
+  );
+
+  // GET /api/analytics/template - Template structure for development
+  app.get("/api/analytics/template", isAuthenticated, async (req, res) => {
+    res.json({
+      success: true,
+      data: {
+        sampleData: {
+          buyRate: 0.085, // 8.5%
+          expectedBuyRate: 0.075, // 7.5%
+          revenue: 125450, // $1,254.50 in cents
+          margin: 0.325, // 32.5%
+          volume: 45,
+          trafficAds: 1200,
+          trafficEmails: 850,
+          trafficText: 320,
+          trafficStore: 180,
+          trafficOrganic: 2100,
+          trafficSocial: 650,
+          trafficDirect: 980,
+          trafficReferral: 420,
+          returnRate: 0.015, // 1.5%
+          reorderRate: 0.28, // 28%
+          reviewRate: 0.45, // 45%
+          rebuyRate: 0.22, // 22%
+          conversionRate: 0.085, // 8.5%
+          performanceScore: 78,
+          trendScore: 85,
+          competitiveScore: 72,
+          periodStart: "2024-01-01",
+          periodEnd: "2024-01-31",
+          reportingPeriod: "monthly",
+        },
+      },
+    });
   });
 
   app.patch(

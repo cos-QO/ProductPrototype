@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRoute, useLocation } from "wouter";
 import { ChannelsTab } from "@/components/channels/ChannelsTab";
+import { DimensionsTab } from "@/components/analytics/DimensionsTab";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ import {
   Plus,
   Loader2,
   Brain,
+  Cube,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -158,7 +160,9 @@ export default function ProductEdit() {
   const [, navigate] = useLocation();
   const [, params] = useRoute("/products/:id/edit");
   const productId = params?.id ? parseInt(params.id) : null;
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState(
+    productId ? "dimensions" : "general",
+  );
   const [completionProgress, setCompletionProgress] = useState(0);
   const [mediaAssets, setMediaAssets] = useState<any[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<{
@@ -1080,7 +1084,15 @@ export default function ProductEdit() {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-7 mb-6">
+            <TabsList className="grid w-full grid-cols-8 mb-6">
+              <TabsTrigger
+                value="dimensions"
+                className="flex items-center space-x-2"
+                data-testid="tab-dimensions"
+              >
+                <Cube className="h-4 w-4" />
+                <span className="hidden sm:inline">Dimensions</span>
+              </TabsTrigger>
               <TabsTrigger
                 value="general"
                 className="flex items-center space-x-2"
@@ -1138,6 +1150,11 @@ export default function ProductEdit() {
                 <span className="hidden sm:inline">History</span>
               </TabsTrigger>
             </TabsList>
+
+            {/* Dimensions Tab - Analytics */}
+            <TabsContent value="dimensions" className="space-y-6">
+              <DimensionsTab productId={productId} />
+            </TabsContent>
 
             {/* General Tab */}
             <TabsContent value="general" className="space-y-6">

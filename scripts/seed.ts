@@ -6,6 +6,7 @@ import {
   mediaAssets,
   syndicationChannels,
   syndicationLogs,
+  productAnalytics,
 } from "../shared/schema";
 import { hashPassword } from "../server/auth";
 import { mockData } from "../server/mock-database";
@@ -329,12 +330,145 @@ async function seed() {
       }
     }
 
+    console.log("Creating analytics data...");
+    // Generate comprehensive analytics data for all products
+    const generateAnalyticsSeedData = (productIds: number[]) => {
+      const periods = [
+        { start: "2024-01-01", end: "2024-01-31", period: "monthly" },
+        { start: "2024-02-01", end: "2024-02-29", period: "monthly" },
+        { start: "2024-03-01", end: "2024-03-31", period: "monthly" },
+        { start: "2024-04-01", end: "2024-04-30", period: "monthly" },
+        { start: "2024-05-01", end: "2024-05-31", period: "monthly" },
+        { start: "2024-06-01", end: "2024-06-30", period: "monthly" },
+        { start: "2024-07-01", end: "2024-07-31", period: "monthly" },
+        { start: "2024-08-01", end: "2024-08-31", period: "monthly" },
+        { start: "2024-09-01", end: "2024-09-30", period: "monthly" },
+      ];
+
+      const seedData = [];
+
+      productIds.forEach((productId, productIndex) => {
+        periods.forEach((period, index) => {
+          // Create realistic trending data with some randomness
+          const trendMultiplier = 1 + index * 0.08; // 8% improvement each month
+          const basePerformance = 45 + Math.random() * 30 + productIndex * 5; // 45-80 base score
+          const seasonalFactor = 1 + Math.sin(index * 0.5) * 0.2; // Seasonal variation
+
+          seedData.push({
+            productId,
+            buyRate: Math.min(
+              0.15,
+              (0.02 + Math.random() * 0.06) * trendMultiplier * seasonalFactor,
+            ),
+            expectedBuyRate: 0.04 + Math.random() * 0.04,
+            revenue: Math.floor(
+              (30000 + Math.random() * 180000) *
+                trendMultiplier *
+                seasonalFactor,
+            ),
+            margin: 0.12 + Math.random() * 0.38, // 12-50% margin
+            volume: Math.floor(
+              (15 + Math.random() * 70) * trendMultiplier * seasonalFactor,
+            ),
+            totalViews: Math.floor(
+              (800 + Math.random() * 4200) * trendMultiplier * seasonalFactor,
+            ),
+            uniqueVisitors: Math.floor(
+              (600 + Math.random() * 2500) * trendMultiplier * seasonalFactor,
+            ),
+
+            // Traffic distribution with realistic patterns
+            trafficAds: Math.floor(
+              Math.random() * 800 * trendMultiplier * seasonalFactor,
+            ),
+            trafficEmails: Math.floor(
+              Math.random() * 600 * trendMultiplier * seasonalFactor,
+            ),
+            trafficText: Math.floor(
+              Math.random() * 250 * trendMultiplier * seasonalFactor,
+            ),
+            trafficStore: Math.floor(
+              Math.random() * 150 * trendMultiplier * seasonalFactor,
+            ),
+            trafficOrganic: Math.floor(
+              Math.random() * 1500 * trendMultiplier * seasonalFactor,
+            ),
+            trafficSocial: Math.floor(
+              Math.random() * 450 * trendMultiplier * seasonalFactor,
+            ),
+            trafficDirect: Math.floor(
+              Math.random() * 700 * trendMultiplier * seasonalFactor,
+            ),
+            trafficReferral: Math.floor(
+              Math.random() * 300 * trendMultiplier * seasonalFactor,
+            ),
+
+            // Customer behavior with realistic rates
+            returnRate: Math.max(0, 0.025 - Math.random() * 0.02), // 0-2.5%
+            reorderRate: 0.12 + Math.random() * 0.28, // 12-40%
+            reviewRate: 0.2 + Math.random() * 0.4, // 20-60%
+            rebuyRate: 0.08 + Math.random() * 0.32, // 8-40%
+
+            conversionRate: Math.min(
+              0.12,
+              (0.02 + Math.random() * 0.06) * trendMultiplier * seasonalFactor,
+            ),
+            averageOrderValue: Math.floor(
+              (6000 + Math.random() * 12000) * trendMultiplier,
+            ),
+            cartAbandonmentRate: Math.max(0.4, 0.8 - Math.random() * 0.35),
+
+            // Performance scores with upward trend and product variation
+            performanceScore: Math.min(
+              100,
+              Math.floor(
+                (basePerformance + productIndex * 2) * trendMultiplier,
+              ),
+            ),
+            trendScore: Math.min(
+              100,
+              Math.floor(
+                (basePerformance + 8 + productIndex * 3) * trendMultiplier,
+              ),
+            ),
+            competitiveScore: Math.min(
+              100,
+              Math.floor(
+                (basePerformance - 3 + productIndex) * trendMultiplier,
+              ),
+            ),
+
+            periodStart: new Date(period.start),
+            periodEnd: new Date(period.end),
+            reportingPeriod: period.period,
+
+            dataQuality: 0.8 + Math.random() * 0.2, // 80-100%
+            confidenceLevel: 0.85 + Math.random() * 0.15, // 85-100%
+          });
+        });
+      });
+
+      return seedData;
+    };
+
+    // Generate analytics for all inserted products
+    const productIds = insertedProducts.map((p) => p.id);
+    const analyticsData = generateAnalyticsSeedData(productIds);
+
+    // Insert analytics data in batches
+    const batchSize = 50;
+    for (let i = 0; i < analyticsData.length; i += batchSize) {
+      const batch = analyticsData.slice(i, i + batchSize);
+      await db.insert(productAnalytics).values(batch).onConflictDoNothing();
+    }
+
     console.log("✅ Database seeding completed!");
     console.log(`
     Created:
     - ${testUsers.length} users
     - ${insertedBrands.length} brands (including Kerouac Watches)
     - ${insertedProducts.length} products
+    - ${analyticsData.length} analytics records (9 months per product)
     - Sample media assets
     - Sample syndication logs
     

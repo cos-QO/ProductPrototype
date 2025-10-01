@@ -85,6 +85,13 @@
       "when": 1759335996119,
       "tag": "0011_omniscient_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1759340919620,
+      "tag": "0012_bright_karma",
+      "breakpoints": true
     }
   ]
 }
