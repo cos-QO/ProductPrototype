@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  PerformanceBadge,
+  usePerformanceStatus,
+} from "@/components/ui/performance-badge";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -14,7 +18,13 @@ import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GaugeChart } from "./GaugeChart";
 import { MetricCard } from "./MetricCard";
+import { TrafficChart } from "./TrafficChart";
 import { format } from "date-fns";
+import { getMetricColor } from "@/lib/chart-colors";
+import {
+  calculatePerformanceScores,
+  formatScore,
+} from "@/lib/performance-scores";
 
 interface DimensionsTabProps {
   productId: number | null;
@@ -60,21 +70,28 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
   const [timeframe, setTimeframe] = useState("30d");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch product analytics data
+  // Fetch product analytics data with timeframe
   const {
-    data: analytics,
+    data: analyticsResponse,
     isLoading: analyticsLoading,
     refetch: refetchAnalytics,
-  } = useQuery<ProductAnalytics[]>({
-    queryKey: ["/api/products", productId, "analytics"],
+  } = useQuery<{
+    data: ProductAnalytics[];
+    success: boolean;
+    meta?: { calculatedAt?: string };
+  }>({
+    queryKey: ["/api/products", productId, "analytics", timeframe],
     queryFn: () =>
       apiRequest(
         "GET",
-        `/api/products/${productId}/analytics?period=monthly&limit=12`,
+        `/api/products/${productId}/analytics?period=monthly&limit=12&timeframe=${timeframe}`,
       ),
     enabled: !!productId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Extract the data array from the response
+  const analytics = analyticsResponse?.data || [];
 
   // Fetch analytics summary
   const {
@@ -92,9 +109,125 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Get latest analytics data for current period
-  const latestData = analytics?.[0] || null;
+  // Get latest analytics data for current period - always use data even if zero
+  // Convert string values to numbers where needed
+  const rawData = analytics?.[0];
+  const latestData = rawData
+    ? {
+        ...rawData,
+        buyRate: parseFloat(String(rawData.buyRate)) || 0,
+        expectedBuyRate: parseFloat(String(rawData.expectedBuyRate)) || 0.05,
+        returnRate: parseFloat(String(rawData.returnRate)) || 0,
+        rebuyRate: parseFloat(String(rawData.rebuyRate)) || 0,
+        conversionRate: parseFloat(String(rawData.conversionRate)) || 0,
+        cartAbandonmentRate:
+          parseFloat(String(rawData.cartAbandonmentRate)) || 0,
+        reorderRate: parseFloat(String(rawData.reorderRate)) || 0,
+        reviewRate: parseFloat(String(rawData.reviewRate)) || 0,
+        revenue: parseInt(String(rawData.revenue)) || 0,
+        marginPercent: parseFloat(String((rawData as any).margin)) || 0, // margin is stored as decimal
+        margin: parseFloat(String((rawData as any).margin)) || 0,
+        volume: parseInt(String(rawData.volume)) || 0,
+        trafficSessions: parseInt(String(rawData.trafficSessions)) || 0,
+        pageViews: parseInt(String(rawData.pageViews)) || 0,
+        uniqueVisitors: parseInt(String(rawData.uniqueVisitors)) || 0,
+        bounceRate: parseFloat(String(rawData.bounceRate)) || 0,
+        avgSessionDuration: parseInt(String(rawData.avgSessionDuration)) || 0,
+        trafficAds: parseInt(String((rawData as any).trafficAds)) || 0,
+        trafficEmails: parseInt(String((rawData as any).trafficEmails)) || 0,
+        trafficText: parseInt(String((rawData as any).trafficText)) || 0,
+        trafficStore: parseInt(String((rawData as any).trafficStore)) || 0,
+        trafficOrganic: parseInt(String((rawData as any).trafficOrganic)) || 0,
+        trafficSocial: parseInt(String((rawData as any).trafficSocial)) || 0,
+        trafficDirect: parseInt(String((rawData as any).trafficDirect)) || 0,
+        trafficReferral:
+          parseInt(String((rawData as any).trafficReferral)) || 0,
+      }
+    : {
+        buyRate: 0,
+        expectedBuyRate: 0.05,
+        returnRate: 0,
+        rebuyRate: 0,
+        conversionRate: 0,
+        cartAbandonmentRate: 0,
+        reorderRate: 0,
+        reviewRate: 0,
+        revenue: 0,
+        marginPercent: 0,
+        margin: 0,
+        volume: 0,
+        trafficSessions: 0,
+        pageViews: 0,
+        uniqueVisitors: 0,
+        bounceRate: 0,
+        avgSessionDuration: 0,
+        trafficAds: 0,
+        trafficEmails: 0,
+        trafficText: 0,
+        trafficStore: 0,
+        trafficOrganic: 0,
+        trafficSocial: 0,
+        trafficDirect: 0,
+        trafficReferral: 0,
+        periodStart: new Date().toISOString(),
+        periodEnd: new Date().toISOString(),
+        calculatedAt: new Date().toISOString(),
+      };
   const isLoading = analyticsLoading || summaryLoading;
+
+  // CRITICAL: All usePerformanceStatus hooks MUST be called before any conditional returns
+  // Performance status calculations using the new hook - MOVED TO TOP LEVEL
+  const buyRateStatus = usePerformanceStatus(
+    "buyRate",
+    latestData.buyRate,
+    false,
+    latestData.buyRate * 100,
+    100,
+  );
+  const returnRateStatus = usePerformanceStatus(
+    "returnRate",
+    latestData.returnRate,
+    true,
+    (1 - latestData.returnRate) * 100,
+    100,
+  );
+  const rebuyRateStatus = usePerformanceStatus(
+    "rebuyRate",
+    latestData.rebuyRate,
+    false,
+    latestData.rebuyRate * 100,
+    100,
+  );
+  const conversionRateStatus = usePerformanceStatus(
+    "conversionRate",
+    latestData.conversionRate,
+    false,
+    latestData.conversionRate * 100,
+    20,
+  );
+  const marginStatus = usePerformanceStatus(
+    "marginPercent",
+    latestData.marginPercent,
+    false,
+    latestData.marginPercent,
+    100,
+  );
+  const reorderRateStatus = usePerformanceStatus(
+    "reorderRate",
+    latestData.reorderRate,
+    false,
+    latestData.volume,
+    Math.max(latestData.volume * 1.5, 100),
+  );
+  const cartAbandonmentStatus = usePerformanceStatus(
+    "cartAbandonmentRate",
+    latestData.cartAbandonmentRate,
+    true,
+  );
+  const reviewRateStatus = usePerformanceStatus(
+    "reviewRate",
+    latestData.reviewRate,
+  );
 
   // Refresh all data
   const handleRefresh = async () => {
@@ -140,42 +273,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
     );
   }
 
-  if (!latestData) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-muted-foreground">
-          <p className="text-lg font-medium mb-2">No Analytics Data</p>
-          <p className="text-sm mb-4">
-            No analytics data is available for this product yet.
-          </p>
-          <p className="text-xs">
-            Data collection may take 24-48 hours after product publication.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate performance indicators
-  const getBuyRateStatus = (current: number, expected: number) => {
-    const ratio = current / Math.max(expected, 0.001);
-    if (ratio >= 1.2)
-      return {
-        status: "excellent",
-        color: "text-emerald-600",
-        bg: "bg-emerald-50",
-      };
-    if (ratio >= 1.0)
-      return { status: "good", color: "text-green-600", bg: "bg-green-50" };
-    if (ratio >= 0.8)
-      return { status: "fair", color: "text-yellow-600", bg: "bg-yellow-50" };
-    return { status: "poor", color: "text-red-600", bg: "bg-red-50" };
-  };
-
-  const buyRateStatus = getBuyRateStatus(
-    latestData.buyRate,
-    latestData.expectedBuyRate,
-  );
+  // All usePerformanceStatus hooks have been moved to the top level to fix hooks ordering issue
 
   return (
     <div className="space-y-6">
@@ -215,32 +313,120 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         </div>
       </div>
 
+      {/* Performance Insights - Moved to TOP */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance Insights</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            // Calculate performance scores using the utility function
+            const scores = calculatePerformanceScores({
+              rebuyRate: latestData.rebuyRate,
+              avgSessionDuration: latestData.avgSessionDuration,
+              bounceRate: latestData.bounceRate,
+              pageViews: latestData.pageViews,
+              trafficSessions: latestData.trafficSessions,
+            });
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getMetricColor("rebuy-rate") }}
+                  >
+                    {formatScore(scores.rebuyRate.score)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Rebuy Rate
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Score: 1-88,888 ({scores.rebuyRate.originalValue})
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getMetricColor("satisfaction") }}
+                  >
+                    {formatScore(scores.avgSession.score)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Avg Session
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Score: 1-88,888 ({scores.avgSession.originalValue})
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getMetricColor("bounce-rate") }}
+                  >
+                    {formatScore(scores.bounceRate.score)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Bounce Rate
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Score: 1-88,888 ({scores.bounceRate.originalValue})
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getMetricColor("engagement") }}
+                  >
+                    {formatScore(scores.pagesPerSession.score)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Pages/Session
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Score: 1-88,888 ({scores.pagesPerSession.originalValue})
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       {/* Key Performance Indicators */}
-      {summary && (
+      {summary && summary.trendsAnalysis && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <MetricCard
             title="Total Revenue"
-            value={`$${(summary.totalRevenue / 100).toLocaleString()}`}
-            change={summary.trendsAnalysis.revenueGrowth}
-            trend={summary.trendsAnalysis.revenueGrowth >= 0 ? "up" : "down"}
+            value={`$${((summary.totalRevenue || 0) / 100).toLocaleString()}`}
+            change={summary.trendsAnalysis?.revenueGrowth || 0}
+            trend={
+              (summary.trendsAnalysis?.revenueGrowth || 0) >= 0 ? "up" : "down"
+            }
           />
           <MetricCard
             title="Avg Buy Rate"
-            value={`${(summary.avgBuyRate * 100).toFixed(1)}%`}
-            change={summary.trendsAnalysis.buyRateChange}
-            trend={summary.trendsAnalysis.buyRateChange >= 0 ? "up" : "down"}
+            value={`${((summary.avgBuyRate || 0) * 100).toFixed(1)}%`}
+            change={summary.trendsAnalysis?.buyRateChange || 0}
+            trend={
+              (summary.trendsAnalysis?.buyRateChange || 0) >= 0 ? "up" : "down"
+            }
           />
           <MetricCard
             title="Avg Margin"
-            value={`${summary.avgMarginPercent.toFixed(1)}%`}
-            change={summary.trendsAnalysis.marginChange}
-            trend={summary.trendsAnalysis.marginChange >= 0 ? "up" : "down"}
+            value={`${(summary.avgMarginPercent || 0).toFixed(1)}%`}
+            change={summary.trendsAnalysis?.marginChange || 0}
+            trend={
+              (summary.trendsAnalysis?.marginChange || 0) >= 0 ? "up" : "down"
+            }
           />
           <MetricCard
             title="Total Sessions"
-            value={summary.totalSessions.toLocaleString()}
-            change={summary.trendsAnalysis.trafficChange}
-            trend={summary.trendsAnalysis.trafficChange >= 0 ? "up" : "down"}
+            value={(summary.totalSessions || 0).toLocaleString()}
+            change={summary.trendsAnalysis?.trafficChange || 0}
+            trend={
+              (summary.trendsAnalysis?.trafficChange || 0) >= 0 ? "up" : "down"
+            }
           />
         </div>
       )}
@@ -252,12 +438,11 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Buy Rate Performance</CardTitle>
-              <Badge
-                variant="secondary"
-                className={`${buyRateStatus.color} ${buyRateStatus.bg}`}
-              >
-                {buyRateStatus.status}
-              </Badge>
+              {buyRateStatus && (
+                <PerformanceBadge level={buyRateStatus.level}>
+                  {buyRateStatus.status}
+                </PerformanceBadge>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -266,7 +451,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
               max={100}
               title="Current Buy Rate"
               subtitle={`Target: ${(latestData.expectedBuyRate * 100).toFixed(1)}%`}
-              color="#8b5cf6"
+              color={getMetricColor("buy-rate")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
@@ -288,7 +473,14 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         {/* Revenue & Margin */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Revenue & Margin</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Revenue & Margin</CardTitle>
+              {marginStatus && (
+                <PerformanceBadge level={marginStatus.level}>
+                  {marginStatus.status}
+                </PerformanceBadge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <GaugeChart
@@ -296,7 +488,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
               max={100}
               title="Profit Margin"
               subtitle={`Revenue: $${(latestData.revenue / 100).toLocaleString()}`}
-              color="#10b981"
+              color={getMetricColor("revenue-margin")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
@@ -318,7 +510,14 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         {/* Volume & Movement */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Volume & Movement</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Volume & Movement</CardTitle>
+              {reorderRateStatus && (
+                <PerformanceBadge level={reorderRateStatus.level}>
+                  {reorderRateStatus.status}
+                </PerformanceBadge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <GaugeChart
@@ -326,7 +525,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
               max={Math.max(latestData.volume * 1.5, 100)}
               title="Units Sold"
               subtitle={`Reorder Rate: ${(latestData.reorderRate * 100).toFixed(1)}%`}
-              color="#f59e0b"
+              color={getMetricColor("volume")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
@@ -345,30 +544,37 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
           </CardContent>
         </Card>
 
-        {/* Traffic Analytics */}
+        {/* Return & Rebuy Rates */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Traffic Analytics</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Return & Rebuy Rates</CardTitle>
+              {rebuyRateStatus && (
+                <PerformanceBadge level={rebuyRateStatus.level}>
+                  {rebuyRateStatus.status}
+                </PerformanceBadge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <GaugeChart
-              value={latestData.uniqueVisitors}
-              max={Math.max(latestData.uniqueVisitors * 1.5, 100)}
-              title="Unique Visitors"
-              subtitle={`${latestData.trafficSessions.toLocaleString()} sessions`}
-              color="#3b82f6"
+              value={latestData.rebuyRate * 100}
+              max={100}
+              title="Rebuy Rate"
+              subtitle={`Return Rate: ${(latestData.returnRate * 100).toFixed(1)}%`}
+              color={getMetricColor("rebuy-rate")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Sessions:</span>
+                <span className="text-muted-foreground">Return Rate:</span>
                 <span className="font-medium">
-                  {latestData.trafficSessions.toLocaleString()}
+                  {(latestData.returnRate * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Page Views:</span>
+                <span className="text-muted-foreground">Rebuy Rate:</span>
                 <span className="font-medium">
-                  {latestData.pageViews.toLocaleString()}
+                  {(latestData.rebuyRate * 100).toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -378,7 +584,14 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         {/* Conversion Metrics */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Conversion Metrics</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Conversion Metrics</CardTitle>
+              {conversionRateStatus && (
+                <PerformanceBadge level={conversionRateStatus.level}>
+                  {conversionRateStatus.status}
+                </PerformanceBadge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <GaugeChart
@@ -386,7 +599,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
               max={20}
               title="Conversion Rate"
               subtitle={`Cart Abandonment: ${(latestData.cartAbandonmentRate * 100).toFixed(1)}%`}
-              color="#ec4899"
+              color={getMetricColor("conversion")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
@@ -408,7 +621,14 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         {/* Customer Satisfaction */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Customer Satisfaction</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Customer Satisfaction</CardTitle>
+              {returnRateStatus && (
+                <PerformanceBadge level={returnRateStatus.level}>
+                  {returnRateStatus.status}
+                </PerformanceBadge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <GaugeChart
@@ -416,7 +636,7 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
               max={100}
               title="Satisfaction Score"
               subtitle={`Return Rate: ${(latestData.returnRate * 100).toFixed(1)}%`}
-              color="#06b6d4"
+              color={getMetricColor("satisfaction")}
             />
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between text-sm">
@@ -436,45 +656,102 @@ export function DimensionsTab({ productId }: DimensionsTabProps) {
         </Card>
       </div>
 
-      {/* Additional Insights */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {(latestData.rebuyRate * 100).toFixed(1)}%
-              </div>
-              <div className="text-sm text-muted-foreground">Rebuy Rate</div>
+      {/* Traffic Sources Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Traffic Sources Breakdown</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Where are your visitors coming from?
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[500px]">
+              <TrafficChart
+                trafficAds={latestData.trafficAds || 0}
+                trafficEmails={latestData.trafficEmails || 0}
+                trafficText={latestData.trafficText || 0}
+                trafficStore={latestData.trafficStore || 0}
+                trafficOrganic={latestData.trafficOrganic || 0}
+                trafficSocial={latestData.trafficSocial || 0}
+                trafficDirect={latestData.trafficDirect || 0}
+                trafficReferral={latestData.trafficReferral || 0}
+                variant="doughnut"
+                showLegend={true}
+              />
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {Math.round(latestData.avgSessionDuration / 60)}m
+          </CardContent>
+        </Card>
+
+        {/* Expected Buy Rate Comparison */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Expected vs Actual Buy Rate</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Performance against expectations
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Actual Buy Rate</span>
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: getMetricColor("buy-rate") }}
+                  >
+                    {(latestData.buyRate * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <GaugeChart
+                  value={latestData.buyRate * 100}
+                  max={Math.max(latestData.expectedBuyRate * 200, 10)}
+                  title=""
+                  color={getMetricColor("buy-rate")}
+                />
               </div>
-              <div className="text-sm text-muted-foreground">Avg Session</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {(latestData.bounceRate * 100).toFixed(1)}%
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Expected Buy Rate</span>
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: getMetricColor("volume") }}
+                  >
+                    {(latestData.expectedBuyRate * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <GaugeChart
+                  value={latestData.expectedBuyRate * 100}
+                  max={Math.max(latestData.expectedBuyRate * 200, 10)}
+                  title=""
+                  color={getMetricColor("volume")}
+                />
               </div>
-              <div className="text-sm text-muted-foreground">Bounce Rate</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {(latestData.pageViews / latestData.trafficSessions).toFixed(1)}
-              </div>
-              <div className="text-sm text-muted-foreground">Pages/Session</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Data Last Updated */}
       <div className="text-center text-sm text-muted-foreground">
         Last updated:{" "}
-        {format(new Date(latestData.calculatedAt), "MMM d, yyyy 'at' h:mm a")}
+        {(() => {
+          try {
+            const calculatedAt =
+              analyticsResponse?.meta?.calculatedAt || latestData.calculatedAt;
+            if (!calculatedAt) {
+              return "Never";
+            }
+            const date = new Date(calculatedAt);
+            if (isNaN(date.getTime())) {
+              return "Invalid date";
+            }
+            return format(date, "MMM d, yyyy 'at' h:mm a");
+          } catch (error) {
+            console.error("Error formatting date:", error);
+            return "Unknown";
+          }
+        })()}
       </div>
     </div>
   );

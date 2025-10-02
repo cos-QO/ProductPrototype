@@ -394,16 +394,18 @@ export const AutomationMetrics: React.FC<AutomationMetricsProps> = ({
                 <PieChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="h-24">
+                <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPieChart>
                       <Pie
                         data={pieChartData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={20}
-                        outerRadius={40}
+                        innerRadius={35}
+                        outerRadius={85}
                         dataKey="value"
+                        strokeWidth={2}
+                        stroke="#ffffff"
                       >
                         {pieChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />

@@ -1,0 +1,219 @@
+{
+  "reportId": "ERR-TEST-1759428612932",
+  "generatedAt": "2025-10-02T18:10:12.987Z",
+  "executionDuration": 55,
+  "summary": {
+    "totalTests": 6,
+    "passedTests": 0,
+    "failedTests": 6,
+    "successRate": "0.00",
+    "totalDuration": 16.691377000010107,
+    "avgTestDuration": "2.78"
+  },
+  "performance": {
+    "api_performance": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 3.061958999998751,
+      "minDuration": 3.061958999998751,
+      "maxDuration": 3.061958999998751,
+      "totalDuration": 3.061958999998751
+    },
+    "error_recovery": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 2.1104170000035083,
+      "minDuration": 2.1104170000035083,
+      "maxDuration": 2.1104170000035083,
+      "totalDuration": 2.1104170000035083
+    },
+    "coverage": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 5.29579200000444,
+      "minDuration": 5.29579200000444,
+      "maxDuration": 5.29579200000444,
+      "totalDuration": 5.29579200000444
+    },
+    "e2e_coverage": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 2.1695420000032755,
+      "minDuration": 2.1695420000032755,
+      "maxDuration": 2.1695420000032755,
+      "totalDuration": 2.1695420000032755
+    },
+    "quality": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 2.1198329999970156,
+      "minDuration": 2.1198329999970156,
+      "maxDuration": 2.1198329999970156,
+      "totalDuration": 2.1198329999970156
+    },
+    "ux_quality": {
+      "totalTests": 1,
+      "passedTests": 0,
+      "failedTests": 1,
+      "avgDuration": 1.9338340000031167,
+      "minDuration": 1.9338340000031167,
+      "maxDuration": 1.9338340000031167,
+      "totalDuration": 1.9338340000031167
+    }
+  },
+  "coverage": {},
+  "quality": {},
+  "testResults": [
+    {
+      "id": "ERR-TEST-1759428612932-1",
+      "name": "API Response Time Test",
+      "category": "api_performance",
+      "status": "FAILED",
+      "duration": 3.061958999998751,
+      "timestamp": "2025-10-02T18:10:12.960Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:297:36\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:276:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    },
+    {
+      "id": "ERR-TEST-1759428612932-2",
+      "name": "Error Recovery Operations",
+      "category": "error_recovery",
+      "status": "FAILED",
+      "duration": 2.1104170000035083,
+      "timestamp": "2025-10-02T18:10:12.963Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:385:36\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:364:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    },
+    {
+      "id": "ERR-TEST-1759428612932-3",
+      "name": "Error Type Coverage Analysis",
+      "category": "coverage",
+      "status": "FAILED",
+      "duration": 5.29579200000444,
+      "timestamp": "2025-10-02T18:10:12.969Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:525:38\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:490:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    },
+    {
+      "id": "ERR-TEST-1759428612932-4",
+      "name": "End-to-End Workflow Coverage",
+      "category": "e2e_coverage",
+      "status": "FAILED",
+      "duration": 2.1695420000032755,
+      "timestamp": "2025-10-02T18:10:12.972Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:633:36\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:608:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    },
+    {
+      "id": "ERR-TEST-1759428612932-5",
+      "name": "Error Recovery Quality Assessment",
+      "category": "quality",
+      "status": "FAILED",
+      "duration": 2.1198329999970156,
+      "timestamp": "2025-10-02T18:10:12.975Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:763:36\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:743:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    },
+    {
+      "id": "ERR-TEST-1759428612932-6",
+      "name": "User Experience Quality",
+      "category": "ux_quality",
+      "status": "FAILED",
+      "duration": 1.9338340000031167,
+      "timestamp": "2025-10-02T18:10:12.977Z",
+      "metrics": {},
+      "errors": [
+        {
+          "message": "Error",
+          "stack": "AggregateError: Error\n    at AxiosError.from (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/AxiosError.js:96:14)\n    at RedirectableRequest.handleRequestError (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/adapters/http.js:638:25)\n    at RedirectableRequest.emit (node:events:508:28)\n    at ClientRequest.eventHandlers.<computed> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/follow-redirects/index.js:49:24)\n    at ClientRequest.emit (node:events:508:28)\n    at emitErrorEvent (node:_http_client:107:11)\n    at Socket.socketErrorListener (node:_http_client:574:5)\n    at Socket.emit (node:events:508:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/node_modules/axios/lib/core/Axios.js:45:41)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at /Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:914:36\n    at executeAndReport (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:248:20)\n    at Object.<anonymous> (/Users/cos/Documents/Projects/QueenOne/ProductPrototype/tests/integration/error-recovery-test-reporter.test.js:895:7)"
+        }
+      ],
+      "coverage": {},
+      "details": {}
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "reliability",
+      "priority": "critical",
+      "message": "Test success rate below 95%. Investigate failing tests and improve system stability.",
+      "metric": "Success Rate: 0.00%"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "api_performance category has 1 failing tests. Review implementation.",
+      "category": "api_performance"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "error_recovery category has 1 failing tests. Review implementation.",
+      "category": "error_recovery"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "coverage category has 1 failing tests. Review implementation.",
+      "category": "coverage"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "e2e_coverage category has 1 failing tests. Review implementation.",
+      "category": "e2e_coverage"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "quality category has 1 failing tests. Review implementation.",
+      "category": "quality"
+    },
+    {
+      "type": "category_failure",
+      "priority": "medium",
+      "message": "ux_quality category has 1 failing tests. Review implementation.",
+      "category": "ux_quality"
+    }
+  ]
+}

@@ -18,9 +18,10 @@ export function ConnectionStatusIndicator({
   const [messageCount, setMessageCount] = useState(0);
   const [dataRefreshRate, setDataRefreshRate] = useState(0);
 
-  // WebSocket connection for real-time updates
-  const { isConnected, lastMessage, connect, disconnect } =
-    useWebSocket("/ws/dashboard");
+  // WebSocket connection for real-time updates with required parameters
+  const { isConnected, lastMessage, connect, disconnect } = useWebSocket(
+    "/ws?sessionId=dashboard-session&userId=local-dev-user",
+  );
 
   // Track message frequency for data refresh rate
   useEffect(() => {
@@ -201,7 +202,10 @@ export function ConnectionStatusIndicator({
         <div className="mt-3 p-2 bg-background/50 rounded text-xs">
           <div className="text-muted-foreground">Latest data:</div>
           <div className="font-mono">
-            {lastMessage.type}: {JSON.stringify(lastMessage.data).slice(0, 50)}
+            {lastMessage.type}:{" "}
+            {lastMessage.data
+              ? JSON.stringify(lastMessage.data).slice(0, 50)
+              : "No data"}
             ...
           </div>
         </div>
@@ -212,7 +216,9 @@ export function ConnectionStatusIndicator({
 
 // Hook for easy connection status access
 export function useConnectionStatus() {
-  const { isConnected, lastMessage } = useWebSocket("/ws/dashboard");
+  const { isConnected, lastMessage } = useWebSocket(
+    "/ws?sessionId=connection-status&userId=local-dev-user",
+  );
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
 
   useEffect(() => {

@@ -11,6 +11,9 @@ import {
   insertProductSyndicationSchema,
   insertProductAnalyticsSchema,
   analyticsValidationSchema,
+  insertSkuDialAllocationSchema,
+  updateSkuDialAllocationSchema,
+  costPriceUpdateSchema,
   mediaAssets,
 } from "@shared/schema";
 import multer from "multer";
@@ -483,11 +486,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/analytics", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const { period = "monthly", limit = 12 } = req.query;
+      const { period = "monthly", limit = 12, timeframe = "30d" } = req.query;
 
       const analytics = await storage.getProductAnalytics(parseInt(id), {
         period: period as string,
         limit: parseInt(limit as string) || 12,
+        timeframe: timeframe as string,
       });
 
       // Calculate derived metrics
@@ -514,13 +518,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompetitive: record.competitiveScore >= 60,
       }));
 
+      // If no data, return default zero values for charts to render
+      const responseData =
+        metricsWithCalculations.length > 0
+          ? metricsWithCalculations
+          : [
+              {
+                productId: parseInt(id),
+                buyRate: 0,
+                expectedBuyRate: 0.05, // 5% default expected
+                returnRate: 0,
+                rebuyRate: 0,
+                conversionRate: 0,
+                cartAbandonmentRate: 0,
+                reorderRate: 0,
+                reviewRate: 0,
+                revenue: 0,
+                margin: 0,
+                averageOrderValue: 0,
+                volume: 0,
+                trafficAds: 0,
+                trafficEmails: 0,
+                trafficText: 0,
+                trafficStore: 0,
+                trafficOrganic: 0,
+                trafficSocial: 0,
+                trafficDirect: 0,
+                trafficReferral: 0,
+                trafficSessions: 0,
+                pageViews: 0,
+                uniqueVisitors: 0,
+                bounceRate: 0,
+                avgSessionDuration: 0,
+                performanceScore: 0,
+                trendScore: 0,
+                competitiveScore: 0,
+                periodStart: new Date().toISOString(),
+                periodEnd: new Date().toISOString(),
+                reportingPeriod: period as string,
+                revenueFormatted: "0.00",
+                averageOrderValueFormatted: "0.00",
+                totalTraffic: 0,
+                isPerformingWell: false,
+                isTrending: false,
+                isCompetitive: false,
+              },
+            ];
+
       res.json({
         success: true,
-        data: metricsWithCalculations,
+        data: responseData,
         meta: {
           productId: parseInt(id),
           period,
-          recordCount: analytics.length,
+          recordCount: responseData.length,
           calculatedAt: new Date().toISOString(),
         },
       });
@@ -541,22 +592,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const { id } = req.params;
+        const { timeframe = "30d" } = req.query;
 
-        const summary = await storage.getAnalyticsSummary(parseInt(id));
+        // Get analytics data for the specified timeframe
+        const analytics = await storage.getProductAnalytics(parseInt(id), {
+          timeframe: timeframe as string,
+        });
 
-        if (!summary) {
+        if (!analytics || analytics.length === 0) {
           return res.json({
             success: true,
-            data: null,
+            data: {
+              totalRevenue: 0,
+              avgBuyRate: 0,
+              avgMarginPercent: 0,
+              totalVolume: 0,
+              totalSessions: 0,
+              trendsAnalysis: {
+                revenueGrowth: 0,
+                buyRateChange: 0,
+                marginChange: 0,
+                trafficChange: 0,
+              },
+            },
             message: "No analytics data available",
           });
         }
 
+        // Calculate summary metrics
+        const totalRevenue = analytics.reduce(
+          (sum, a) => sum + (a.revenue || 0),
+          0,
+        );
+        const avgBuyRate =
+          analytics.reduce((sum, a) => sum + (Number(a.buyRate) || 0), 0) /
+          analytics.length;
+        const avgMarginPercent =
+          (analytics.reduce((sum, a) => sum + (Number(a.margin) || 0), 0) /
+            analytics.length) *
+          100;
+        const totalVolume = analytics.reduce(
+          (sum, a) => sum + (a.volume || 0),
+          0,
+        );
+        const totalSessions = analytics.reduce(
+          (sum, a) => sum + (a.trafficSessions || 0),
+          0,
+        );
+
+        // Calculate trends (compare first half vs second half of period)
+        const midPoint = Math.floor(analytics.length / 2);
+        const firstHalf = analytics.slice(0, midPoint);
+        const secondHalf = analytics.slice(midPoint);
+
+        const firstHalfRevenue = firstHalf.reduce(
+          (sum, a) => sum + (a.revenue || 0),
+          0,
+        );
+        const secondHalfRevenue = secondHalf.reduce(
+          (sum, a) => sum + (a.revenue || 0),
+          0,
+        );
+        const revenueGrowth =
+          firstHalfRevenue > 0
+            ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100
+            : 0;
+
+        const firstHalfBuyRate =
+          firstHalf.reduce((sum, a) => sum + (Number(a.buyRate) || 0), 0) /
+          Math.max(firstHalf.length, 1);
+        const secondHalfBuyRate =
+          secondHalf.reduce((sum, a) => sum + (Number(a.buyRate) || 0), 0) /
+          Math.max(secondHalf.length, 1);
+        const buyRateChange =
+          firstHalfBuyRate > 0
+            ? ((secondHalfBuyRate - firstHalfBuyRate) / firstHalfBuyRate) * 100
+            : 0;
+
+        const firstHalfMargin =
+          firstHalf.reduce((sum, a) => sum + (Number(a.margin) || 0), 0) /
+          Math.max(firstHalf.length, 1);
+        const secondHalfMargin =
+          secondHalf.reduce((sum, a) => sum + (Number(a.margin) || 0), 0) /
+          Math.max(secondHalf.length, 1);
+        const marginChange =
+          firstHalfMargin > 0
+            ? ((secondHalfMargin - firstHalfMargin) / firstHalfMargin) * 100
+            : 0;
+
+        const firstHalfTraffic = firstHalf.reduce(
+          (sum, a) => sum + (a.trafficSessions || 0),
+          0,
+        );
+        const secondHalfTraffic = secondHalf.reduce(
+          (sum, a) => sum + (a.trafficSessions || 0),
+          0,
+        );
+        const trafficChange =
+          firstHalfTraffic > 0
+            ? ((secondHalfTraffic - firstHalfTraffic) / firstHalfTraffic) * 100
+            : 0;
+
+        const summaryData = {
+          totalRevenue,
+          avgBuyRate,
+          avgMarginPercent,
+          totalVolume,
+          totalSessions,
+          trendsAnalysis: {
+            revenueGrowth: Math.round(revenueGrowth * 10) / 10,
+            buyRateChange: Math.round(buyRateChange * 10) / 10,
+            marginChange: Math.round(marginChange * 10) / 10,
+            trafficChange: Math.round(trafficChange * 10) / 10,
+          },
+        };
+
         res.json({
           success: true,
-          data: summary,
+          data: summaryData,
           meta: {
             productId: parseInt(id),
+            timeframe: timeframe as string,
+            dataPoints: analytics.length,
             lastUpdated: new Date().toISOString(),
           },
         });
@@ -636,6 +793,375 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       },
     });
+  });
+
+  // =============================================================================
+  // PERFORMANCE INSIGHTS API ENDPOINTS (Phase 3)
+  // =============================================================================
+
+  // GET /api/products/:id/sku-dial - Get SKU Dial allocation
+  app.get("/api/products/:id/sku-dial", isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+
+      // Verify product exists and user has access
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      const allocation = await storage.getSkuDialAllocation(productId);
+
+      if (!allocation) {
+        // Return default allocation structure if none exists
+        return res.json({
+          success: true,
+          data: {
+            productId,
+            performancePoints: 0,
+            inventoryPoints: 0,
+            profitabilityPoints: 0,
+            demandPoints: 0,
+            competitivePoints: 0,
+            trendPoints: 0,
+            efficiencyRating: "F",
+            totalPoints: 0,
+            maxPoints: 888,
+          },
+        });
+      }
+
+      // Calculate total points for response
+      const totalPoints =
+        (allocation.performancePoints || 0) +
+        (allocation.inventoryPoints || 0) +
+        (allocation.profitabilityPoints || 0) +
+        (allocation.demandPoints || 0) +
+        (allocation.competitivePoints || 0) +
+        (allocation.trendPoints || 0);
+
+      res.json({
+        success: true,
+        data: {
+          ...allocation,
+          totalPoints,
+          maxPoints: 888,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching SKU dial allocation:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch SKU dial allocation",
+      });
+    }
+  });
+
+  // PUT /api/products/:id/sku-dial - Update SKU Dial allocation
+  app.put(
+    "/api/products/:id/sku-dial",
+    isAuthenticated,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const updates = updateSkuDialAllocationSchema.parse(req.body);
+
+        // Verify product exists and user has access
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: "Product not found",
+          });
+        }
+
+        // Additional validation: selling price must be greater than cost price for contribution margin
+        if (
+          updates.performancePoints &&
+          product.costPrice &&
+          product.costPrice >= product.price
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Cannot allocate performance points: cost price must be less than selling price for valid contribution margin calculation",
+          });
+        }
+
+        // Check if allocation exists, create or update accordingly
+        const existingAllocation =
+          await storage.getSkuDialAllocation(productId);
+
+        let allocation;
+        if (existingAllocation) {
+          allocation = await storage.updateSkuDialAllocation(
+            productId,
+            updates,
+          );
+        } else {
+          // Create new allocation with productId
+          const newAllocation = {
+            productId,
+            ...updates,
+          };
+          allocation = await storage.createSkuDialAllocation(newAllocation);
+        }
+
+        // Calculate total points for response
+        const totalPoints =
+          (allocation.performancePoints || 0) +
+          (allocation.inventoryPoints || 0) +
+          (allocation.profitabilityPoints || 0) +
+          (allocation.demandPoints || 0) +
+          (allocation.competitivePoints || 0) +
+          (allocation.trendPoints || 0);
+
+        res.json({
+          success: true,
+          message: "SKU dial allocation updated successfully",
+          data: {
+            ...allocation,
+            totalPoints,
+            maxPoints: 888,
+          },
+        });
+      } catch (error) {
+        console.error("Error updating SKU dial allocation:", error);
+
+        if (error.message.includes("Total points cannot exceed 888")) {
+          return res.status(400).json({
+            success: false,
+            message: "Total points cannot exceed 888",
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: "Failed to update SKU dial allocation",
+        });
+      }
+    },
+  );
+
+  // PUT /api/products/:id/cost-price - Update product cost price
+  app.put(
+    "/api/products/:id/cost-price",
+    isAuthenticated,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const { costPrice } = costPriceUpdateSchema.parse(req.body);
+
+        // Verify product exists and user has access
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: "Product not found",
+          });
+        }
+
+        // Validate that cost price is less than selling price
+        if (costPrice >= product.price) {
+          return res.status(400).json({
+            success: false,
+            message: "Cost price must be less than selling price",
+            details: {
+              costPrice: costPrice / 100, // Convert to dollars for response
+              sellingPrice: product.price / 100,
+            },
+          });
+        }
+
+        const updatedProduct = await storage.updateProductCostPrice(
+          productId,
+          costPrice,
+        );
+
+        // Calculate contribution margin for response
+        const contributionMargin =
+          ((product.price - costPrice) / product.price) * 100;
+
+        res.json({
+          success: true,
+          message: "Cost price updated successfully",
+          data: {
+            id: updatedProduct.id,
+            costPrice: updatedProduct.costPrice,
+            sellingPrice: updatedProduct.price,
+            contributionMargin: Math.round(contributionMargin * 100) / 100, // Round to 2 decimal places
+          },
+        });
+      } catch (error) {
+        console.error("Error updating cost price:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update cost price",
+        });
+      }
+    },
+  );
+
+  // GET /api/products/:id/analytics/enhanced - Enhanced analytics with contribution margin and SKU dial
+  app.get(
+    "/api/products/:id/analytics/enhanced",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+
+        // Verify product exists and user has access
+        const product = await storage.getProduct(productId);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: "Product not found",
+          });
+        }
+
+        const enhancedAnalytics =
+          await storage.getEnhancedProductAnalytics(productId);
+
+        // Add additional calculations for the response
+        const totalSkuDialPoints = enhancedAnalytics.skuDialAllocation
+          ? (enhancedAnalytics.skuDialAllocation.performancePoints || 0) +
+            (enhancedAnalytics.skuDialAllocation.inventoryPoints || 0) +
+            (enhancedAnalytics.skuDialAllocation.profitabilityPoints || 0) +
+            (enhancedAnalytics.skuDialAllocation.demandPoints || 0) +
+            (enhancedAnalytics.skuDialAllocation.competitivePoints || 0) +
+            (enhancedAnalytics.skuDialAllocation.trendPoints || 0)
+          : 0;
+
+        res.json({
+          success: true,
+          data: {
+            productId,
+            analytics: enhancedAnalytics.analytics,
+            performanceMetrics: {
+              contributionMargin: enhancedAnalytics.contributionMargin,
+              returnRate: enhancedAnalytics.returnRate,
+              efficiencyRating:
+                enhancedAnalytics.skuDialAllocation?.efficiencyRating || "F",
+            },
+            skuDialAllocation: enhancedAnalytics.skuDialAllocation
+              ? {
+                  ...enhancedAnalytics.skuDialAllocation,
+                  totalPoints: totalSkuDialPoints,
+                  maxPoints: 888,
+                }
+              : null,
+            costAnalysis: {
+              sellingPrice: product.price / 100, // Convert to dollars
+              costPrice: (product.costPrice || 0) / 100, // Convert to dollars
+              profit: (product.price - (product.costPrice || 0)) / 100, // Convert to dollars
+              contributionMarginPercent: enhancedAnalytics.contributionMargin,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching enhanced analytics:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch enhanced analytics",
+        });
+      }
+    },
+  );
+
+  // POST /api/setup/migrate - Development migration endpoint
+  app.post("/api/setup/migrate", isAuthenticated, async (req, res) => {
+    try {
+      console.log("Running Phase 3 migration...");
+
+      // Import sql from drizzle-orm - we need to add this import at the top
+      const { sql } = await import("drizzle-orm");
+      const { db } = await import("./db");
+
+      // Check if cost_price column exists
+      const columnCheck = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'products' AND column_name = 'cost_price'
+      `);
+
+      console.log("Column check result:", columnCheck);
+      const columnExists = Array.isArray(columnCheck)
+        ? columnCheck.length > 0
+        : (columnCheck.rows?.length || 0) > 0;
+
+      if (!columnExists) {
+        console.log("Adding cost_price column...");
+        await db.execute(sql`
+          ALTER TABLE products ADD COLUMN cost_price INTEGER DEFAULT 0
+        `);
+        console.log("✅ cost_price column added");
+      }
+
+      // Check if sku_dial_allocations table exists
+      const tableCheck = await db.execute(sql`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'sku_dial_allocations'
+      `);
+
+      console.log("Table check result:", tableCheck);
+      const tableExists = Array.isArray(tableCheck)
+        ? tableCheck.length > 0
+        : (tableCheck.rows?.length || 0) > 0;
+
+      if (!tableExists) {
+        console.log("Creating sku_dial_allocations table...");
+        await db.execute(sql`
+          CREATE TABLE sku_dial_allocations (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            product_id INTEGER REFERENCES products(id) NOT NULL,
+            performance_points INTEGER DEFAULT 0,
+            inventory_points INTEGER DEFAULT 0,
+            profitability_points INTEGER DEFAULT 0,
+            demand_points INTEGER DEFAULT 0,
+            competitive_points INTEGER DEFAULT 0,
+            trend_points INTEGER DEFAULT 0,
+            efficiency_rating VARCHAR(5) DEFAULT 'F',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW(),
+            CONSTRAINT total_points_limit CHECK (
+              (performance_points + inventory_points + profitability_points + 
+               demand_points + competitive_points + trend_points) <= 888
+            ),
+            CONSTRAINT unique_product_allocation UNIQUE (product_id)
+          )
+        `);
+
+        // Add indexes
+        await db.execute(sql`
+          CREATE INDEX idx_sku_dial_allocations_product_id ON sku_dial_allocations(product_id)
+        `);
+        await db.execute(sql`
+          CREATE INDEX idx_sku_dial_allocations_efficiency ON sku_dial_allocations(efficiency_rating)
+        `);
+
+        console.log("✅ sku_dial_allocations table created");
+      }
+
+      res.json({
+        success: true,
+        message: "Migration completed successfully",
+        changes: {
+          costPriceColumn: !columnExists,
+          skuDialTable: !tableExists,
+        },
+      });
+    } catch (error) {
+      console.error("Migration failed:", error);
+      res.status(500).json({
+        success: false,
+        message: "Migration failed",
+        error: error.message,
+      });
+    }
   });
 
   app.patch(

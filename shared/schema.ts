@@ -12,6 +12,8 @@ import {
   decimal,
   interval,
   date,
+  check,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -76,6 +78,7 @@ export const products: any = pgTable("products", {
   status: varchar("status").default("draft"), // draft, review, live, archived
   isVariant: boolean("is_variant").default(false),
   price: integer("price"), // Store as cents to avoid float issues
+  costPrice: integer("cost_price").default(0), // Cost price in cents for contribution margin calculation
   compareAtPrice: integer("compare_at_price"),
   stock: integer("stock"),
   lowStockThreshold: integer("low_stock_threshold"),
@@ -644,6 +647,14 @@ export const productAnalytics = pgTable(
     trafficDirect: integer("traffic_direct").default(0), // Direct traffic
     trafficReferral: integer("traffic_referral").default(0), // Referral traffic
 
+    // Performance Insights - Web Analytics (Added for dashboard insights)
+    bounceRate: decimal("bounce_rate", { precision: 5, scale: 4 }).default(
+      sql`0`,
+    ), // Bounce rate 0-1
+    avgSessionDuration: integer("avg_session_duration").default(0), // Average session duration in seconds
+    pageViews: integer("page_views").default(0), // Total page views for the period
+    trafficSessions: integer("traffic_sessions").default(0), // Total sessions for the period
+
     // Customer Behavior Metrics
     returnRate: decimal("return_rate", { precision: 5, scale: 4 }).default(
       sql`0`,
@@ -720,6 +731,56 @@ export const productAnalytics = pgTable(
   ],
 );
 
+// SKU Dial Allocations table - 888-point allocation system for Performance Insights
+export const skuDialAllocations = pgTable(
+  "sku_dial_allocations",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    productId: integer("product_id")
+      .references(() => products.id)
+      .notNull(),
+    // 888-point allocation across 6 categories
+    performancePoints: integer("performance_points").default(0), // Max 200 (22.5%) - Sales metrics
+    inventoryPoints: integer("inventory_points").default(0), // Max 150 (16.9%) - Stock optimization
+    profitabilityPoints: integer("profitability_points").default(0), // Max 200 (22.5%) - Margin focus
+    demandPoints: integer("demand_points").default(0), // Max 138 (15.5%) - Customer signals
+    competitivePoints: integer("competitive_points").default(0), // Max 100 (11.3%) - Market position
+    trendPoints: integer("trend_points").default(0), // Max 100 (11.3%) - Growth trajectory
+    // Calculated efficiency rating
+    efficiencyRating: varchar("efficiency_rating", { length: 5 }).default("C"), // A, B, C, D, F
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    // Constraints to ensure 888-point system integrity
+    check("performance_points_limit", sql`${table.performancePoints} <= 200`),
+    check("inventory_points_limit", sql`${table.inventoryPoints} <= 150`),
+    check(
+      "profitability_points_limit",
+      sql`${table.profitabilityPoints} <= 200`,
+    ),
+    check("demand_points_limit", sql`${table.demandPoints} <= 138`),
+    check("competitive_points_limit", sql`${table.competitivePoints} <= 100`),
+    check("trend_points_limit", sql`${table.trendPoints} <= 100`),
+    check(
+      "total_points_limit",
+      sql`(${table.performancePoints} + ${table.inventoryPoints} + ${table.profitabilityPoints} + ${table.demandPoints} + ${table.competitivePoints} + ${table.trendPoints}) <= 888`,
+    ),
+    // Performance indexes
+    index("idx_sku_dial_allocations_product_id").on(table.productId),
+    index("idx_sku_dial_allocations_efficiency").on(table.efficiencyRating),
+    index("idx_sku_dial_allocations_points").on(
+      table.performancePoints,
+      table.inventoryPoints,
+      table.profitabilityPoints,
+    ),
+    // Unique constraint - one allocation per product
+    unique("unique_product_allocation").on(table.productId),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedBrands: many(brands),
@@ -766,6 +827,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   syndications: many(productSyndications),
   syndicationLogs: many(syndicationLogs),
   analytics: many(productAnalytics),
+  skuDialAllocations: many(skuDialAllocations),
 }));
 
 export const productAttributesRelations = relations(
@@ -784,6 +846,17 @@ export const productAnalyticsRelations = relations(
   ({ one }) => ({
     product: one(products, {
       fields: [productAnalytics.productId],
+      references: [products.id],
+    }),
+  }),
+);
+
+// SKU Dial Allocations Relations
+export const skuDialAllocationsRelations = relations(
+  skuDialAllocations,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [skuDialAllocations.productId],
       references: [products.id],
     }),
   }),
@@ -2098,6 +2171,47 @@ export const insertProductAnalyticsSchema = createInsertSchema(
 export const selectProductAnalyticsSchema =
   createInsertSchema(productAnalytics);
 
+// SKU Dial Allocation validation schemas
+export const insertSkuDialAllocationSchema = createInsertSchema(
+  skuDialAllocations,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  efficiencyRating: true, // Calculated automatically
+});
+
+export const updateSkuDialAllocationSchema = insertSkuDialAllocationSchema
+  .partial()
+  .extend({
+    // Validate 888-point total constraint
+    performancePoints: z.number().min(0).max(200).optional(),
+    inventoryPoints: z.number().min(0).max(150).optional(),
+    profitabilityPoints: z.number().min(0).max(200).optional(),
+    demandPoints: z.number().min(0).max(138).optional(),
+    competitivePoints: z.number().min(0).max(100).optional(),
+    trendPoints: z.number().min(0).max(100).optional(),
+  })
+  .refine(
+    (data) => {
+      const total =
+        (data.performancePoints || 0) +
+        (data.inventoryPoints || 0) +
+        (data.profitabilityPoints || 0) +
+        (data.demandPoints || 0) +
+        (data.competitivePoints || 0) +
+        (data.trendPoints || 0);
+      return total <= 888;
+    },
+    {
+      message: "Total points cannot exceed 888",
+    },
+  );
+
+export const costPriceUpdateSchema = z.object({
+  costPrice: z.number().min(0).int(), // Cost price in cents
+});
+
 // Enhanced validation with business rules
 export const analyticsValidationSchema = insertProductAnalyticsSchema
   .extend({
@@ -2625,6 +2739,10 @@ export type ApprovalStatus =
   | "escalated"
   | "timeout";
 export type DecisionType = "approve" | "reject" | "escalate" | "delegate";
+
+// SKU Dial Allocation types
+export type SkuDialAllocation = typeof skuDialAllocations.$inferSelect;
+export type InsertSkuDialAllocation = typeof skuDialAllocations.$inferInsert;
 
 export interface ApprovalContext {
   scenario?: any;

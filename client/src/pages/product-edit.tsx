@@ -65,7 +65,7 @@ import {
   Plus,
   Loader2,
   Brain,
-  Cube,
+  Box,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1019,17 +1019,63 @@ export default function ProductEdit() {
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/products")}
-                className="flex items-center"
-                data-testid="button-back-to-products"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Products
-              </Button>
+              {hasUnsavedChanges ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center"
+                      data-testid="button-back-to-products"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Products
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You have unsaved changes that will be lost if you leave
+                        this page. What would you like to do?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Stay on Page</AlertDialogCancel>
+                      <Button
+                        onClick={() => {
+                          form.handleSubmit(onSubmit)();
+                          // Note: Navigation will happen in onSubmit success handler
+                        }}
+                        className="gradient-primary text-white hover:opacity-90"
+                        disabled={updateProductMutation.isPending}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Save & Go Back
+                      </Button>
+                      <AlertDialogAction
+                        onClick={() => navigate("/products")}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Discard Changes & Go Back
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/products")}
+                  className="flex items-center"
+                  data-testid="button-back-to-products"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Products
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -1090,7 +1136,7 @@ export default function ProductEdit() {
                 className="flex items-center space-x-2"
                 data-testid="tab-dimensions"
               >
-                <Cube className="h-4 w-4" />
+                <Box className="h-4 w-4" />
                 <span className="hidden sm:inline">Dimensions</span>
               </TabsTrigger>
               <TabsTrigger
@@ -1572,42 +1618,19 @@ export default function ProductEdit() {
                     </CardContent>
                   </Card>
 
-                  {/* Save Actions */}
+                  {/* Unsaved Changes Indicator */}
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="space-y-3">
-                        <Button
-                          type="submit"
-                          className="w-full gradient-primary text-white hover:opacity-90"
-                          disabled={
-                            updateProductMutation.isPending ||
-                            !form.formState.isValid
-                          }
-                          data-testid="button-save-product"
-                        >
-                          <Save className="mr-2 h-4 w-4" />
-                          {updateProductMutation.isPending
-                            ? "Saving..."
-                            : "Save Changes"}
-                        </Button>
-
-                        {hasUnsavedChanges && (
-                          <p className="text-xs text-amber-600 text-center">
+                      {hasUnsavedChanges && (
+                        <div className="text-center">
+                          <p className="text-xs text-amber-600">
                             You have unsaved changes
                           </p>
-                        )}
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => navigate("/products")}
-                          disabled={updateProductMutation.isPending}
-                          data-testid="button-cancel-edit"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Use "Save Changes" button in header to save
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

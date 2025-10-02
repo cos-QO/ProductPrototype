@@ -94,6 +94,49 @@
   --motion-duration-default: 299ms;
   --motion-duration-slow: 399ms;
   --motion-duration-very-slow: 599ms;
+
+  /* Performance Analytics Tokens */
+  --performance-excellent: hsl(142, 76%, 36%);
+  --performance-excellent-foreground: hsl(355, 7%, 97%);
+  --performance-excellent-bg: hsl(142, 76%, 95%);
+  --performance-very-good: hsl(147, 78%, 42%);
+  --performance-very-good-foreground: hsl(355, 7%, 97%);
+  --performance-very-good-bg: hsl(147, 78%, 95%);
+  --performance-good: hsl(82, 84%, 47%);
+  --performance-good-foreground: hsl(222, 84%, 4.9%);
+  --performance-good-bg: hsl(82, 84%, 95%);
+  --performance-fair: hsl(45, 93%, 47%);
+  --performance-fair-foreground: hsl(222, 84%, 4.9%);
+  --performance-fair-bg: hsl(45, 93%, 95%);
+  --performance-needs-attention: hsl(24, 95%, 53%);
+  --performance-needs-attention-foreground: hsl(355, 7%, 97%);
+  --performance-needs-attention-bg: hsl(24, 95%, 95%);
+
+  /* Chart Color Palette */
+  --chart-traffic-ads: hsl(0, 84%, 60%);
+  --chart-traffic-email: hsl(217, 91%, 60%);
+  --chart-traffic-sms: hsl(159, 100%, 36%);
+  --chart-traffic-store: hsl(262, 83%, 58%);
+  --chart-traffic-organic: hsl(142, 76%, 36%);
+  --chart-traffic-social: hsl(188, 94%, 43%);
+  --chart-traffic-direct: hsl(45, 93%, 47%);
+  --chart-traffic-referral: hsl(335, 78%, 42%);
+
+  /* Gauge Chart Colors */
+  --gauge-segment-1: hsl(0, 84%, 60%);      /* Red zone */
+  --gauge-segment-2: hsl(24, 95%, 53%);     /* Orange zone */
+  --gauge-segment-3: hsl(45, 93%, 47%);     /* Yellow zone */
+  --gauge-segment-4: hsl(82, 84%, 47%);     /* Light green zone */
+  --gauge-segment-5: hsl(142, 76%, 36%);    /* Green zone */
+  --gauge-background: hsl(217, 32%, 17%);
+
+  /* Performance Metric Colors */
+  --metric-buy-rate: hsl(262, 83%, 58%);
+  --metric-revenue-margin: hsl(159, 100%, 36%);
+  --metric-volume: hsl(45, 93%, 47%);
+  --metric-rebuy-rate: hsl(217, 91%, 60%);
+  --metric-conversion: hsl(335, 78%, 42%);
+  --metric-satisfaction: hsl(188, 94%, 43%);
 }
 
 .dark {
@@ -144,6 +187,49 @@
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.75rem;
+
+  /* Performance Analytics Tokens - Dark Theme */
+  --performance-excellent: hsl(142, 76%, 36%);
+  --performance-excellent-foreground: hsl(0, 0%, 100%);
+  --performance-excellent-bg: hsl(142, 76%, 10%);
+  --performance-very-good: hsl(147, 78%, 42%);
+  --performance-very-good-foreground: hsl(0, 0%, 100%);
+  --performance-very-good-bg: hsl(147, 78%, 10%);
+  --performance-good: hsl(82, 84%, 47%);
+  --performance-good-foreground: hsl(0, 0%, 0%);
+  --performance-good-bg: hsl(82, 84%, 10%);
+  --performance-fair: hsl(45, 93%, 47%);
+  --performance-fair-foreground: hsl(0, 0%, 0%);
+  --performance-fair-bg: hsl(45, 93%, 10%);
+  --performance-needs-attention: hsl(24, 95%, 53%);
+  --performance-needs-attention-foreground: hsl(0, 0%, 100%);
+  --performance-needs-attention-bg: hsl(24, 95%, 10%);
+
+  /* Chart Color Palette - Dark Theme */
+  --chart-traffic-ads: hsl(0, 84%, 60%);
+  --chart-traffic-email: hsl(217, 91%, 60%);
+  --chart-traffic-sms: hsl(159, 100%, 36%);
+  --chart-traffic-store: hsl(262, 83%, 58%);
+  --chart-traffic-organic: hsl(142, 76%, 36%);
+  --chart-traffic-social: hsl(188, 94%, 43%);
+  --chart-traffic-direct: hsl(45, 93%, 47%);
+  --chart-traffic-referral: hsl(335, 78%, 42%);
+
+  /* Gauge Chart Colors - Dark Theme */
+  --gauge-segment-1: hsl(0, 84%, 60%);      /* Red zone */
+  --gauge-segment-2: hsl(24, 95%, 53%);     /* Orange zone */
+  --gauge-segment-3: hsl(45, 93%, 47%);     /* Yellow zone */
+  --gauge-segment-4: hsl(82, 84%, 47%);     /* Light green zone */
+  --gauge-segment-5: hsl(142, 76%, 36%);    /* Green zone */
+  --gauge-background: hsl(217, 32%, 17%);
+
+  /* Performance Metric Colors - Dark Theme */
+  --metric-buy-rate: hsl(262, 83%, 58%);
+  --metric-revenue-margin: hsl(159, 100%, 36%);
+  --metric-volume: hsl(45, 93%, 47%);
+  --metric-rebuy-rate: hsl(217, 91%, 60%);
+  --metric-conversion: hsl(335, 78%, 42%);
+  --metric-satisfaction: hsl(188, 94%, 43%);
   --shadow-2xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(262, 83%, 58% / 0.00), 0px 1px 2px -1px hsl(262, 83%, 58% / 0.00);

@@ -10,6 +10,11 @@ import {
   DoughnutController,
 } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
+import {
+  generateGaugeGradient,
+  getGaugeColorForPercentage,
+  gaugeColors,
+} from "@/lib/chart-colors";
 
 // Register Chart.js components
 ChartJS.register(
@@ -36,8 +41,8 @@ export function GaugeChart({
   max,
   title,
   subtitle,
-  color = "#8b5cf6",
-  backgroundColor = "#f3f4f6",
+  color = "hsl(222.2, 84%, 4.9%)", // --primary equivalent
+  backgroundColor = "hsl(210, 40%, 98%)", // --gauge-background equivalent
 }: GaugeChartProps) {
   const chartRef = useRef<ChartJS<"doughnut", number[], string>>(null);
 
@@ -45,17 +50,25 @@ export function GaugeChart({
   const normalizedValue = Math.min(Math.max(value, 0), max);
   const percentage = (normalizedValue / max) * 100;
 
+  // Use design system color based on percentage
+  const gaugeColor = getGaugeColorForPercentage(percentage);
+
   // Calculate remaining portion for the gauge effect
   const remaining = max - normalizedValue;
+
+  // Use design system gradient segments
+  const gradientSegments = generateGaugeGradient(normalizedValue, max, 5);
+  const segmentData = gradientSegments.map((segment) => segment.value);
+  const segmentColors = gradientSegments.map((segment) => segment.color);
 
   const data = {
     datasets: [
       {
-        data: [normalizedValue, remaining],
-        backgroundColor: [color, backgroundColor],
+        data: segmentData,
+        backgroundColor: segmentColors,
         borderWidth: 0,
         circumference: 180, // Half circle
-        rotation: 270, // Start from top
+        rotation: 270, // Start from top (left side = red, right side = green)
         cutout: "75%", // Creates the gauge hollow center
       },
     ],
@@ -79,32 +92,12 @@ export function GaugeChart({
     },
   };
 
-  // Custom plugin to draw the center text
+  // Custom plugin to draw the center text - removed to prevent overlap
   const centerTextPlugin = {
     id: "centerText",
     beforeDraw: (chart: any) => {
-      const { ctx, width, height } = chart;
-      ctx.restore();
-
-      const centerX = width / 2;
-      const centerY = height / 2 + 20; // Adjust for gauge positioning
-
-      // Main value
-      ctx.font = "bold 24px sans-serif";
-      ctx.fillStyle = color;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      const displayValue = typeof value === "number" ? value.toFixed(1) : "0.0";
-      ctx.fillText(displayValue, centerX, centerY - 10);
-
-      // Unit or percentage
-      ctx.font = "14px sans-serif";
-      ctx.fillStyle = "#6b7280";
-      const unit = max === 100 ? "%" : "";
-      ctx.fillText(unit, centerX, centerY + 15);
-
-      ctx.save();
+      // Disabled center text drawing to prevent overlap with title
+      // The value is now shown in the progress indicator below
     },
   };
 
@@ -130,9 +123,13 @@ export function GaugeChart({
         />
       </div>
 
-      {/* Title and Subtitle */}
+      {/* Title and Value Display */}
       <div className="text-center mt-4">
         <h3 className="font-semibold text-sm text-foreground">{title}</h3>
+        <div className="text-2xl font-bold mt-2" style={{ color: gaugeColor }}>
+          {value.toFixed(1)}
+          {max === 100 ? "%" : ""}
+        </div>
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
         )}
@@ -142,15 +139,15 @@ export function GaugeChart({
       <div className="mt-3">
         <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span>0</span>
-          <span>{percentage.toFixed(0)}%</span>
-          <span>{max}</span>
+          <span className="font-semibold">{percentage.toFixed(0)}%</span>
+          <span>{max === 100 ? "100%" : max}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div className="w-full bg-muted rounded-full h-1.5">
           <div
             className="h-1.5 rounded-full transition-all duration-500 ease-out"
             style={{
               width: `${percentage}%`,
-              backgroundColor: color,
+              backgroundColor: gaugeColor,
             }}
           />
         </div>

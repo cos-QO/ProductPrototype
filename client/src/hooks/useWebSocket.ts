@@ -30,11 +30,40 @@ export function useWebSocket(url: string): UseWebSocketResult {
     }
 
     try {
-      // Convert relative URL to WebSocket URL
-      const wsUrl = url.startsWith("ws")
-        ? url
-        : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${url}`;
+      // Convert relative URL to WebSocket URL with proper port fallback
+      // Ensure we always have a valid host and port
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const defaultPort = "5000"; // Fixed port as configured in vite.config.ts
+      let host = window.location.host;
 
+      // Fix undefined port issue - ensure we have a valid host and port
+      if (!host || host === "localhost" || host === "") {
+        host = `localhost:${defaultPort}`;
+      } else if (!host.includes(":")) {
+        // Host exists but no port, add default port
+        host = `${host}:${defaultPort}`;
+      }
+
+      // Additional safety check for malformed hosts
+      if (host.includes("undefined") || host.includes("null")) {
+        console.warn(
+          "Malformed host detected, falling back to localhost:",
+          host,
+        );
+        host = `localhost:${defaultPort}`;
+      }
+
+      // Construct WebSocket URL properly - handle both relative and absolute URLs
+      let wsUrl: string;
+      if (url.startsWith("ws://") || url.startsWith("wss://")) {
+        wsUrl = url;
+      } else {
+        // Remove leading slash if present to avoid double slashes
+        const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+        wsUrl = `${protocol}//${host}${cleanUrl}`;
+      }
+
+      console.log(`Attempting WebSocket connection to: ${wsUrl}`);
       websocketRef.current = new WebSocket(wsUrl);
 
       websocketRef.current.onopen = () => {
@@ -57,8 +86,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
         setIsConnected(false);
 
         // Attempt to reconnect if it wasn't a manual disconnect
+        // Code 1000 = normal closure, 1008 = policy violation (missing params)
         if (
           event.code !== 1000 &&
+          event.code !== 1008 && // Don't retry on missing sessionId/userId
           reconnectAttemptsRef.current < maxReconnectAttempts
         ) {
           // Exponential backoff: 1s, 2s, 4s, 8s, 16s
@@ -74,6 +105,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
             reconnectAttemptsRef.current++;
             connect();
           }, delay);
+        } else if (event.code === 1008) {
+          console.error(
+            "WebSocket connection rejected: Missing sessionId or userId parameters",
+          );
         }
       };
 

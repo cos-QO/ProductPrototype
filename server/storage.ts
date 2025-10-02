@@ -13,6 +13,7 @@ import {
   productSyndications,
   syndicationLogs,
   productAnalytics,
+  skuDialAllocations,
   type User,
   type UpsertUser,
   type Brand,
@@ -35,9 +36,11 @@ import {
   type InsertSyndicationLog,
   type ProductAnalytics,
   type InsertProductAnalytics,
+  type SkuDialAllocation,
+  type InsertSkuDialAllocation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, like, and, or, count, sql, gte } from "drizzle-orm";
+import { eq, desc, like, and, or, count, sql, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -169,6 +172,33 @@ export interface IStorage {
     financial: any;
     period: any;
   } | null>;
+
+  // SKU Dial Allocation operations
+  createSkuDialAllocation(
+    allocation: InsertSkuDialAllocation,
+  ): Promise<SkuDialAllocation>;
+  getSkuDialAllocation(
+    productId: number,
+  ): Promise<SkuDialAllocation | undefined>;
+  updateSkuDialAllocation(
+    productId: number,
+    updates: Partial<InsertSkuDialAllocation>,
+  ): Promise<SkuDialAllocation>;
+  deleteSkuDialAllocation(productId: number): Promise<void>;
+
+  // Cost price operations
+  updateProductCostPrice(
+    productId: number,
+    costPrice: number,
+  ): Promise<Product>;
+
+  // Enhanced analytics with contribution margin
+  getEnhancedProductAnalytics(productId: number): Promise<{
+    analytics: ProductAnalytics[];
+    skuDialAllocation: SkuDialAllocation | null;
+    contributionMargin: number;
+    returnRate: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -798,19 +828,52 @@ export class DatabaseStorage implements IStorage {
       period?: string;
       limit?: number;
       latest?: boolean;
+      timeframe?: string;
     } = {},
   ): Promise<ProductAnalytics[]> {
-    const { period = "monthly", limit = 12, latest = false } = options;
+    const {
+      period = "monthly",
+      limit = 12,
+      latest = false,
+      timeframe = "30d",
+    } = options;
+
+    // Calculate date range based on timeframe
+    const endDate = new Date();
+    const startDate = new Date();
+
+    switch (timeframe) {
+      case "7d":
+        startDate.setDate(endDate.getDate() - 7);
+        break;
+      case "30d":
+        startDate.setDate(endDate.getDate() - 30);
+        break;
+      case "90d":
+        startDate.setDate(endDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 30);
+    }
+
+    // Build where conditions
+    const whereConditions = [
+      eq(productAnalytics.productId, productId),
+      eq(productAnalytics.reportingPeriod, period),
+    ];
+
+    // Add date filtering if timeframe is specified
+    if (timeframe) {
+      whereConditions.push(
+        gte(productAnalytics.periodStart, startDate.toISOString()),
+        lte(productAnalytics.periodEnd, endDate.toISOString()),
+      );
+    }
 
     let query = db
       .select()
       .from(productAnalytics)
-      .where(
-        and(
-          eq(productAnalytics.productId, productId),
-          eq(productAnalytics.reportingPeriod, period),
-        ),
-      )
+      .where(and(...whereConditions))
       .orderBy(desc(productAnalytics.periodStart));
 
     if (latest) {
@@ -911,6 +974,158 @@ export class DatabaseStorage implements IStorage {
     };
 
     return summary;
+  }
+
+  // SKU Dial Allocation operations
+  async createSkuDialAllocation(
+    allocation: InsertSkuDialAllocation,
+  ): Promise<SkuDialAllocation> {
+    const result = await db
+      .insert(skuDialAllocations)
+      .values(allocation)
+      .returning();
+    return result[0];
+  }
+
+  async getSkuDialAllocation(
+    productId: number,
+  ): Promise<SkuDialAllocation | undefined> {
+    const result = await db
+      .select()
+      .from(skuDialAllocations)
+      .where(eq(skuDialAllocations.productId, productId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateSkuDialAllocation(
+    productId: number,
+    updates: Partial<InsertSkuDialAllocation>,
+  ): Promise<SkuDialAllocation> {
+    // Calculate efficiency rating based on total points
+    const totalPoints =
+      (updates.performancePoints || 0) +
+      (updates.inventoryPoints || 0) +
+      (updates.profitabilityPoints || 0) +
+      (updates.demandPoints || 0) +
+      (updates.competitivePoints || 0) +
+      (updates.trendPoints || 0);
+
+    let efficiencyRating = "F";
+    if (totalPoints >= 710)
+      efficiencyRating = "A"; // 80%+ of 888
+    else if (totalPoints >= 622)
+      efficiencyRating = "B"; // 70%+ of 888
+    else if (totalPoints >= 533)
+      efficiencyRating = "C"; // 60%+ of 888
+    else if (totalPoints >= 444) efficiencyRating = "D"; // 50%+ of 888
+
+    const updatesWithRating = {
+      ...updates,
+      efficiencyRating,
+      updatedAt: new Date(),
+    };
+
+    const result = await db
+      .update(skuDialAllocations)
+      .set(updatesWithRating)
+      .where(eq(skuDialAllocations.productId, productId))
+      .returning();
+
+    return result[0];
+  }
+
+  async deleteSkuDialAllocation(productId: number): Promise<void> {
+    await db
+      .delete(skuDialAllocations)
+      .where(eq(skuDialAllocations.productId, productId));
+  }
+
+  // Cost price operations
+  async updateProductCostPrice(
+    productId: number,
+    costPrice: number,
+  ): Promise<Product> {
+    try {
+      const result = await db
+        .update(products)
+        .set({
+          costPrice,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, productId))
+        .returning();
+
+      return result[0];
+    } catch (error) {
+      if (
+        (error as Error).message.includes('column "cost_price" does not exist')
+      ) {
+        throw new Error(
+          "Cost price feature is not yet available. Database migration required.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  // Enhanced analytics with contribution margin
+  async getEnhancedProductAnalytics(productId: number): Promise<{
+    analytics: ProductAnalytics[];
+    skuDialAllocation: SkuDialAllocation | null;
+    contributionMargin: number;
+    returnRate: number;
+  }> {
+    try {
+      // Get product with cost price (with graceful fallback)
+      const product = await this.getProduct(productId);
+      if (!product) {
+        throw new Error(`Product with ID ${productId} not found`);
+      }
+
+      // Get analytics data
+      const analytics = await this.getProductAnalytics(productId);
+
+      // Get SKU dial allocation (with graceful fallback)
+      let skuDialAllocation: SkuDialAllocation | null = null;
+      try {
+        skuDialAllocation = await this.getSkuDialAllocation(productId);
+      } catch (error) {
+        console.warn(
+          `SKU dial allocation not available for product ${productId}:`,
+          (error as Error).message,
+        );
+        // This is expected if the table doesn't exist yet
+      }
+
+      // Calculate contribution margin with graceful fallback for cost price
+      const sellingPrice = product.price; // in cents
+      const costPrice = (product as any).costPrice || 0; // Graceful fallback with type assertion
+      const contributionMargin =
+        sellingPrice > 0
+          ? ((sellingPrice - costPrice) / sellingPrice) * 100
+          : 0;
+
+      // Calculate average return rate from analytics
+      const returnRate =
+        analytics.length > 0
+          ? analytics.reduce((sum, a) => sum + (Number(a.returnRate) || 0), 0) /
+            analytics.length
+          : 0;
+
+      return {
+        analytics,
+        skuDialAllocation,
+        contributionMargin: Math.round(contributionMargin * 100) / 100, // Round to 2 decimal places
+        returnRate: Math.round(returnRate * 10000) / 100, // Convert to percentage with 2 decimal places
+      };
+    } catch (error) {
+      console.error(
+        `Error in getEnhancedProductAnalytics for product ${productId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 }
 

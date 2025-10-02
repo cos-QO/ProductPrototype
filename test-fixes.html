@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket Connection</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="port-info"></div>
+    <div id="messages"></div>
+
+    <script>
+        // Test WebSocket connection with proper port configuration
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const defaultPort = "5000"; // This should match VITE_PORT
+        let host = window.location.hostname || "localhost";
+        
+        // Add port if not present
+        const port = window.location.port || defaultPort;
+        const fullHost = `${host}:${port}`;
+        
+        // Construct WebSocket URL
+        const wsUrl = `${protocol}//${fullHost}/ws?sessionId=test-session&userId=local-dev-user`;
+        
+        document.getElementById('port-info').innerHTML = `
+            <p>Host: ${fullHost}</p>
+            <p>WebSocket URL: ${wsUrl}</p>
+        `;
+        
+        console.log('Attempting to connect to:', wsUrl);
+        
+        try {
+            const ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                document.getElementById('status').innerHTML = '<span style="color: green;">✅ Connected!</span>';
+                console.log('WebSocket connected successfully');
+            };
+            
+            ws.onmessage = (event) => {
+                console.log('Message received:', event.data);
+                const messages = document.getElementById('messages');
+                messages.innerHTML += `<p>Message: ${event.data}</p>`;
+            };
+            
+            ws.onerror = (error) => {
+                document.getElementById('status').innerHTML = '<span style="color: red;">❌ Connection Error</span>';
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = (event) => {
+                document.getElementById('status').innerHTML = `<span style="color: orange;">⚠️ Disconnected (code: ${event.code})</span>`;
+                console.log('WebSocket closed:', event.code, event.reason);
+            };
+        } catch (error) {
+            document.getElementById('status').innerHTML = '<span style="color: red;">❌ Failed to create WebSocket</span>';
+            console.error('Failed to create WebSocket:', error);
+        }
+    </script>
+</body>
+</html>

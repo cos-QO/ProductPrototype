@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { MetricsTrendChart } from "@/components/dashboard/MetricsTrendChart";
 import { ConnectionStatusIndicator } from "@/components/dashboard/ConnectionStatusIndicator";
 import { DataQualityWidget } from "@/components/dashboard/DataQualityWidget";
+import { PerformanceInsights } from "@/components/dashboard/PerformanceInsights";
+import { SKUDialComponent } from "@/components/dashboard/SKUDialComponent";
+import { SKUDialDialog } from "@/components/dashboard/SKUDialDialog";
 import {
   Crown,
   Box,
@@ -33,6 +36,7 @@ import {
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [skuDialOpen, setSkuDialOpen] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -113,120 +117,9 @@ export default function Dashboard() {
 
       {/* Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Stats Grid */}
-        <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 max-w-6xl mx-auto"
-          data-testid="stats-grid"
-        >
-          <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Crown className="text-primary h-5 w-5" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <TrendingUp className="h-3 w-3 text-success" />
-                  <span className="text-sm text-success">12%</span>
-                </div>
-              </div>
-              <h3
-                className="text-2xl font-bold text-foreground mb-1"
-                data-testid="text-brands-count"
-              >
-                {statsLoading ? (
-                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
-                ) : statsError ? (
-                  <span className="text-destructive text-sm">Error</span>
-                ) : (
-                  (stats as any)?.totalBrands || 0
-                )}
-              </h3>
-              <p className="text-muted-foreground text-sm">Active Brands</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <Box className="text-accent h-5 w-5" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <TrendingUp className="h-3 w-3 text-success" />
-                  <span className="text-sm text-success">28%</span>
-                </div>
-              </div>
-              <h3
-                className="text-2xl font-bold text-foreground mb-1"
-                data-testid="text-products-count"
-              >
-                {statsLoading ? (
-                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
-                ) : statsError ? (
-                  <span className="text-destructive text-sm">Error</span>
-                ) : (
-                  (stats as any)?.totalProducts || 0
-                )}
-              </h3>
-              <p className="text-muted-foreground text-sm">Total Products</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-info/10 rounded-lg flex items-center justify-center">
-                  <Share className="text-info h-5 w-5" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <TrendingUp className="h-3 w-3 text-success" />
-                  <span className="text-sm text-success">45%</span>
-                </div>
-              </div>
-              <h3
-                className="text-2xl font-bold text-foreground mb-1"
-                data-testid="text-syncs-count"
-              >
-                {statsLoading ? (
-                  <div className="animate-pulse bg-muted rounded h-8 w-12"></div>
-                ) : statsError ? (
-                  <span className="text-destructive text-sm">Error</span>
-                ) : (
-                  (stats as any)?.apiSyncsToday || 0
-                )}
-              </h3>
-              <p className="text-muted-foreground text-sm">API Syncs/Day</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
-                  <Clock className="text-success h-5 w-5" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <TrendingDown className="h-3 w-3 text-destructive" />
-                  <span className="text-sm text-destructive">-23%</span>
-                </div>
-              </div>
-              <h3
-                className="text-2xl font-bold text-foreground mb-1"
-                data-testid="text-time-to-market"
-              >
-                {statsLoading ? (
-                  <div className="animate-pulse bg-muted rounded h-8 w-16"></div>
-                ) : statsError ? (
-                  <span className="text-destructive text-sm">Error</span>
-                ) : (
-                  `${(stats as any)?.avgTimeToMarket || 8.2}h`
-                )}
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                Avg Time to Market
-              </p>
-            </CardContent>
-          </Card>
+        {/* Performance Insights */}
+        <div className="mb-8 max-w-6xl mx-auto">
+          <PerformanceInsights className="mb-8" />
         </div>
 
         {/* Metrics Trend Chart */}
@@ -237,6 +130,14 @@ export default function Dashboard() {
         {/* Data Quality Widget */}
         <div className="mb-8 max-w-6xl mx-auto">
           <DataQualityWidget />
+        </div>
+
+        {/* SKU Dial Component */}
+        <div className="mb-8 max-w-6xl mx-auto">
+          <SKUDialComponent
+            productId={1} // Demo product ID
+            onEdit={() => setSkuDialOpen(true)}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 max-w-6xl mx-auto">
@@ -707,6 +608,13 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* SKU Dial Dialog */}
+      <SKUDialDialog
+        productId={1} // Demo product ID
+        open={skuDialOpen}
+        onOpenChange={setSkuDialOpen}
+      />
     </>
   );
 }
